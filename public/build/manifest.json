@@ -453,7 +453,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-Ddk6K8_M.css",
+    "file": "assets/app-3Nr1-OSq.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -462,7 +462,7 @@
     ]
   },
   "resources/css/filament/control-panel/theme.css": {
-    "file": "assets/theme-BSv3CklC.css",
+    "file": "assets/theme-CfSJBx4s.css",
     "src": "resources/css/filament/control-panel/theme.css",
     "isEntry": true,
     "name": "theme",
