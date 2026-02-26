@@ -18,7 +18,8 @@
         "laravel/tinker": "^2.10.1",
         "predis/predis": "^3.4",
         "spiral/roadrunner-cli": "^2.6.0",
-        "spiral/roadrunner-http": "^3.3.0"
+        "spiral/roadrunner-http": "^3.3.0",
+        "plesk/ext-laravel-integration": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
