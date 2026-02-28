@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Dashboard;
 
+use App\Models\Customer;
 use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -9,7 +10,7 @@ class CheckOrderPaymentStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $customer = $this->user('customer');
+        $customer = $this->resolveAuthenticatedCustomer();
         $order = $this->route('order');
 
         return $customer !== null
@@ -21,5 +22,18 @@ class CheckOrderPaymentStatusRequest extends FormRequest
     public function rules(): array
     {
         return [];
+    }
+
+    private function resolveAuthenticatedCustomer(): ?Customer
+    {
+        $customer = $this->user('customer');
+
+        if ($customer instanceof Customer) {
+            return $customer;
+        }
+
+        $tokenable = $this->user('sanctum');
+
+        return $tokenable instanceof Customer ? $tokenable : null;
     }
 }

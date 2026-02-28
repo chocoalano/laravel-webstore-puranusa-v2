@@ -18,6 +18,8 @@ const props = withDefaults(
         normalizeImageUrl: (url?: string | null) => string | null
         isOrderUnpaid: (order: DashboardOrder) => boolean
         canPayNow: (order: DashboardOrder) => boolean
+        canDownloadInvoice: (order: DashboardOrder) => boolean
+        downloadInvoice: (order: DashboardOrder) => void
     }>(),
     {
         loading: false,
@@ -33,7 +35,40 @@ const emit = defineEmits<{
 }>()
 
 const sentinel = ref<HTMLElement | null>(null)
+const failedImageKeys = ref<Set<string>>(new Set())
 let observer: IntersectionObserver | null = null
+
+function itemImageKey(itemId: string | number, rawUrl?: string | null): string | null {
+    const normalizedUrl = props.normalizeImageUrl(rawUrl)
+
+    if (!normalizedUrl) {
+        return null
+    }
+
+    return `${String(itemId)}::${normalizedUrl}`
+}
+
+function itemImageSrc(itemId: string | number, rawUrl?: string | null): string | null {
+    const imageKey = itemImageKey(itemId, rawUrl)
+
+    if (!imageKey || failedImageKeys.value.has(imageKey)) {
+        return null
+    }
+
+    const normalizedUrl = props.normalizeImageUrl(rawUrl)
+
+    return normalizedUrl
+}
+
+function markItemImageAsFailed(itemId: string | number, rawUrl?: string | null): void {
+    const imageKey = itemImageKey(itemId, rawUrl)
+
+    if (!imageKey || failedImageKeys.value.has(imageKey)) {
+        return
+    }
+
+    failedImageKeys.value = new Set([...failedImageKeys.value, imageKey])
+}
 
 function observeSentinel(): void {
     if (!observer) {
@@ -61,6 +96,13 @@ onMounted(() => {
 })
 
 watch(sentinel, () => observeSentinel())
+
+watch(
+    () => props.filtered.map((order) => `${order.id}:${order.items_preview?.length ?? 0}`).join('|'),
+    () => {
+        failedImageKeys.value = new Set()
+    }
+)
 
 onBeforeUnmount(() => {
     observer?.disconnect()
@@ -171,6 +213,18 @@ onBeforeUnmount(() => {
                             </UButton>
 
                             <UButton
+                                v-if="props.canDownloadInvoice(order)"
+                                size="xs"
+                                color="neutral"
+                                variant="outline"
+                                class="rounded-2xl"
+                                icon="i-lucide-file-down"
+                                @click="props.downloadInvoice(order)"
+                            >
+                                Invoice
+                            </UButton>
+
+                            <UButton
                                 v-if="props.canPayNow(order)"
                                 size="xs"
                                 color="success"
@@ -222,11 +276,12 @@ onBeforeUnmount(() => {
                             <div class="flex items-center gap-3">
                                 <div class="size-10 shrink-0 overflow-hidden rounded-xl bg-elevated/40">
                                     <img
-                                        v-if="props.normalizeImageUrl(item.image)"
-                                        :src="props.normalizeImageUrl(item.image) ?? undefined"
+                                        v-if="itemImageSrc(item.id, item.image)"
+                                        :src="itemImageSrc(item.id, item.image) ?? undefined"
                                         :alt="item.name"
                                         class="h-full w-full object-cover"
                                         loading="lazy"
+                                        @error="markItemImageAsFailed(item.id, item.image)"
                                     />
                                     <div v-else class="flex h-full w-full items-center justify-center">
                                         <UIcon name="i-lucide-image" class="size-5 text-muted" />

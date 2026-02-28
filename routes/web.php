@@ -72,6 +72,9 @@ Route::middleware('auth:customer')->group(function () {
     Route::post('/dashboard/orders/{order}/pay-now', [DashboardOrderController::class, 'createMidtransPayNowToken'])
         ->whereNumber('order')
         ->name('dashboard.orders.pay-now');
+    Route::get('/dashboard/orders/{order}/invoice', [DashboardOrderController::class, 'downloadInvoice'])
+        ->whereNumber('order')
+        ->name('dashboard.orders.invoice');
     Route::post('/dashboard/wallet/topup/token', [DashboardWalletController::class, 'createTopupToken'])
         ->name('dashboard.wallet.topup-token');
     Route::post('/dashboard/wallet/topup/{walletTransaction}/payment-status', [DashboardWalletController::class, 'syncTopupStatus'])

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import type { DashboardOrder, DashboardOrderItemPreview } from '@/types/dashboard'
 
 const props = withDefaults(
@@ -16,6 +17,8 @@ const props = withDefaults(
         normalizeImageUrl: (url?: string | null) => string | null
         isOrderUnpaid: (order: DashboardOrder) => boolean
         canPayNow: (order: DashboardOrder) => boolean
+        canDownloadInvoice: (order: DashboardOrder) => boolean
+        downloadInvoice: (order: DashboardOrder) => void
     }>(),
     {
         selectedOrder: null,
@@ -28,6 +31,45 @@ const emit = defineEmits<{
     (e: 'check-payment-status', order: DashboardOrder): void
     (e: 'pay-now', order: DashboardOrder): void
 }>()
+
+const failedImageKeys = ref<Set<string>>(new Set())
+
+function itemImageKey(itemId: string | number, rawUrl?: string | null): string | null {
+    const normalizedUrl = props.normalizeImageUrl(rawUrl)
+
+    if (!normalizedUrl) {
+        return null
+    }
+
+    return `${String(itemId)}::${normalizedUrl}`
+}
+
+function itemImageSrc(itemId: string | number, rawUrl?: string | null): string | null {
+    const imageKey = itemImageKey(itemId, rawUrl)
+
+    if (!imageKey || failedImageKeys.value.has(imageKey)) {
+        return null
+    }
+
+    return props.normalizeImageUrl(rawUrl)
+}
+
+function markItemImageAsFailed(itemId: string | number, rawUrl?: string | null): void {
+    const imageKey = itemImageKey(itemId, rawUrl)
+
+    if (!imageKey || failedImageKeys.value.has(imageKey)) {
+        return
+    }
+
+    failedImageKeys.value = new Set([...failedImageKeys.value, imageKey])
+}
+
+watch(
+    () => props.selectedOrder?.id,
+    () => {
+        failedImageKeys.value = new Set()
+    }
+)
 
 function closeModal(): void {
     emit('close')
@@ -143,11 +185,12 @@ function closeModal(): void {
                         >
                             <div class="size-14 shrink-0 overflow-hidden rounded-lg bg-elevated/60">
                                 <img
-                                    v-if="normalizeImageUrl(item.image)"
-                                    :src="normalizeImageUrl(item.image) ?? undefined"
+                                    v-if="itemImageSrc(item.id, item.image)"
+                                    :src="itemImageSrc(item.id, item.image) ?? undefined"
                                     :alt="item.name"
                                     class="h-full w-full object-cover"
                                     loading="lazy"
+                                    @error="markItemImageAsFailed(item.id, item.image)"
                                 />
                                 <div v-else class="flex h-full w-full items-center justify-center">
                                     <UIcon name="i-lucide-image" class="size-5 text-muted" />
@@ -192,6 +235,17 @@ function closeModal(): void {
                 <div class="flex flex-wrap items-center gap-2">
                     <UButton color="neutral" variant="outline" class="rounded-xl" @click="closeModal">
                         Tutup
+                    </UButton>
+
+                    <UButton
+                        v-if="selectedOrder && canDownloadInvoice(selectedOrder)"
+                        color="neutral"
+                        variant="outline"
+                        class="rounded-xl"
+                        icon="i-lucide-file-down"
+                        @click="downloadInvoice(selectedOrder)"
+                    >
+                        Download invoice
                     </UButton>
 
                     <UButton

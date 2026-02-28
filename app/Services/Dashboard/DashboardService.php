@@ -2440,8 +2440,7 @@ class DashboardService
 
         $items = $order->items
             ->map(function (OrderItem $item): array {
-                $productImage = $item->product?->primaryMedia->sortBy('sort_order')->first()?->url
-                    ?? $item->product?->media->sortBy('sort_order')->first()?->url;
+                $productImage = $this->resolveOrderItemProductImagePath($item);
 
                 return [
                     'id' => $item->id,
@@ -2494,6 +2493,105 @@ class DashboardService
             ],
             'to' => null,
         ];
+    }
+
+    private function resolveOrderItemProductImagePath(OrderItem $item): ?string
+    {
+        $primaryMediaPaths = $item->product?->primaryMedia
+            ?->sortBy('sort_order')
+            ->pluck('url')
+            ->all() ?? [];
+
+        $mediaPaths = $item->product?->media
+            ?->sortBy('sort_order')
+            ->pluck('url')
+            ->all() ?? [];
+
+        $candidatePaths = collect([...$primaryMediaPaths, ...$mediaPaths])
+            ->map(static fn (mixed $path): string => trim((string) $path))
+            ->filter(static fn (string $path): bool => $path !== '')
+            ->unique()
+            ->values();
+
+        if ($candidatePaths->isEmpty()) {
+            return null;
+        }
+
+        $availablePath = $candidatePaths->first(fn (string $path): bool => $this->isProductMediaPathReadable($path));
+
+        if (is_string($availablePath) && $availablePath !== '') {
+            return $availablePath;
+        }
+
+        $fallbackPath = $candidatePaths->first();
+
+        return is_string($fallbackPath) && $fallbackPath !== '' ? $fallbackPath : null;
+    }
+
+    private function isProductMediaPathReadable(string $path): bool
+    {
+        $trimmedPath = trim($path);
+
+        if ($trimmedPath === '') {
+            return false;
+        }
+
+        if (str_starts_with($trimmedPath, 'http://') || str_starts_with($trimmedPath, 'https://')) {
+            $storageRelativePath = $this->extractPublicStorageRelativePath($trimmedPath);
+
+            if ($storageRelativePath === null) {
+                return true;
+            }
+
+            return Storage::disk('public')->exists($storageRelativePath);
+        }
+
+        if (str_starts_with($trimmedPath, '/')) {
+            if (str_starts_with($trimmedPath, '/storage/')) {
+                $storageRelativePath = $this->extractPublicStorageRelativePath($trimmedPath);
+
+                return $storageRelativePath !== null && Storage::disk('public')->exists($storageRelativePath);
+            }
+
+            return is_file(public_path(ltrim($trimmedPath, '/')));
+        }
+
+        $storageRelativePath = $this->extractPublicStorageRelativePath($trimmedPath);
+
+        return $storageRelativePath !== null && Storage::disk('public')->exists($storageRelativePath);
+    }
+
+    private function extractPublicStorageRelativePath(string $path): ?string
+    {
+        $normalizedPath = trim($path);
+
+        if ($normalizedPath === '') {
+            return null;
+        }
+
+        if (str_starts_with($normalizedPath, 'http://') || str_starts_with($normalizedPath, 'https://')) {
+            $parsedPath = parse_url($normalizedPath, PHP_URL_PATH);
+
+            if (! is_string($parsedPath) || trim($parsedPath) === '') {
+                return null;
+            }
+
+            $normalizedPath = trim($parsedPath);
+        }
+
+        if (str_starts_with($normalizedPath, '/storage/')) {
+            $normalizedPath = substr($normalizedPath, strlen('/storage/'));
+        } elseif (str_starts_with($normalizedPath, 'storage/')) {
+            $normalizedPath = substr($normalizedPath, strlen('storage/'));
+        } elseif (str_starts_with($normalizedPath, 'public/')) {
+            $normalizedPath = substr($normalizedPath, strlen('public/'));
+        } elseif (str_starts_with($normalizedPath, '/')) {
+            return null;
+        }
+
+        $normalizedPath = ltrim($normalizedPath, '/');
+
+        return $normalizedPath !== '' ? $normalizedPath : null;
     }
 
     private function resolveProductImageUrl(?string $url): ?string

@@ -244,6 +244,36 @@ export function useDashboardOrders(options: UseDashboardOrdersOptions) {
         return isOrderUnpaid(order) && isMidtransOrder(order)
     }
 
+    function canDownloadInvoice(order: DashboardOrder): boolean {
+        return Boolean(order.paid_at)
+    }
+
+    function invoiceDownloadUrl(order: DashboardOrder): string {
+        return `/dashboard/orders/${order.id}/invoice`
+    }
+
+    function downloadInvoice(order: DashboardOrder): void {
+        if (!canDownloadInvoice(order)) {
+            toast?.add?.({
+                title: 'Invoice belum tersedia',
+                description: 'Invoice hanya dapat diunduh untuk pesanan yang sudah dibayar.',
+                color: 'warning',
+                icon: 'i-lucide-file-warning',
+            })
+
+            return
+        }
+
+        const url = invoiceDownloadUrl(order)
+        const popup = window.open(url, '_blank', 'noopener,noreferrer')
+
+        if (popup) {
+            return
+        }
+
+        window.location.assign(url)
+    }
+
     function getSnapScriptUrl(): string {
         const host = options.midtrans.value.env === 'production' ? 'https://app.midtrans.com' : 'https://app.sandbox.midtrans.com'
         return `${host}/snap/snap.js`
@@ -313,19 +343,54 @@ export function useDashboardOrders(options: UseDashboardOrdersOptions) {
     }
 
     function normalizeImageUrl(url?: string | null): string | null {
-        if (!url) {
+        const raw = String(url ?? '').trim()
+
+        if (raw === '') {
             return null
         }
 
-        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
-            return url
+        if (raw.startsWith('data:image/')) {
+            return raw
         }
 
-        if (url.startsWith('storage/')) {
-            return `/${url}`
+        if (raw.startsWith('http://') || raw.startsWith('https://')) {
+            try {
+                const parsed = new URL(raw)
+                const normalizedPath = parsed.pathname.replace(/\/{2,}/g, '/')
+
+                if (normalizedPath.startsWith('/storage/')) {
+                    return `${normalizedPath}${parsed.search}`
+                }
+
+                return raw
+            } catch {
+                return raw
+            }
         }
 
-        return `/storage/${url}`
+        const normalized = raw.replace(/\/{2,}/g, '/')
+
+        if (normalized.startsWith('/storage/')) {
+            return normalized
+        }
+
+        if (normalized.startsWith('/')) {
+            return normalized
+        }
+
+        if (normalized.startsWith('public/storage/')) {
+            return `/${normalized.slice('public/'.length)}`
+        }
+
+        if (normalized.startsWith('storage/')) {
+            return `/${normalized}`
+        }
+
+        if (normalized.startsWith('public/')) {
+            return `/storage/${normalized.slice('public/'.length)}`
+        }
+
+        return `/storage/${normalized}`
     }
 
     function shippingAddressLine(order: DashboardOrder): string {
@@ -519,6 +584,8 @@ export function useDashboardOrders(options: UseDashboardOrdersOptions) {
         closeDetail,
         isOrderUnpaid,
         canPayNow,
+        canDownloadInvoice,
+        downloadInvoice,
         checkPaymentStatus,
         payNow,
         normalizeImageUrl,

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Model Customer (Member / Mitra).
@@ -70,7 +71,7 @@ use Illuminate\Support\Str;
  */
 class Customer extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $guard = 'customer';
 
@@ -411,7 +412,7 @@ class Customer extends Authenticatable
                 'balance_after' => $balanceAfter,
                 'status' => 'completed',
                 'payment_method' => 'admin_inject',
-                'transaction_ref' => 'INJECT-' . strtoupper(Str::random(10)),
+                'transaction_ref' => 'INJECT-'.strtoupper(Str::random(10)),
                 'notes' => $description ?? 'Top up ewallet',
                 'completed_at' => now(),
             ]);

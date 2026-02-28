@@ -84,7 +84,7 @@
     "/build/assets/Page-BV1syjRn.js"
   ],
   "node_modules/@nuxt/ui/dist/runtime/components/PageAside.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "node_modules/@nuxt/ui/dist/runtime/components/PageBody.vue": [
     "/build/assets/Page-BV1syjRn.js"
@@ -241,10 +241,10 @@
     "/build/assets/Index-DRCs9taA.js"
   ],
   "resources/js/Pages/Auth/Dashboard/Index.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/Pages/Auth/Dashboard/Index.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Addresses.vue": [
     "/build/assets/Addresses-DQEroeo5.js"
@@ -295,10 +295,10 @@
     "/build/assets/Network-DW6ObJ06.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Orders.vue": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Orders.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Promo.vue": [
     "/build/assets/Promo-D39VtWx8.js"
@@ -545,31 +545,31 @@
     "/build/assets/Bonus-uz5fPuw9.js"
   ],
   "resources/js/components/dashboard/index/DashboardAsideMenu.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/DashboardAsideMenu.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/DashboardPageHeader.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/DashboardPageHeader.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuNav.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuNav.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuTrigger.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuTrigger.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideTipsCard.vue": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/components/dashboard/lifetime/LifetimeClaimedTableCard.vue": [
     "/build/assets/Lifetime-oDXmLhTr.js"
@@ -656,22 +656,22 @@
     "/build/assets/Network-DW6ObJ06.js"
   ],
   "resources/js/components/dashboard/orders/OrdersDetailModal.vue": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/orders/OrdersDetailModal.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/orders/OrdersFiltersBar.vue": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/orders/OrdersFiltersBar.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/orders/OrdersListGrid.vue": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/orders/OrdersListGrid.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/components/dashboard/promo/PromoCardItem.vue": [
     "/build/assets/Promo-D39VtWx8.js"
@@ -1075,10 +1075,10 @@
     "/build/assets/Addresses-DQEroeo5.js"
   ],
   "resources/js/composables/useDashboardAsideLinks.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/composables/useDashboardAsideMenuState.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/composables/useDashboardBonus.ts": [
     "/build/assets/Bonus-uz5fPuw9.js"
@@ -1090,13 +1090,13 @@
     "/build/assets/Mitra-CPjL-RCn.js"
   ],
   "resources/js/composables/useDashboardOrders.ts": [
-    "/build/assets/Orders-AHFrlx42.js"
+    "/build/assets/Orders-CneTnZzt.js"
   ],
   "resources/js/composables/useDashboardPromo.ts": [
     "/build/assets/Promo-D39VtWx8.js"
   ],
   "resources/js/composables/useDashboardSections.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "resources/js/composables/useDashboardWallet.ts": [
     "/build/assets/Wallet-DOQfwgRR.js"
@@ -1229,7 +1229,7 @@
     "/build/assets/AppLayout-CGmBsKmg.css"
   ],
   "virtual:nuxt-ui-templates/ui/page-aside.ts": [
-    "/build/assets/Index-Dt5h8xYs.js"
+    "/build/assets/Index-DzBMm6a9.js"
   ],
   "virtual:nuxt-ui-templates/ui/page-body.ts": [
     "/build/assets/Page-BV1syjRn.js"

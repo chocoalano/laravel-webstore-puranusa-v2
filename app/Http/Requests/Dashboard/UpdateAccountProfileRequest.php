@@ -10,7 +10,7 @@ class UpdateAccountProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer') !== null;
+        return $this->resolveAuthenticatedCustomer() !== null;
     }
 
     /**
@@ -18,7 +18,7 @@ class UpdateAccountProfileRequest extends FormRequest
      */
     public function rules(): array
     {
-        $customerId = $this->user('customer')?->id;
+        $customerId = $this->resolveAuthenticatedCustomer()?->id;
 
         return [
             'username' => [
@@ -57,7 +57,7 @@ class UpdateAccountProfileRequest extends FormRequest
                         return;
                     }
 
-                    $currentPhone = trim((string) ($this->user('customer')?->phone ?? ''));
+                    $currentPhone = trim((string) ($this->resolveAuthenticatedCustomer()?->phone ?? ''));
 
                     if ($currentPhone === $phone) {
                         return;
@@ -206,9 +206,6 @@ class UpdateAccountProfileRequest extends FormRequest
         };
     }
 
-    /**
-     * @param mixed $value
-     */
     private function normalizeNpwpGender(mixed $value): ?int
     {
         if ($value === null || $value === '') {
@@ -224,9 +221,6 @@ class UpdateAccountProfileRequest extends FormRequest
         };
     }
 
-    /**
-     * @param mixed $value
-     */
     private function normalizeYn(mixed $value): ?string
     {
         if ($value === null || $value === '') {
@@ -278,13 +272,23 @@ class UpdateAccountProfileRequest extends FormRequest
         return $payload;
     }
 
-    /**
-     * @param mixed $value
-     */
     private function nullableString(mixed $value): ?string
     {
         $normalized = trim((string) ($value ?? ''));
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    private function resolveAuthenticatedCustomer(): ?Customer
+    {
+        $customer = $this->user('customer');
+
+        if ($customer instanceof Customer) {
+            return $customer;
+        }
+
+        $tokenable = $this->user('sanctum');
+
+        return $tokenable instanceof Customer ? $tokenable : null;
     }
 }

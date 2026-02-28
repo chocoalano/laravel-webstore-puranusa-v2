@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Dashboard\CreateMidtransPayNowRequest;
 use App\Http\Requests\Dashboard\CheckOrderPaymentStatusRequest;
+use App\Http\Requests\Dashboard\CreateMidtransPayNowRequest;
+use App\Http\Requests\Dashboard\DownloadOrderInvoiceRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Services\Dashboard\DashboardService;
+use App\Services\Orders\OrderInvoicePdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 
 class DashboardOrderController extends Controller
@@ -22,8 +25,7 @@ class DashboardOrderController extends Controller
     public function checkPaymentStatus(
         CheckOrderPaymentStatusRequest $request,
         Order $order
-    ): JsonResponse|RedirectResponse
-    {
+    ): JsonResponse|RedirectResponse {
         /** @var Customer $customer */
         $customer = $request->user('customer');
 
@@ -54,8 +56,7 @@ class DashboardOrderController extends Controller
     public function createMidtransPayNowToken(
         CreateMidtransPayNowRequest $request,
         Order $order
-    ): JsonResponse|RedirectResponse
-    {
+    ): JsonResponse|RedirectResponse {
         /** @var Customer $customer */
         $customer = $request->user('customer');
 
@@ -74,6 +75,31 @@ class DashboardOrderController extends Controller
         } catch (ValidationException $exception) {
             return $this->validationFailure($request, $exception, 'Gagal membuat token pembayaran Midtrans.');
         }
+    }
+
+    public function downloadInvoice(
+        DownloadOrderInvoiceRequest $request,
+        Order $order,
+        OrderInvoicePdfService $invoicePdfService
+    ): Response {
+        abort_if(blank($order->paid_at), 404, 'Invoice hanya tersedia untuk pesanan yang sudah dibayar.');
+
+        $order->loadMissing([
+            'customer:id,name,email',
+            'shippingAddress',
+            'billingAddress',
+            'items:id,order_id,name,sku,qty,unit_price,row_total',
+            'payments:id,order_id,status,provider_txn_id,transaction_id',
+        ]);
+
+        $invoice = $invoicePdfService->generate($order);
+        $dispositionType = $request->boolean('preview') ? 'inline' : 'attachment';
+
+        return response($invoice['content'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $dispositionType.'; filename="'.$invoice['filename'].'"',
+            'Content-Length' => (string) strlen($invoice['content']),
+        ]);
     }
 
     private function isInertiaRequest(Request $request): bool

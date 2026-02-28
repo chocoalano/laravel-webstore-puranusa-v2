@@ -11,4 +11,14 @@ class CustomerAuthRepository implements CustomerAuthRepositoryInterface
     {
         return Customer::query()->where('username', $username)->first();
     }
+
+    public function createApiToken(Customer $customer, string $tokenName, array $abilities = ['*']): string
+    {
+        return $customer->createToken($tokenName, $abilities)->plainTextToken;
+    }
+
+    public function revokeCurrentAccessToken(Customer $customer): void
+    {
+        $customer->currentAccessToken()?->delete();
+    }
 }

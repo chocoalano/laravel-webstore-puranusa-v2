@@ -56,6 +56,8 @@ const {
     closeDetail,
     isOrderUnpaid,
     canPayNow,
+    canDownloadInvoice,
+    downloadInvoice,
     checkPaymentStatus,
     payNow,
     normalizeImageUrl,
@@ -111,6 +113,8 @@ function onSortChange(value: 'newest' | 'oldest' | 'highest' | 'lowest'): void {
             :normalize-image-url="normalizeImageUrl"
             :is-order-unpaid="isOrderUnpaid"
             :can-pay-now="canPayNow"
+            :can-download-invoice="canDownloadInvoice"
+            :download-invoice="downloadInvoice"
             @open-detail="openDetail"
             @pay-now="payNow"
             @check-payment-status="checkPaymentStatus"
@@ -133,6 +137,8 @@ function onSortChange(value: 'newest' | 'oldest' | 'highest' | 'lowest'): void {
         :normalize-image-url="normalizeImageUrl"
         :is-order-unpaid="isOrderUnpaid"
         :can-pay-now="canPayNow"
+        :can-download-invoice="canDownloadInvoice"
+        :download-invoice="downloadInvoice"
         @close="closeDetail"
         @check-payment-status="checkPaymentStatus"
         @pay-now="payNow"

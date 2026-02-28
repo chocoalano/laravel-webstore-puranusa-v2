@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\Dashboard;
 
+use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateWalletTopupTokenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer') !== null;
+        return $this->resolveAuthenticatedCustomer() !== null;
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -42,5 +43,18 @@ class CreateWalletTopupTokenRequest extends FormRequest
             'amount' => (float) $this->input('amount'),
             'notes' => $notes !== '' ? $notes : null,
         ];
+    }
+
+    private function resolveAuthenticatedCustomer(): ?Customer
+    {
+        $customer = $this->user('customer');
+
+        if ($customer instanceof Customer) {
+            return $customer;
+        }
+
+        $tokenable = $this->user('sanctum');
+
+        return $tokenable instanceof Customer ? $tokenable : null;
     }
 }

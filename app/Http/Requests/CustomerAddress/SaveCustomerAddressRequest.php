@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\CustomerAddress;
 
+use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SaveCustomerAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer') !== null;
+        return $this->resolveAuthenticatedCustomer() !== null;
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -72,5 +73,18 @@ class SaveCustomerAddressRequest extends FormRequest
             'country' => $this->filled('country') ? (string) $this->string('country') : 'Indonesia',
             'description' => $this->filled('description') ? (string) $this->string('description') : null,
         ];
+    }
+
+    private function resolveAuthenticatedCustomer(): ?Customer
+    {
+        $customer = $this->user('customer');
+
+        if ($customer instanceof Customer) {
+            return $customer;
+        }
+
+        $tokenable = $this->user('sanctum');
+
+        return $tokenable instanceof Customer ? $tokenable : null;
     }
 }

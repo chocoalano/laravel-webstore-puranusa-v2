@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Dashboard;
 
+use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,7 @@ class PlaceMemberRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('customer') !== null;
+        return $this->resolveAuthenticatedCustomer() !== null;
     }
 
     /** @return array<string, array<int, mixed>> */
@@ -54,5 +55,18 @@ class PlaceMemberRequest extends FormRequest
             'upline_id' => (int) $this->integer('upline_id'),
             'position' => $position,
         ];
+    }
+
+    private function resolveAuthenticatedCustomer(): ?Customer
+    {
+        $customer = $this->user('customer');
+
+        if ($customer instanceof Customer) {
+            return $customer;
+        }
+
+        $tokenable = $this->user('sanctum');
+
+        return $tokenable instanceof Customer ? $tokenable : null;
     }
 }
