@@ -1,9 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useForm } from '@inertiajs/vue3'
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
 import { useStoreData } from '@/composables/useStoreData'
 
 const { appName, storeDescription, socialLinks } = useStoreData()
-const email = ref('')
+const toast = useToast()
+
+const form = useForm({
+    email: '',
+})
+
+function submitNewsletter(): void {
+    form.clearErrors()
+
+    form.post('/newsletter/subscribe', {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            toast.add({
+                title: 'Berhasil',
+                description: 'Permintaan langganan promo sudah diproses.',
+                color: 'success',
+            })
+            form.reset('email')
+        },
+        onError: () => {
+            const message = form.errors.email || 'Terjadi kendala saat memproses langganan.'
+
+            toast.add({
+                title: 'Gagal berlangganan',
+                description: message,
+                color: 'error',
+            })
+        },
+    })
+}
 </script>
 
 <template>
@@ -26,14 +57,19 @@ const email = ref('')
             <p class="text-sm font-medium text-gray-900 dark:text-white">Dapatkan promo terbaru</p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Diskon eksklusif langsung ke inbox Anda</p>
 
-            <div class="mt-3 flex gap-2">
-                <UInput v-model="email" placeholder="Alamat email" icon="i-lucide-mail" class="flex-1" :ui="{
+            <form class="mt-3 flex gap-2" @submit.prevent="submitNewsletter">
+                <UInput v-model="form.email" placeholder="Alamat email" icon="i-lucide-mail" class="flex-1" :ui="{
                     base: 'h-10 rounded-xl bg-gray-100/70 border border-gray-200/60 text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary/30 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder:text-gray-500'
-                }" />
-                <UButton class="h-10 shrink-0 rounded-xl" aria-label="Subscribe">
+                }" :disabled="form.processing" />
+                <UButton class="h-10 shrink-0 rounded-xl" aria-label="Subscribe" type="submit"
+                    :loading="form.processing" :disabled="form.processing">
                     Langganan
                 </UButton>
-            </div>
+            </form>
+
+            <p v-if="form.errors.email" class="mt-2 text-xs text-rose-600 dark:text-rose-300">
+                {{ form.errors.email }}
+            </p>
         </div>
 
         <div class="mt-6 flex items-center gap-1">

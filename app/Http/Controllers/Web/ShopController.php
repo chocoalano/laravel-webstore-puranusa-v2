@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\WishlistItem;
 use App\Services\Products\ProductService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -24,9 +25,28 @@ class ShopController extends Controller
 
     public function show(Request $request, string $slug, ProductService $productService)
     {
-        $data = $productService->getProductShowData($slug);
+        try {
+            $data = $productService->getProductShowData($slug);
+        } catch (ModelNotFoundException) {
+            return redirect()->route('shop.index')
+                ->with('error', 'Produk tidak ditemukan.');
+        }
+
+        if (! is_array($data) || ! is_array($data['product'] ?? null)) {
+            return redirect()->route('shop.index')
+                ->with('error', 'Produk tidak ditemukan.');
+        }
+
         $data['slug'] = $slug;
-        $data['isInWishlist'] = $this->checkIsInWishlist($request, $data['product']['id'] ?? null);
+
+        $productId = $data['product']['id'] ?? null;
+
+        if (! is_int($productId) && ! is_string($productId)) {
+            return redirect()->route('shop.index')
+                ->with('error', 'Produk tidak ditemukan.');
+        }
+
+        $data['isInWishlist'] = $this->checkIsInWishlist($request, $productId);
 
         return Inertia::render('Shop/Show', $data);
     }

@@ -5,7 +5,6 @@ namespace App\Services\CustomerAddress;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface;
-use App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,11 +13,10 @@ class CustomerAddressService
 {
     public function __construct(
         private readonly CustomerAddressRepositoryInterface $customerAddressRepository,
-        private readonly ShippingTargetRepositoryInterface $shippingTargetRepository,
     ) {}
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public function create(Customer $customer, array $payload): CustomerAddress
     {
@@ -47,7 +45,7 @@ class CustomerAddressService
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public function update(Customer $customer, int $addressId, array $payload): CustomerAddress
     {
@@ -122,46 +120,67 @@ class CustomerAddressService
         $address = $this->customerAddressRepository->findByCustomerIdAndAddressId($customerId, $addressId);
 
         if (! $address) {
-            throw (new ModelNotFoundException())->setModel(CustomerAddress::class, [$addressId]);
+            throw (new ModelNotFoundException)->setModel(CustomerAddress::class, [$addressId]);
         }
 
         return $address;
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     private function normalizeRegionPayload(array $payload): array
     {
         $provinceId = (int) ($payload['province_id'] ?? 0);
-        $cityId     = (int) ($payload['city_id'] ?? 0);
-        $district   = isset($payload['district']) ? trim((string) $payload['district']) : null;
+        $cityId = (int) ($payload['city_id'] ?? 0);
+        $provinceLabel = trim((string) ($payload['province_label'] ?? ''));
+        $cityLabel = trim((string) ($payload['city_label'] ?? ''));
+        $district = isset($payload['district']) ? trim((string) $payload['district']) : null;
 
-        $region = $this->shippingTargetRepository->findCityByIds($provinceId, $cityId);
-
-        if (! $region) {
+        if ($provinceId < 1 || $cityId < 1 || $provinceLabel === '' || $cityLabel === '' || $district === null || $district === '') {
             throw ValidationException::withMessages([
-                'city_id' => 'Kota/kabupaten tidak ditemukan pada data target pengiriman.',
-            ]);
-        }
-
-        $districtRegion = $this->shippingTargetRepository->findDistrictByRegionIds($provinceId, $cityId, $district);
-
-        if (! $districtRegion) {
-            throw ValidationException::withMessages([
-                'district' => 'Kecamatan tidak ditemukan pada data target pengiriman.',
+                'region' => 'Provinsi, kota, dan kecamatan wajib dipilih.',
             ]);
         }
 
         return [
             ...$payload,
-            'province_id'    => $region['province_id'],
-            'province_label' => $region['province_label'],
-            'city_id'        => $region['city_id'],
-            'city_label'     => $region['city_label'],
-            'district'       => $districtRegion['district'],
-            'district_lion'  => $districtRegion['district_lion'],
+            'province_id' => $provinceId,
+            'province_label' => $provinceLabel,
+            'city_id' => $cityId,
+            'city_label' => $cityLabel,
+            'district' => $district,
+            'district_lion' => $this->formatDistrictLion($district, $cityLabel),
         ];
+    }
+
+    private function formatDistrictLion(string $district, string $cityLabel): string
+    {
+        $normalizedDistrict = mb_strtoupper(trim($district));
+
+        if ($normalizedDistrict === '') {
+            return '';
+        }
+
+        $normalizedCity = mb_strtoupper($this->normalizeCityLabelForDistrictLion($cityLabel));
+
+        if ($normalizedCity === '') {
+            return $normalizedDistrict;
+        }
+
+        return $normalizedDistrict.', '.$normalizedCity;
+    }
+
+    private function normalizeCityLabelForDistrictLion(string $cityLabel): string
+    {
+        $normalizedCity = trim($cityLabel);
+        $withoutPrefix = preg_replace('/^(kota|kabupaten)\s+/iu', '', $normalizedCity);
+
+        if (! is_string($withoutPrefix)) {
+            return $normalizedCity;
+        }
+
+        return trim($withoutPrefix);
     }
 }

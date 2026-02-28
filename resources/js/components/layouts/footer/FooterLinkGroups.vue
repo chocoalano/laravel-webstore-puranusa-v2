@@ -12,15 +12,16 @@ interface FooterLinkGroup {
     items: FooterLinkItem[]
 }
 
-const { allFooterPages, storeEmail, storePhone } = useStoreData()
+const { footerMainPages, storeEmail, storePhone } = useStoreData()
 
-const footerGroupTitles = ['Belanja', 'Dukungan', 'Informasi'] as const
-
-// Utility functions tetap sama, hanya logic display yang kita poles
 function uniqueByTo(items: FooterLinkItem[]): FooterLinkItem[] {
     const seen = new Set<string>()
+
     return items.filter((item) => {
-        if (seen.has(item.to)) return false
+        if (seen.has(item.to)) {
+            return false
+        }
+
         seen.add(item.to)
         return true
     })
@@ -32,28 +33,45 @@ function splitEvenly<T>(items: T[], parts: number): T[][] {
     const remainder = items.length % safeParts
     const result: T[][] = Array.from({ length: safeParts }, () => [])
     let cursor = 0
+
     for (let index = 0; index < safeParts; index += 1) {
         const size = baseSize + (index < remainder ? 1 : 0)
         result[index] = items.slice(cursor, cursor + size)
         cursor += size
     }
+
     return result
 }
 
-const modelPageLinks = computed<FooterLinkItem[]>(() => uniqueByTo(allFooterPages.value))
+const modelPageLinks = computed<FooterLinkItem[]>(() => uniqueByTo(footerMainPages.value))
 
 const footerGroups = computed<FooterLinkGroup[]>(() => {
-    const chunks = splitEvenly(modelPageLinks.value, footerGroupTitles.length)
-    return footerGroupTitles.map((title, index) => ({
-        group: title,
-        items: chunks[index] ?? []
+    const links = modelPageLinks.value
+    const parts = links.length >= 9 ? 3 : links.length >= 4 ? 2 : 1
+    const chunks = splitEvenly(links, parts)
+
+    return chunks.map((items, index) => ({
+        group: `Footer Main ${index + 1}`,
+        items,
     }))
+})
+
+const groupsGridClass = computed(() => {
+    if (footerGroups.value.length >= 3) {
+        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+    }
+
+    if (footerGroups.value.length === 2) {
+        return 'grid-cols-1 sm:grid-cols-2'
+    }
+
+    return 'grid-cols-1'
 })
 </script>
 
 <template>
     <div class="lg:col-span-7 lg:col-start-6">
-        <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
+        <div class="grid gap-8" :class="groupsGridClass">
             <div
                 v-for="group in footerGroups"
                 :key="group.group"
@@ -61,7 +79,7 @@ const footerGroups = computed<FooterLinkGroup[]>(() => {
             >
                 <div class="relative">
                     <h3 class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-900 dark:text-white">
-                        {{ group.group }}
+                        Footer Main
                     </h3>
                     <div class="mt-2 h-0.5 w-4 bg-primary-500 rounded-full" />
                 </div>

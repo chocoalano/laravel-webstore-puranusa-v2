@@ -21,7 +21,6 @@ use App\Models\Promotion;
 use App\Models\Reward;
 use App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface;
 use App\Repositories\Dashboard\Contracts\DashboardRepositoryInterface;
-use App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface;
 use App\Services\Payment\MidtransService;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -37,7 +36,6 @@ class DashboardService
     public function __construct(
         protected DashboardRepositoryInterface $dashboardRepository,
         protected CustomerAddressRepositoryInterface $customerAddressRepository,
-        protected ShippingTargetRepositoryInterface $shippingTargetRepository,
         protected MidtransService $midtransService,
     ) {}
 
@@ -49,8 +47,7 @@ class DashboardService
         int $ordersPage = 1,
         int $walletPage = 1,
         array $walletFilters = [],
-    ): array
-    {
+    ): array {
         $customer = $this->dashboardRepository->findCustomerById($authenticatedCustomer->id);
 
         if (! $customer) {
@@ -82,13 +79,13 @@ class DashboardService
     }
 
     /**
-     * @param array{default_address:?CustomerAddress,addresses:Collection<int, CustomerAddress>,provinces:array<int, array<string, mixed>>,cities:array<int, array<string, mixed>>,districts:array<int, array<string, mixed>>} $addressData
-     * @param array{active:array<int, array<string, mixed>>,passive:array<int, array<string, mixed>>,prospect:array<int, array<string, mixed>>} $mitraMembers
-     * @param array{has_left:bool,has_right:bool,tree:?array<string, mixed>,stats:array<string, int>} $networkData
-     * @param array{data:array<int, array<string, mixed>>,current_page:int,next_page:int|null,has_more:bool,per_page:int,total:int} $orders
-     * @param array{transactions:array<string, mixed>,has_pending_withdrawal:bool} $walletData
-     * @param array{bonus_stats:array<string, mixed>,bonus_tables:array<string, array<int, array<string, mixed>>>,lifetime_rewards:array<string, mixed>} $bonusData
-     * @param array{promos:array<int, array<string, mixed>>,zenner_categories:array<int, array<string, mixed>>,zenner_contents:array<int, array<string, mixed>>} $contentData
+     * @param  array{default_address:?CustomerAddress,addresses:Collection<int, CustomerAddress>}  $addressData
+     * @param  array{active:array<int, array<string, mixed>>,passive:array<int, array<string, mixed>>,prospect:array<int, array<string, mixed>>}  $mitraMembers
+     * @param  array{has_left:bool,has_right:bool,tree:?array<string, mixed>,stats:array<string, int>}  $networkData
+     * @param  array{data:array<int, array<string, mixed>>,current_page:int,next_page:int|null,has_more:bool,per_page:int,total:int}  $orders
+     * @param  array{transactions:array<string, mixed>,has_pending_withdrawal:bool}  $walletData
+     * @param  array{bonus_stats:array<string, mixed>,bonus_tables:array<string, array<int, array<string, mixed>>>,lifetime_rewards:array<string, mixed>}  $bonusData
+     * @param  array{promos:array<int, array<string, mixed>>,zenner_categories:array<int, array<string, mixed>>,zenner_contents:array<int, array<string, mixed>>}  $contentData
      * @param array{
      *   orders_total:int,
      *   orders_pending:int,
@@ -116,16 +113,12 @@ class DashboardService
         array $bonusData,
         array $contentData,
         array $coreMetrics,
-    ): array
-    {
+    ): array {
         return [
             'customer' => $this->formatCustomer($customer),
             'currentCustomerId' => $customer->id,
             'defaultAddress' => $this->formatAddress($addressData['default_address']),
             'addresses' => $this->formatAddresses($addressData['addresses']),
-            'provinces' => $addressData['provinces'],
-            'cities' => $addressData['cities'],
-            'districts' => $addressData['districts'],
             'activeMembers' => Arr::get($mitraMembers, 'active', []),
             'passiveMembers' => Arr::get($mitraMembers, 'passive', []),
             'prospectMembers' => Arr::get($mitraMembers, 'prospect', []),
@@ -147,39 +140,39 @@ class DashboardService
                 'client_key' => config('services.midtrans.client_key', ''),
             ],
             'stats' => [
-                'orders_total'     => $coreMetrics['orders_total'],
-                'orders_pending'   => $coreMetrics['orders_pending'],
-                'network_total'    => $coreMetrics['total_downline'],
-                'network_active'   => $coreMetrics['active_network_members'],
-                'network_level'    => $coreMetrics['network_level'],
-                'bonus_month'      => $coreMetrics['bonus_month'],
-                'bonus_lifetime'   => $coreMetrics['bonus_lifetime'],
-                'bonus_available'  => $coreMetrics['bonus_available'],
-                'wallet_balance'   => (float) ($customer->ewallet_saldo ?? 0),
-                'promo_active'     => $coreMetrics['promo_active'],
+                'orders_total' => $coreMetrics['orders_total'],
+                'orders_pending' => $coreMetrics['orders_pending'],
+                'network_total' => $coreMetrics['total_downline'],
+                'network_active' => $coreMetrics['active_network_members'],
+                'network_level' => $coreMetrics['network_level'],
+                'bonus_month' => $coreMetrics['bonus_month'],
+                'bonus_lifetime' => $coreMetrics['bonus_lifetime'],
+                'bonus_available' => $coreMetrics['bonus_available'],
+                'wallet_balance' => (float) ($customer->ewallet_saldo ?? 0),
+                'promo_active' => $coreMetrics['promo_active'],
             ],
             'networkProfile' => [
-                'username'      => $customer->username ?? '—',
-                'level'         => $customer->level ?? $this->memberStatusLabel((int) ($customer->status ?? 1)),
+                'username' => $customer->username ?? '—',
+                'level' => $customer->level ?? $this->memberStatusLabel((int) ($customer->status ?? 1)),
                 'referral_code' => $customer->ref_code ?? '—',
-                'balance'       => (float) ($customer->ewallet_saldo ?? 0),
+                'balance' => (float) ($customer->ewallet_saldo ?? 0),
             ],
             'networkStats' => [
-                'left_count'        => $coreMetrics['left_count'],
-                'right_count'       => $coreMetrics['right_count'],
-                'total_downline'    => $coreMetrics['total_downline'],
-                'omset_nb_left'     => (float) ($customer->omzet_group_left ?? 0),
-                'omset_nb_right'    => (float) ($customer->omzet_group_right ?? 0),
+                'left_count' => $coreMetrics['left_count'],
+                'right_count' => $coreMetrics['right_count'],
+                'total_downline' => $coreMetrics['total_downline'],
+                'omset_nb_left' => (float) ($customer->omzet_group_left ?? 0),
+                'omset_nb_right' => (float) ($customer->omzet_group_right ?? 0),
                 'omset_retail_left' => (float) ($customer->omzet_pairing_left ?? 0),
                 'omset_retail_right' => (float) ($customer->omzet_pairing_right ?? 0),
-                'omset_group'       => (float) ($customer->omzet_group ?? 0),
+                'omset_group' => (float) ($customer->omzet_group ?? 0),
             ],
             'securitySummary' => [
                 'account_status_label' => $this->memberStatusLabel((int) ($customer->status ?? 1)),
-                'email_verified'       => $customer->email_verified_at !== null,
-                'has_bank_account'     => filled($customer->bank_name) && filled($customer->bank_account),
-                'has_npwp'             => $coreMetrics['has_npwp'],
-                'last_order_at'        => $coreMetrics['last_order_at']?->toIso8601String(),
+                'email_verified' => $customer->email_verified_at !== null,
+                'has_bank_account' => filled($customer->bank_name) && filled($customer->bank_account),
+                'has_npwp' => $coreMetrics['has_npwp'],
+                'last_order_at' => $coreMetrics['last_order_at']?->toIso8601String(),
             ],
         ];
     }
@@ -227,10 +220,7 @@ class DashboardService
     /**
      * @return array{
      *   default_address:?CustomerAddress,
-     *   addresses:Collection<int, CustomerAddress>,
-     *   provinces:array<int, array<string, mixed>>,
-     *   cities:array<int, array<string, mixed>>,
-     *   districts:array<int, array<string, mixed>>
+     *   addresses:Collection<int, CustomerAddress>
      * }
      */
     private function loadAddressData(Customer $customer): array
@@ -238,9 +228,6 @@ class DashboardService
         return [
             'default_address' => $this->dashboardRepository->getDefaultAddress($customer->id),
             'addresses' => $this->customerAddressRepository->getByCustomerId($customer->id),
-            'provinces' => $this->shippingTargetRepository->provinceOptions(),
-            'cities' => $this->shippingTargetRepository->cityOptions(),
-            'districts' => $this->shippingTargetRepository->districtOptions(),
         ];
     }
 
@@ -285,7 +272,7 @@ class DashboardService
     }
 
     /**
-     * @param array{search:string,type:string,status:string,date_from:string,date_to:string} $normalizedWalletFilters
+     * @param  array{search:string,type:string,status:string,date_from:string,date_to:string}  $normalizedWalletFilters
      * @return array{
      *   transactions:array<string, mixed>,
      *   has_pending_withdrawal:bool
@@ -383,9 +370,6 @@ class DashboardService
             'currentCustomerId' => null,
             'defaultAddress' => null,
             'addresses' => [],
-            'provinces' => [],
-            'cities' => [],
-            'districts' => [],
             'activeMembers' => [],
             'passiveMembers' => [],
             'prospectMembers' => [],
@@ -444,39 +428,39 @@ class DashboardService
                 'client_key' => config('services.midtrans.client_key', ''),
             ],
             'stats' => [
-                'orders_total'     => 0,
-                'orders_pending'   => 0,
-                'network_total'    => 0,
-                'network_active'   => 0,
-                'network_level'    => 0,
-                'bonus_month'      => 0,
-                'bonus_lifetime'   => 0,
-                'bonus_available'  => 0,
-                'wallet_balance'   => 0,
-                'promo_active'     => 0,
+                'orders_total' => 0,
+                'orders_pending' => 0,
+                'network_total' => 0,
+                'network_active' => 0,
+                'network_level' => 0,
+                'bonus_month' => 0,
+                'bonus_lifetime' => 0,
+                'bonus_available' => 0,
+                'wallet_balance' => 0,
+                'promo_active' => 0,
             ],
             'networkProfile' => [
-                'username'      => '—',
-                'level'         => '—',
+                'username' => '—',
+                'level' => '—',
                 'referral_code' => '—',
-                'balance'       => 0,
+                'balance' => 0,
             ],
             'networkStats' => [
-                'left_count'         => 0,
-                'right_count'        => 0,
-                'total_downline'     => 0,
-                'omset_nb_left'      => 0,
-                'omset_nb_right'     => 0,
-                'omset_retail_left'  => 0,
+                'left_count' => 0,
+                'right_count' => 0,
+                'total_downline' => 0,
+                'omset_nb_left' => 0,
+                'omset_nb_right' => 0,
+                'omset_retail_left' => 0,
                 'omset_retail_right' => 0,
-                'omset_group'        => 0,
+                'omset_group' => 0,
             ],
             'securitySummary' => [
                 'account_status_label' => 'Prospek',
-                'email_verified'       => false,
-                'has_bank_account'     => false,
-                'has_npwp'             => false,
-                'last_order_at'        => null,
+                'email_verified' => false,
+                'has_bank_account' => false,
+                'has_npwp' => false,
+                'last_order_at' => null,
             ],
         ];
     }
@@ -556,7 +540,7 @@ class DashboardService
     }
 
     /**
-     * @param array{amount:float,notes?:string|null} $payload
+     * @param  array{amount:float,notes?:string|null}  $payload
      * @return array{
      *   snapToken:string,
      *   walletTransactionId:int,
@@ -622,7 +606,7 @@ class DashboardService
         } catch (\RuntimeException $exception) {
             $this->dashboardRepository->updateWalletTransaction($transaction, [
                 'status' => 'failed',
-                'notes' => $this->appendWalletNote($transaction->notes, 'Gagal membuat token Midtrans: ' . $exception->getMessage()),
+                'notes' => $this->appendWalletNote($transaction->notes, 'Gagal membuat token Midtrans: '.$exception->getMessage()),
             ]);
 
             throw ValidationException::withMessages([
@@ -766,7 +750,7 @@ class DashboardService
     }
 
     /**
-     * @param array{amount:float,password:string,notes?:string|null} $payload
+     * @param  array{amount:float,password:string,notes?:string|null}  $payload
      * @return array{
      *   transaction:array<string, mixed>,
      *   balance:float,
@@ -873,7 +857,7 @@ class DashboardService
     }
 
     /**
-     * @param array{member_id:int,upline_id:int,position:'left'|'right'} $payload
+     * @param  array{member_id:int,upline_id:int,position:'left'|'right'}  $payload
      * @return array{name:string,position:'left'|'right'}
      */
     public function placeMember(Customer $authenticatedCustomer, array $payload): array
@@ -1225,19 +1209,19 @@ class DashboardService
         $customer->loadMissing('npwp');
 
         return [
-            'id'           => $customer->id,
-            'username'     => $customer->username,
-            'nik'          => $customer->nik,
-            'name'         => $customer->name,
-            'gender'       => $customer->gender,
-            'email'        => $customer->email,
-            'phone'        => $customer->phone,
-            'alamat'       => $customer->alamat,
-            'bank_name'    => $customer->bank_name,
+            'id' => $customer->id,
+            'username' => $customer->username,
+            'nik' => $customer->nik,
+            'name' => $customer->name,
+            'gender' => $customer->gender,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'alamat' => $customer->alamat,
+            'bank_name' => $customer->bank_name,
             'bank_account' => $customer->bank_account,
-            'npwp'         => $this->formatCustomerNpwp($customer->npwp),
-            'avatar_url'   => null,
-            'tier'         => $customer->level ?? $this->memberStatusLabel((int) ($customer->status ?? 1)),
+            'npwp' => $this->formatCustomerNpwp($customer->npwp),
+            'avatar_url' => null,
+            'tier' => $customer->level ?? $this->memberStatusLabel((int) ($customer->status ?? 1)),
             'member_since' => $customer->created_at?->toIso8601String(),
             'wallet_balance' => (float) ($customer->ewallet_saldo ?? 0),
         ];
@@ -1275,41 +1259,41 @@ class DashboardService
         }
 
         return [
-            'id'             => $address->id,
-            'label'          => $address->label ?? 'Alamat',
+            'id' => $address->id,
+            'label' => $address->label ?? 'Alamat',
             'recipient_name' => $address->recipient_name,
-            'phone'          => $address->recipient_phone,
-            'address_line'   => $address->address_line1,
-            'city'           => $address->city_label,
-            'province'       => $address->province_label,
-            'postal_code'    => $address->postal_code ?? '-',
-            'is_default'     => (bool) $address->is_default,
+            'phone' => $address->recipient_phone,
+            'address_line' => $address->address_line1,
+            'city' => $address->city_label,
+            'province' => $address->province_label,
+            'postal_code' => $address->postal_code ?? '-',
+            'is_default' => (bool) $address->is_default,
         ];
     }
 
     /**
-     * @param Collection<int, CustomerAddress> $addresses
+     * @param  Collection<int, CustomerAddress>  $addresses
      * @return list<array<string, mixed>>
      */
     private function formatAddresses(Collection $addresses): array
     {
         return $addresses->map(fn (CustomerAddress $address): array => [
-            'id'             => $address->id,
-            'label'          => $address->label,
-            'is_default'     => (bool) $address->is_default,
+            'id' => $address->id,
+            'label' => $address->label,
+            'is_default' => (bool) $address->is_default,
             'recipient_name' => $address->recipient_name,
             'recipient_phone' => $address->recipient_phone,
-            'address_line1'  => $address->address_line1,
-            'address_line2'  => $address->address_line2,
+            'address_line1' => $address->address_line1,
+            'address_line2' => $address->address_line2,
             'province_label' => $address->province_label,
-            'province_id'    => (int) $address->province_id,
-            'city_label'     => $address->city_label,
-            'city_id'        => (int) $address->city_id,
-            'district'       => $address->district,
-            'district_lion'  => $address->district_lion,
-            'postal_code'    => $address->postal_code,
-            'country'        => $address->country,
-            'description'    => $address->description,
+            'province_id' => (int) $address->province_id,
+            'city_label' => $address->city_label,
+            'city_id' => (int) $address->city_id,
+            'district' => $address->district,
+            'district_lion' => $address->district_lion,
+            'postal_code' => $address->postal_code,
+            'country' => $address->country,
+            'description' => $address->description,
         ])->toArray();
     }
 
@@ -1385,7 +1369,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusSponsor> $bonuses
+     * @param  Collection<int, CustomerBonusSponsor>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusSponsors(Collection $bonuses): array
@@ -1411,7 +1395,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusMatching> $bonuses
+     * @param  Collection<int, CustomerBonusMatching>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusMatchings(Collection $bonuses): array
@@ -1438,7 +1422,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusPairing> $bonuses
+     * @param  Collection<int, CustomerBonusPairing>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusPairings(Collection $bonuses): array
@@ -1465,7 +1449,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusCashback> $bonuses
+     * @param  Collection<int, CustomerBonusCashback>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusCashbacks(Collection $bonuses): array
@@ -1492,7 +1476,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusReward> $bonuses
+     * @param  Collection<int, CustomerBonusReward>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatPromotionRewards(Collection $bonuses): array
@@ -1521,7 +1505,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusRetail> $bonuses
+     * @param  Collection<int, CustomerBonusRetail>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusRetails(Collection $bonuses): array
@@ -1547,7 +1531,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerBonusLifetimeCashReward> $bonuses
+     * @param  Collection<int, CustomerBonusLifetimeCashReward>  $bonuses
      * @return list<array<string, mixed>>
      */
     private function formatBonusLifetimeCashRewards(Collection $bonuses): array
@@ -1610,9 +1594,9 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, Reward> $activeRewards
-     * @param Collection<int, string> $claimedRewardNames
-     * @param Collection<int, CustomerBonusReward> $claimedLifetimeRewards
+     * @param  Collection<int, Reward>  $activeRewards
+     * @param  Collection<int, string>  $claimedRewardNames
+     * @param  Collection<int, CustomerBonusReward>  $claimedLifetimeRewards
      * @return array{
      *   summary:array{
      *     accumulated_left:float,
@@ -1705,7 +1689,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, CustomerWalletTransaction> $transactions
+     * @param  Collection<int, CustomerWalletTransaction>  $transactions
      * @return list<array<string, mixed>>
      */
     private function formatWalletTransactions(Collection $transactions): array
@@ -1717,7 +1701,7 @@ class DashboardService
     }
 
     /**
-     * @param array{search?:string|null,type?:string|null,status?:string|null} $filters
+     * @param  array{search?:string|null,type?:string|null,status?:string|null}  $filters
      * @return array{
      *   data:list<array<string, mixed>>,
      *   current_page:int,
@@ -1782,7 +1766,7 @@ class DashboardService
         $parts = [$this->walletTransactionTypeLabel($normalizedType)];
 
         if (filled($transaction->transaction_ref)) {
-            $parts[] = 'Ref: ' . $transaction->transaction_ref;
+            $parts[] = 'Ref: '.$transaction->transaction_ref;
         }
 
         if (filled($transaction->payment_method)) {
@@ -1854,7 +1838,7 @@ class DashboardService
     }
 
     /**
-     * @param array{search?:string|null,type?:string|null,status?:string|null} $filters
+     * @param  array{search?:string|null,type?:string|null,status?:string|null}  $filters
      * @return array{search:string|null,type:string|null,status:string|null}
      */
     private function normalizeWalletFilters(array $filters): array
@@ -1930,7 +1914,7 @@ class DashboardService
             return $addition;
         }
 
-        return $base . PHP_EOL . $addition;
+        return $base.PHP_EOL.$addition;
     }
 
     private function buildWithdrawalNotes(Customer $customer, ?string $notes): string
@@ -1940,7 +1924,7 @@ class DashboardService
         $base = "Bank: {$bankName} ({$bankAccount})";
         $extra = $this->normalizeWalletTransactionNotes($notes);
 
-        return $extra !== null ? $base . PHP_EOL . $extra : $base;
+        return $extra !== null ? $base.PHP_EOL.$extra : $base;
     }
 
     private function memberStatusLabel(int $status): string
@@ -1953,7 +1937,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, ContentCategory> $categories
+     * @param  Collection<int, ContentCategory>  $categories
      * @return list<array{
      *   id:int,
      *   parent_id:int|null,
@@ -1977,7 +1961,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, Content> $contents
+     * @param  Collection<int, Content>  $contents
      * @return list<array{
      *   id:int,
      *   category_id:int|null,
@@ -2037,7 +2021,7 @@ class DashboardService
         }
 
         return mb_strlen($plain) > 180
-            ? mb_substr($plain, 0, 177) . '...'
+            ? mb_substr($plain, 0, 177).'...'
             : $plain;
     }
 
@@ -2052,7 +2036,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, Promotion> $promotions
+     * @param  Collection<int, Promotion>  $promotions
      * @return list<array<string, mixed>>
      */
     private function formatPromotions(Collection $promotions, CarbonInterface $asOf): array
@@ -2112,8 +2096,8 @@ class DashboardService
     }
 
     /**
-     * @param array<string, mixed> $conditions
-     * @param list<string> $keys
+     * @param  array<string, mixed>  $conditions
+     * @param  list<string>  $keys
      */
     private function extractNumericCondition(array $conditions, array $keys): ?float
     {
@@ -2133,8 +2117,8 @@ class DashboardService
     }
 
     /**
-     * @param array<string, mixed> $conditions
-     * @param list<string> $keys
+     * @param  array<string, mixed>  $conditions
+     * @param  list<string>  $keys
      */
     private function extractIntegerCondition(array $conditions, array $keys): ?int
     {
@@ -2154,7 +2138,7 @@ class DashboardService
     }
 
     /**
-     * @param array<string, mixed> $conditions
+     * @param  array<string, mixed>  $conditions
      * @return list<string>|null
      */
     private function extractPromotionTerms(array $conditions): ?array
@@ -2186,7 +2170,7 @@ class DashboardService
     }
 
     /**
-     * @param array<string, mixed> $conditions
+     * @param  array<string, mixed>  $conditions
      */
     private function buildPromotionDiscountLabel(Promotion $promotion, array $conditions): ?string
     {
@@ -2201,11 +2185,11 @@ class DashboardService
         }
 
         if ($discountValue !== null && $discountValue > 0) {
-            return 'Potongan Rp ' . number_format((int) round($discountValue), 0, ',', '.');
+            return 'Potongan Rp '.number_format((int) round($discountValue), 0, ',', '.');
         }
 
         if ($bundlePrice !== null && $bundlePrice > 0) {
-            return 'Harga Bundle Rp ' . number_format((int) round($bundlePrice), 0, ',', '.');
+            return 'Harga Bundle Rp '.number_format((int) round($bundlePrice), 0, ',', '.');
         }
 
         return match ($this->mapPromotionType((string) $promotion->type)) {
@@ -2276,8 +2260,8 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, Customer> $membersById
-     * @param array<int, bool> $visited
+     * @param  Collection<int, Customer>  $membersById
+     * @param  array<int, bool>  $visited
      * @return array<string,mixed>|null
      */
     private function buildBinaryTreeNode(
@@ -2357,7 +2341,7 @@ class DashboardService
     }
 
     /**
-     * @param Collection<int, Customer> $members
+     * @param  Collection<int, Customer>  $members
      * @return array{active:list<array<string,mixed>>,passive:list<array<string,mixed>>,prospect:list<array<string,mixed>>}
      */
     private function formatMitraMembers(Collection $members): array
@@ -2371,22 +2355,22 @@ class DashboardService
             $hasPurchase = ((int) ($member->orders_count ?? 0)) > 0;
 
             $data = [
-                'id'            => $member->id,
-                'username'      => (string) ($member->username ?? ''),
-                'name'          => (string) ($member->name ?? ''),
-                'email'         => (string) ($member->email ?? ''),
-                'phone'         => $member->phone,
-                'package_name'  => $member->package?->name,
-                'total_left'    => (int) ($member->total_left ?? 0),
-                'total_right'   => (int) ($member->total_right ?? 0),
-                'position'      => $member->position,
-                'level'         => $member->level,
+                'id' => $member->id,
+                'username' => (string) ($member->username ?? ''),
+                'name' => (string) ($member->name ?? ''),
+                'email' => (string) ($member->email ?? ''),
+                'phone' => $member->phone,
+                'package_name' => $member->package?->name,
+                'total_left' => (int) ($member->total_left ?? 0),
+                'total_right' => (int) ($member->total_right ?? 0),
+                'position' => $member->position,
+                'level' => $member->level,
                 'has_placement' => filled($member->position) || $member->upline_id !== null,
-                'has_purchase'  => $hasPurchase,
-                'omzet'         => (float) ($member->omzet ?? 0),
-                'joined_at'     => $member->created_at?->toIso8601String(),
-                'status'        => $memberStatus,
-                'status_label'  => $this->memberStatusLabel($memberStatus),
+                'has_purchase' => $hasPurchase,
+                'omzet' => (float) ($member->omzet ?? 0),
+                'joined_at' => $member->created_at?->toIso8601String(),
+                'status' => $memberStatus,
+                'status_label' => $this->memberStatusLabel($memberStatus),
             ];
 
             if ($memberStatus === 3) {

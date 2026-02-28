@@ -8,7 +8,7 @@ const trustFeatures = [
 </script>
 
 <template>
-    <div class="border-t border-b border-gray-200/60 bg-gray-50/50 dark:border-white/5 dark:bg-white/[0.02]">
+    <div class="border-t border-b border-gray-200/60 bg-gray-50/50 dark:border-white/5 dark:bg-white/2">
         <div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-2 gap-4 py-6 lg:grid-cols-4 lg:gap-8">
                 <div v-for="feat in trustFeatures" :key="feat.label" class="flex items-center gap-3">

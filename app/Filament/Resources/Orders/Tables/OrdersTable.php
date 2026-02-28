@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Count;
@@ -29,6 +30,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -194,6 +196,9 @@ class OrdersTable
         return $table
             ->modifyQueryUsing(self::baseQuery())
             ->defaultSort('created_at', 'desc')
+            ->groups(self::groups())
+            ->defaultGroup('status')
+            ->groupingSettingsInDropdownOnDesktop()
             ->columns(self::columns())
             ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(6)
@@ -212,6 +217,56 @@ class OrdersTable
             ])
             ->withCount(['items', 'payments', 'shipments', 'refunds', 'returns', 'bonusCashbacks'])
             ->withSum('items', 'qty');
+    }
+
+    private static function groups(): array
+    {
+        return [
+            Group::make('status')
+                ->label('Status')
+                ->collapsible()
+                ->titlePrefixedWithLabel(false)
+                ->getTitleFromRecordUsing(function (Order $record): string {
+                    $status = trim((string) $record->status);
+
+                    return $status !== '' ? strtoupper($status) : 'TANPA STATUS';
+                }),
+
+            Group::make('type')
+                ->label('Tipe')
+                ->collapsible()
+                ->titlePrefixedWithLabel(false)
+                ->getTitleFromRecordUsing(function (Order $record): string {
+                    $type = trim((string) $record->type);
+
+                    return $type !== '' ? $type : 'Tanpa tipe';
+                }),
+
+            Group::make('customer.name')
+                ->label('Pelanggan')
+                ->collapsible()
+                ->titlePrefixedWithLabel(false)
+                ->getTitleFromRecordUsing(function (Order $record): string {
+                    $customerName = trim((string) data_get($record, 'customer.name'));
+
+                    return $customerName !== '' ? $customerName : 'Tanpa pelanggan';
+                }),
+
+            Group::make('currency')
+                ->label('Mata Uang')
+                ->collapsible()
+                ->titlePrefixedWithLabel(false)
+                ->getTitleFromRecordUsing(function (Order $record): string {
+                    $currency = trim((string) $record->currency);
+
+                    return $currency !== '' ? strtoupper($currency) : 'Tanpa mata uang';
+                }),
+
+            Group::make('created_at')
+                ->label('Tanggal Dibuat')
+                ->date()
+                ->collapsible(),
+        ];
     }
 
     private static function columns(): array
@@ -466,7 +521,7 @@ class OrdersTable
                         return $query;
                     }
 
-                    return $query->where('order_no', 'like', '%' . $keyword . '%');
+                    return $query->where('order_no', 'like', '%'.$keyword.'%');
                 })
                 ->indicateUsing(function (array $data): array {
                     $keyword = trim((string) ($data['q'] ?? ''));
@@ -492,6 +547,20 @@ class OrdersTable
     private static function recordActions(): array
     {
         return [
+            Action::make('preview_invoice')
+                ->icon('heroicon-o-eye')
+                ->tooltip('Preview invoice')
+                ->visible(fn (Order $record): bool => filled($record->paid_at))
+                ->url(fn (Order $record): string => route('control-panel.orders.invoice', ['order' => $record, 'preview' => 1]))
+                ->openUrlInNewTab()
+                ->link(),
+            Action::make('download_invoice')
+                ->icon(Heroicon::ArrowDownCircle)
+                ->tooltip('Download invoice')
+                ->visible(fn (Order $record): bool => filled($record->paid_at))
+                ->url(fn (Order $record): string => route('control-panel.orders.invoice', ['order' => $record]))
+                ->openUrlInNewTab()
+                ->link(),
             ActionGroup::make([
                 ViewAction::make(),
                 EditAction::make(),
@@ -1197,9 +1266,9 @@ class OrdersTable
         }
 
         if (str_starts_with($digits, '0')) {
-            $digits = '62' . substr($digits, 1);
+            $digits = '62'.substr($digits, 1);
         } elseif (! str_starts_with($digits, '62')) {
-            $digits = '62' . $digits;
+            $digits = '62'.$digits;
         }
 
         return $digits;

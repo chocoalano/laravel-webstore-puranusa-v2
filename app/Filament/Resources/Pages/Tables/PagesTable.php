@@ -9,6 +9,7 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -27,10 +28,14 @@ class PagesTable
                     ->boolean(),
                 TextColumn::make('template')
                     ->searchable(),
-                TextColumn::make('show_on')
-                    ->label('Show On')
-                    ->badge()
-                    ->sortable(),
+                SelectColumn::make('show_on')
+                    ->options([
+                        'header_top_bar' => 'Header Top Bar',
+                        'header_navbar' => 'Header Navbar',
+                        'header_bottombar' => 'Header Bottom Bar',
+                        'footer_main' => 'Footer Main',
+                        'bottom_main' => 'Footer Bottom Main',
+                    ]),
                 TextColumn::make('order')
                     ->numeric()
                     ->sortable(),

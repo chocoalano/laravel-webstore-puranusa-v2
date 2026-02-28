@@ -172,16 +172,16 @@ class HandleInertiaRequests extends Middleware
                 $primaryMedia = $product?->primaryMedia->first();
 
                 return [
-                    'id'        => $item->id,
+                    'id' => $item->id,
                     'productId' => $item->product_id,
-                    'name'      => $item->product_name,
-                    'sku'       => $item->product_sku,
-                    'price'     => (float) ($product?->base_price ?? 0),
-                    'image'     => $primaryMedia?->url
+                    'name' => $item->product_name,
+                    'sku' => $item->product_sku,
+                    'price' => (float) ($product?->base_price ?? 0),
+                    'image' => $primaryMedia?->url
                         ? asset('storage/'.$primaryMedia->url)
                         : null,
-                    'inStock'   => ($product?->stock ?? 0) > 0,
-                    'slug'      => $product?->slug ?? '',
+                    'inStock' => ($product?->stock ?? 0) > 0,
+                    'slug' => $product?->slug ?? '',
                 ];
             })
             ->toArray();
@@ -228,18 +228,18 @@ class HandleInertiaRequests extends Middleware
                 $meta = $item->meta_json ?? [];
 
                 return [
-                    'id'        => $item->id,
+                    'id' => $item->id,
                     'productId' => $item->product_id,
-                    'name'      => $item->product_name,
-                    'sku'       => $item->product_sku,
-                    'variant'   => $meta['variant'] ?? null,
-                    'price'     => (float) $item->unit_price,
-                    'qty'       => $item->qty,
-                    'rowTotal'  => (float) $item->row_total,
-                    'image'     => $primaryMedia?->url
+                    'name' => $item->product_name,
+                    'sku' => $item->product_sku,
+                    'variant' => $meta['variant'] ?? null,
+                    'price' => (float) $item->unit_price,
+                    'qty' => $item->qty,
+                    'rowTotal' => (float) $item->row_total,
+                    'image' => $primaryMedia?->url
                         ? asset('storage/'.$primaryMedia->url)
                         : null,
-                    'inStock'   => ($item->product?->stock ?? 0) > 0,
+                    'inStock' => ($item->product?->stock ?? 0) > 0,
                 ];
             })
             ->toArray();
@@ -279,7 +279,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function footerData(): array
     {
-        return Cache::remember('footer_data_v2', 3600, function () {
+        return Cache::remember('footer_data_v3', 3600, function () {
             /** @var PageRepositoryInterface $pageRepository */
             $pageRepository = app(PageRepositoryInterface::class);
             $settings = Setting::query()
@@ -299,8 +299,8 @@ class HandleInertiaRequests extends Middleware
                 ->pluck('value', 'key');
 
             $socialLinks = $settings
-                ->filter(fn($value, $key) => str_starts_with($key, 'social.') && filled($value))
-                ->mapWithKeys(fn($value, $key) => [str_replace('social.', '', $key) => $value])
+                ->filter(fn ($value, $key) => str_starts_with($key, 'social.') && filled($value))
+                ->mapWithKeys(fn ($value, $key) => [str_replace('social.', '', $key) => $value])
                 ->toArray();
 
             $pages = $pageRepository->getPublishedNavigationPages();
@@ -341,7 +341,7 @@ class HandleInertiaRequests extends Middleware
                     ->filter(fn (array $page): bool => ($page['show_on'] ?? null) === 'header_bottombar')
                     ->values(),
                 'bottomMainPages' => $pages
-                    ->filter(fn (array $page): bool => in_array(($page['show_on'] ?? null), ['bottom_main', null], true))
+                    ->filter(fn (array $page): bool => ($page['show_on'] ?? null) === 'bottom_main')
                     ->values(),
                 'paymentMethods' => PaymentMethod::query()
                     ->where('is_active', true)
@@ -376,12 +376,12 @@ class HandleInertiaRequests extends Middleware
                 ->whereNull('parent_id')
                 ->orderBy('sort_order')
                 ->get(['id', 'slug', 'name', 'description', 'image'])
-                ->map(fn(Category $cat) => [
+                ->map(fn (Category $cat) => [
                     'id' => $cat->id,
                     'slug' => $cat->slug,
                     'name' => $cat->name,
                     'description' => $cat->description,
-                    'image' => $cat->image ? asset('storage/' . $cat->image) : null,
+                    'image' => $cat->image ? asset('storage/'.$cat->image) : null,
                     'productCount' => $cat->products()->count(),
                 ]);
         });

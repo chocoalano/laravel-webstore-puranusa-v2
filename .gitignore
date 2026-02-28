@@ -10,6 +10,9 @@
 /.nova
 /.phpunit.cache
 /.vscode
+/.agents
+/.claude
+/.codex
 /.zed
 /auth.json
 /node_modules
@@ -24,3 +27,6 @@ Homestead.yaml
 Thumbs.db
 rr
 .rr.yaml
+AGENTS.md
+CLAUDE.md
+*.sql

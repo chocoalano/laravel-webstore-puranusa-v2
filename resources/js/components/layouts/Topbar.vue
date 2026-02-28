@@ -4,16 +4,7 @@ import { useStoreData } from '@/composables/useStoreData'
 
 const { headerTopBarPages } = useStoreData()
 
-const utilityLinks = computed(() => {
-    if (headerTopBarPages.value.length > 0) {
-        return headerTopBarPages.value
-    }
-
-    return [
-        { label: 'Lacak Pesanan', to: '/orders' },
-        { label: 'Bantuan', to: '/help' },
-    ]
-})
+const utilityLinks = computed(() => headerTopBarPages.value)
 </script>
 
 <template>
@@ -30,7 +21,7 @@ const utilityLinks = computed(() => {
                 </div>
 
                 <!-- Right: utility links -->
-                <div class="hidden items-center divide-x divide-gray-700 sm:flex">
+                <div v-if="utilityLinks.length" class="hidden items-center divide-x divide-gray-700 sm:flex">
                     <UButton
                         v-for="link in utilityLinks"
                         :key="link.to"

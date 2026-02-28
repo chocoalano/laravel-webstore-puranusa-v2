@@ -6,7 +6,11 @@ import ui from '@nuxt/ui/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.ts', 'resources/css/filament/control-panel/theme.css'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.ts',
+                'resources/css/filament/control-panel/theme.css',
+            ],
             ssr: 'resources/js/ssr.ts',
             refresh: true,
         }),

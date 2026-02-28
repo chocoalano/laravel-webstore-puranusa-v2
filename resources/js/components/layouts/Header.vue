@@ -13,13 +13,7 @@ defineProps<{
 const mobileMenuOpen = ref(false)
 const { headerBottomBarPages } = useStoreData()
 
-const rightUtilityLinks = computed(() => {
-    if (headerBottomBarPages.value.length > 0) {
-        return headerBottomBarPages.value
-    }
-
-    return [{ label: 'Bantuan', to: '/help' }]
-})
+const rightUtilityLinks = computed(() => headerBottomBarPages.value)
 </script>
 
 <template>
@@ -69,7 +63,7 @@ const rightUtilityLinks = computed(() => {
                 <div class="flex h-12 items-center justify-between">
                     <HeaderDesktopNav />
 
-                    <div class="flex items-center gap-6">
+                    <div v-if="rightUtilityLinks.length" class="flex items-center gap-6">
                         <ULink
                             v-for="link in rightUtilityLinks"
                             :key="link.to"

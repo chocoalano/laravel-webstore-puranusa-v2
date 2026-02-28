@@ -7,8 +7,8 @@ interface Banner {
     description: string | null
     image: string | null
     slug: string | null
-    type: string
-    code: string
+    type: string | null
+    code: string | null
     discount?: number
 }
 
@@ -61,8 +61,8 @@ const typeBadge: Record<string, { label: string; icon: string; gradient: string 
     new: { label: 'Produk Baru', icon: 'i-lucide-sparkles', gradient: 'from-sky-500 to-blue-600' }
 }
 
-const getBadge = (type: string) =>
-    typeBadge[type] ?? { label: 'Promo', icon: 'i-lucide-tag', gradient: 'from-pink-500 to-rose-600' }
+const getBadge = (type?: string | null) =>
+    typeBadge[typeof type === 'string' ? type : ''] ?? { label: 'Promo', icon: 'i-lucide-tag', gradient: 'from-pink-500 to-rose-600' }
 
 const bgGradients = [
     'from-indigo-50/60 via-white to-sky-50/60 dark:from-indigo-950/25 dark:via-primary-950 dark:to-sky-950/25',
@@ -70,13 +70,48 @@ const bgGradients = [
     'from-emerald-50/60 via-white to-teal-50/60 dark:from-emerald-950/25 dark:via-primary-950 dark:to-teal-950/25'
 ]
 
-const splitTitle = (title: string) => {
-    const words = (title || '').trim().split(/\s+/).filter(Boolean)
-    if (words.length <= 1) return { first: title, last: '' }
+const splitTitle = (title?: string | null) => {
+    const safeTitle = typeof title === 'string' && title.trim() !== '' ? title.trim() : 'Promo Spesial'
+    const words = safeTitle.split(/\s+/).filter(Boolean)
+    if (words.length <= 1) return { first: safeTitle, last: '' }
     return { first: words.slice(0, -1).join(' '), last: words.at(-1) as string }
 }
 
-const hrefOf = (slug?: string | null) => (slug?.startsWith('/') ? slug : slug ? `/${slug}` : '/shop')
+const hrefOf = (slug?: string | null): string => {
+    if (typeof slug !== 'string') return '/shop'
+
+    const normalizedSlug = slug.trim()
+    if (normalizedSlug === '') return '/shop'
+
+    const lowerSlug = normalizedSlug.toLowerCase()
+    if (['notfound', 'not-found', 'undefined', 'null'].includes(lowerSlug)) return '/shop'
+
+    if (
+        normalizedSlug.startsWith('http://')
+        || normalizedSlug.startsWith('https://')
+        || normalizedSlug.startsWith('//')
+    ) {
+        return normalizedSlug
+    }
+
+    if (normalizedSlug.startsWith('?') || normalizedSlug.startsWith('#')) {
+        return `/shop${normalizedSlug}`
+    }
+
+    if (normalizedSlug === 'shop' || normalizedSlug === 'shop/') {
+        return '/shop'
+    }
+
+    if (normalizedSlug.startsWith('/')) {
+        return normalizedSlug
+    }
+
+    if (normalizedSlug.startsWith('shop/')) {
+        return `/${normalizedSlug}`
+    }
+
+    return `/shop/${normalizedSlug.replace(/^\/+/, '')}`
+}
 
 const copyPromo = async (code?: string | null) => {
     if (!code) return
@@ -106,7 +141,7 @@ const copyPromo = async (code?: string | null) => {
 
 <template>
     <!-- ✅ Tinggi mengikuti layar: pakai SVH + fallback DVH bila support -->
-    <section class="relative w-full overflow-hidden h-[100svh] supports-[height:100dvh]:h-[100dvh]" role="region"
+    <section class="relative w-full overflow-hidden h-svh supports-[height:100dvh]:h-dvh" role="region"
         aria-label="Promotional banners">
         <UCarousel v-slot="{ item, index }" :items="items" loop arrows dots fade :autoplay="{ delay: 8000 }"
             @select="(i: number) => (activeIndex = i)" :ui="{
@@ -128,7 +163,7 @@ const copyPromo = async (code?: string | null) => {
                         class="size-full object-cover scale-[1.01] transition-transform duration-[12s] ease-out motion-reduce:transition-none group-hover:scale-[1.06]"
                         loading="lazy" decoding="async" />
 
-                    <div v-else :class="`size-full bg-gradient-to-br ${bgGradients[index % bgGradients.length]}`">
+                    <div v-else :class="`size-full bg-linear-to-br ${bgGradients[index % bgGradients.length]}`">
                         <div class="absolute inset-0 overflow-hidden opacity-35 dark:opacity-20 pointer-events-none">
                             <div
                                 class="absolute -left-[10%] -top-[10%] size-[52%] rounded-full bg-primary-400/25 blur-3xl animate-pulse motion-reduce:animate-none" />
@@ -144,13 +179,13 @@ const copyPromo = async (code?: string | null) => {
             bg-[radial-gradient(circle_at_22%_18%,rgba(99,102,241,0.10),transparent_20%)]
             dark:bg-[radial-gradient(circle_at_22%_18%,rgba(99,102,241,0.08),transparent_25%)]" />
                     <div
-                        class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/0 via-black/0 to-black/0 dark:from-black/25 dark:via-black/10 dark:to-black/0" />
+                        class="pointer-events-none absolute inset-0 bg-linear-to-t from-black/0 via-black/0 to-black/0 dark:from-black/25 dark:via-black/10 dark:to-black/0" />
                     <div
                         class="pointer-events-none absolute inset-0 shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.10)]" />
 
                     <!-- bottom fade kecil -->
                     <div
-                        class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white/22 to-transparent dark:from-primary-950/18" />
+                        class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-white/22 to-transparent dark:from-primary-950/18" />
                 </div>
 
                 <!-- Content full height -->
@@ -173,7 +208,7 @@ const copyPromo = async (code?: string | null) => {
                   ">
                                     <div class="
                       pointer-events-none absolute inset-0
-                      bg-gradient-to-br
+                      bg-linear-to-br
                       from-white/14 via-white/6 to-transparent
                       dark:from-white/8 dark:via-transparent dark:to-transparent
                     " />
@@ -187,7 +222,7 @@ const copyPromo = async (code?: string | null) => {
                                         <!-- badges -->
                                         <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
                                             <div
-                                                :class="`inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r ${getBadge(item.type).gradient} px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-white shadow-lg`">
+                                                :class="`inline-flex items-center gap-2 rounded-2xl bg-linear-to-r ${getBadge(item.type).gradient} px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-white shadow-lg`">
                                                 <UIcon :name="getBadge(item.type).icon" class="size-4" />
                                                 {{ getBadge(item.type).label }}
                                             </div>
@@ -234,7 +269,7 @@ const copyPromo = async (code?: string | null) => {
                                         <div class="grid grid-cols-1 sm:flex sm:flex-row sm:items-center gap-3 pt-1">
                                             <UButton :to="hrefOf(item.slug)" size="xl"
                                                 class="rounded-2xl px-8 py-2 font-bold group">
-                                                Shop Now
+                                                Belanja Sekarang
                                                 <template #trailing>
                                                     <UIcon name="i-lucide-arrow-right"
                                                         class="size-5 transition-transform duration-200 group-hover:translate-x-1" />

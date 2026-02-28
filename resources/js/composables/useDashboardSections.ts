@@ -29,9 +29,6 @@ const dashboardPropKeys = [
 const addressPropKeys = [
     'addresses',
     'defaultAddress',
-    'provinces',
-    'cities',
-    'districts',
 ]
 
 const formAccountPropKeys = ['customer', 'defaultAddress']
@@ -78,9 +75,6 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
             case 'addresses':
                 return {
                     addresses: props.value.addresses,
-                    provinces: props.value.provinces,
-                    cities: props.value.cities,
-                    districts: props.value.districts,
                 }
             case 'form_account':
                 return {

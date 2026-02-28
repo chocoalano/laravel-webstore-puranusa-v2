@@ -3,8 +3,6 @@ import { usePage } from '@inertiajs/vue3'
 
 interface FooterData {
     pages: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
-    supportPages?: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
-    companyPages?: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
     headerTopBarPages?: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
     headerNavbarPages?: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
     headerBottomBarPages?: { title: string; slug: string; template?: string | null; show_on?: string | null }[]
@@ -121,53 +119,11 @@ export function useStoreData() {
         })
     }
 
-    const allFooterPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.pages ?? [])))
+    const footerMainPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.pages ?? [])))
     const headerTopBarPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.headerTopBarPages ?? [])))
     const headerNavbarPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.headerNavbarPages ?? [])))
     const headerBottomBarPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.headerBottomBarPages ?? [])))
     const bottomMainPages = computed(() => uniqueLinksByUrl(mapPageLinks(footer.value?.bottomMainPages ?? [])))
-
-    const supportPages = computed(() => {
-        const sharedSupportPages = uniqueLinksByUrl(mapPageLinks(footer.value?.supportPages ?? []))
-        if (sharedSupportPages.length > 0) {
-            return sharedSupportPages
-        }
-
-        const sourcePages = footer.value?.pages ?? []
-        const supportTemplates = new Set(['faq', 'contact'])
-        const supportPagesFromTemplate = uniqueLinksByUrl(
-            mapPageLinks(
-                sourcePages.filter((page) => {
-                    const template = (page.template ?? '').toLowerCase()
-                    return supportTemplates.has(template)
-                })
-            )
-        )
-
-        if (supportPagesFromTemplate.length > 0) {
-            return supportPagesFromTemplate
-        }
-
-        const supportKeyword = /(faq|kontak|contact|bantuan|help|dukungan|support|pengiriman|returns?)/i
-        return uniqueLinksByUrl(
-            mapPageLinks(
-                sourcePages.filter((page) => supportKeyword.test(`${page.slug} ${page.title}`))
-            )
-        )
-    })
-
-    const companyPages = computed(() => {
-        const supportLinkSet = new Set(supportPages.value.map((page) => page.to))
-
-        const sharedCompanyPages = uniqueLinksByUrl(mapPageLinks(footer.value?.companyPages ?? []))
-        if (sharedCompanyPages.length > 0) {
-            return sharedCompanyPages.filter((page) => !supportLinkSet.has(page.to))
-        }
-
-        return uniqueLinksByUrl(
-            mapPageLinks(footer.value?.pages ?? []).filter((page) => !supportLinkSet.has(page.to))
-        )
-    })
 
     return {
         footer,
@@ -182,13 +138,11 @@ export function useStoreData() {
         storePhone,
         storeDescription,
         socialLinks,
-        allFooterPages,
+        footerMainPages,
         headerTopBarPages,
         headerNavbarPages,
         headerBottomBarPages,
         bottomMainPages,
-        companyPages,
-        supportPages,
         paymentMethods: computed(() => footer.value?.paymentMethods ?? []),
     }
 }

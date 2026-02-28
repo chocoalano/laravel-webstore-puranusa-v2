@@ -6,23 +6,14 @@ import AddressDeleteConfirmModal from '@/components/dashboard/addresses/AddressD
 import AddressDefaultSwitchModal from '@/components/dashboard/addresses/AddressDefaultSwitchModal.vue'
 import {
     useDashboardAddresses,
-    type DashboardAddressCityOption,
-    type DashboardAddressDistrictOption,
-    type DashboardAddressProvinceOption,
 } from '@/composables/useDashboardAddresses'
 import type { DashboardAddress } from '@/types/dashboard'
 
 const props = defineProps<{
     addresses?: DashboardAddress[]
-    provinces?: DashboardAddressProvinceOption[]
-    cities?: DashboardAddressCityOption[]
-    districts?: DashboardAddressDistrictOption[]
 }>()
 
 const addresses = computed(() => props.addresses ?? [])
-const provinces = computed(() => props.provinces ?? [])
-const cities = computed(() => props.cities ?? [])
-const districts = computed(() => props.districts ?? [])
 
 const {
     formOpen,
@@ -36,6 +27,9 @@ const {
     otherAddressesForDefault,
     form,
     errors,
+    loadingProvinces,
+    loadingCities,
+    loadingDistricts,
     provinceItems,
     cityItems,
     districtItems,
@@ -50,9 +44,6 @@ const {
     closeBlockedAndOpenCreate,
 } = useDashboardAddresses({
     addresses,
-    provinces,
-    cities,
-    districts,
 })
 </script>
 
@@ -96,6 +87,9 @@ const {
             :form="form"
             :errors="errors"
             :submitting="submitting"
+            :loading-provinces="loadingProvinces"
+            :loading-cities="loadingCities"
+            :loading-districts="loadingDistricts"
             :province-items="provinceItems"
             :city-items="cityItems"
             :district-items="districtItems"

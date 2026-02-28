@@ -9,8 +9,10 @@ use App\Http\Controllers\Web\CustomerAddressController;
 use App\Http\Controllers\Web\DashboardAccountController;
 use App\Http\Controllers\Web\DashboardOrderController;
 use App\Http\Controllers\Web\DashboardWalletController;
-use App\Http\Controllers\Web\MlmPlacementController;
 use App\Http\Controllers\Web\MidtransWebhookController;
+use App\Http\Controllers\Web\MlmPlacementController;
+use App\Http\Controllers\Web\NewsletterSubscriptionController;
+use App\Http\Controllers\Web\OrderInvoiceDownloadController;
 use App\Http\Controllers\Web\PageController;
 use App\Http\Controllers\Web\ShopController;
 use App\Http\Controllers\Web\WishlistController;
@@ -21,6 +23,13 @@ Route::get('/', [BerandaController::class, 'index'])->name('home');
 Route::post('/payments/midtrans/callback', MidtransWebhookController::class)
     ->withoutMiddleware([ValidateCsrfToken::class])
     ->name('payments.midtrans.callback');
+Route::post('/newsletter/subscribe', NewsletterSubscriptionController::class)
+    ->middleware('throttle:10,1')
+    ->name('newsletter.subscribe');
+Route::middleware('auth')
+    ->get('/control-panel/orders/{order}/invoice', OrderInvoiceDownloadController::class)
+    ->whereNumber('order')
+    ->name('control-panel.orders.invoice');
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +84,9 @@ Route::middleware('auth:customer')->group(function () {
 
     Route::prefix('account/addresses')->name('account.addresses.')->group(function (): void {
         Route::get('/', [CustomerAddressController::class, 'index'])->name('index');
+        Route::get('/options/provinces', [CustomerAddressController::class, 'provinceOptions'])->name('options.provinces');
+        Route::get('/options/cities', [CustomerAddressController::class, 'cityOptions'])->name('options.cities');
+        Route::get('/options/districts', [CustomerAddressController::class, 'districtOptions'])->name('options.districts');
         Route::post('/', [CustomerAddressController::class, 'store'])->name('store');
         Route::put('/{addressId}', [CustomerAddressController::class, 'update'])->whereNumber('addressId')->name('update');
         Route::delete('/{addressId}', [CustomerAddressController::class, 'destroy'])->whereNumber('addressId')->name('destroy');

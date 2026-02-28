@@ -47,6 +47,7 @@ class ControlPanelPanelProvider extends PanelProvider
                 FilamentShieldPlugin::make()
                     ->navigationGroup('Kelola'),
             ])
+            ->databaseNotifications()
             ->maxContentWidth(Width::Full)
             ->colors([
                 'primary' => Color::Zinc,

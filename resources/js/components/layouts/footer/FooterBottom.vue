@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useStoreData } from '@/composables/useStoreData'
 
-const { appName, paymentMethods } = useStoreData()
+const { appName, paymentMethods, bottomMainPages } = useStoreData()
 const year = computed(() => new Date().getFullYear())
 </script>
 
@@ -19,6 +19,19 @@ const year = computed(() => new Date().getFullYear())
                     <UIcon name="i-lucide-credit-card" class="size-3.5" />
                     <span>{{ pm.name }}</span>
                 </div>
+            </div>
+        </div>
+
+        <div v-if="bottomMainPages.length" class="border-t border-gray-200/60 py-5 dark:border-white/10">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <ULink
+                    v-for="link in bottomMainPages"
+                    :key="link.to"
+                    :to="link.to"
+                    class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
+                >
+                    {{ link.label }}
+                </ULink>
             </div>
         </div>
 

@@ -4,9 +4,10 @@ namespace App\Filament\Resources\Customers\Schemas;
 
 use App\Models\Customer;
 use App\Services\RajaOngkirService;
+use App\Support\CustomerUiSettingsConfig;
 use Closure;
-use Filament\Forms\Components\Field;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -38,10 +39,12 @@ class CustomerForm
                         // --- TAB 1: IDENTITAS & ALAMAT ---
                         Tabs\Tab::make('Identitas & Alamat')
                             ->icon('heroicon-o-user-circle')
+                            ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic') || self::isFormSectionEnabled('addresses'))
                             ->schema([
                                 Section::make('Informasi Profil Dasar')
                                     ->description('Data utama akun customer yang digunakan untuk identifikasi dan login.')
                                     ->columns(3)
+                                    ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic'))
                                     ->schema([
                                         TextInput::make('name')
                                             ->label('Nama Lengkap')
@@ -91,7 +94,7 @@ class CustomerForm
                                             ->label('Jenis Kelamin')
                                             ->options([
                                                 'L' => 'Laki-laki',
-                                                'P' => 'Perempuan'
+                                                'P' => 'Perempuan',
                                             ])
                                             ->native(false)
                                             ->helperText('Digunakan untuk personalisasi promo dan data demografi.'),
@@ -104,6 +107,7 @@ class CustomerForm
 
                                 Section::make('Buku Alamat')
                                     ->description('Daftar lokasi pengiriman barang untuk customer ini.')
+                                    ->visible(fn (): bool => self::isFormSectionEnabled('addresses'))
                                     ->schema([
                                         Repeater::make('addresses')
                                             ->relationship('addresses')
@@ -212,9 +216,11 @@ class CustomerForm
                         // --- TAB 2: STRUKTUR JARINGAN ---
                         Tabs\Tab::make('Jaringan')
                             ->icon('heroicon-o-share')
+                            ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
                             ->schema([
                                 Section::make('Posisi & Afiliasi')
                                     ->columns(3)
+                                    ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
                                     ->schema([
                                         Select::make('sponsor_id')
                                             ->label('Sponsor')
@@ -253,11 +259,7 @@ class CustomerForm
 
                                         Select::make('status')
                                             ->label('Status Aktivasi')
-                                            ->options([
-                                                1 => 'Prospek (Data Terinput)',
-                                                2 => 'Pasif (Tidak Ada Transaksi)',
-                                                3 => 'Aktif (Berjalan)',
-                                            ])
+                                            ->options(self::statusFieldOptions())
                                             ->required()
                                             ->helperText('Menentukan apakah akun ini dapat menerima bonus atau tidak.'),
                                     ]),
@@ -266,10 +268,12 @@ class CustomerForm
                         // --- TAB 3: PERBANKAN & STOCKIST ---
                         Tabs\Tab::make('Finansial')
                             ->icon('heroicon-o-banknotes')
+                            ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank') || self::isFormSectionEnabled('stockist_authority'))
                             ->schema([
                                 Section::make('Data Rekening Transfer')
                                     ->description('Informasi bank digunakan untuk pencairan (Withdrawal) bonus.')
                                     ->columns(2)
+                                    ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank'))
                                     ->schema([
                                         TextInput::make('bank_name')
                                             ->label('Nama Bank')
@@ -285,6 +289,7 @@ class CustomerForm
                                 Section::make('Otoritas Stockist')
                                     ->description('Akses khusus jika member ditunjuk sebagai distributor wilayah.')
                                     ->columns(3)
+                                    ->visible(fn (): bool => self::isFormSectionEnabled('stockist_authority'))
                                     ->schema([
                                         Toggle::make('is_stockist')
                                             ->label('Status Stockist Aktif')
@@ -329,6 +334,7 @@ class CustomerForm
 
                 Section::make('Admin Internal Log')
                     ->collapsed()
+                    ->visible(fn (): bool => self::isFormSectionEnabled('admin_internal_log'))
                     ->schema([
                         Textarea::make('description')
                             ->label('Catatan Khusus Admin')
@@ -337,6 +343,31 @@ class CustomerForm
                             ->helperText('Catatan ini hanya dapat dilihat oleh admin dan tidak akan muncul di panel member.'),
                     ]),
             ]);
+    }
+
+    private static function isFormSectionEnabled(string $key): bool
+    {
+        $settings = CustomerUiSettingsConfig::formSectionSettings();
+
+        return $settings[$key] ?? true;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function statusFieldOptions(): array
+    {
+        $labels = CustomerUiSettingsConfig::statusLabels();
+
+        if ($labels === []) {
+            return [
+                1 => 'Prospek',
+                2 => 'Pasif',
+                3 => 'Aktif',
+            ];
+        }
+
+        return $labels;
     }
 
     // -------------------------------------------------------------------------
@@ -351,8 +382,11 @@ class CustomerForm
             foreach ($provinces as $province) {
                 $id = self::extractRajaOngkirValue($province, ['id', 'province_id']);
                 $name = self::extractRajaOngkirValue($province, ['province_name', 'province', 'name']);
-                if ($id && $name) $options[(string)$id] = Str::upper($name);
+                if ($id && $name) {
+                    $options[(string) $id] = Str::upper($name);
+                }
             }
+
             return $options;
         });
     }
@@ -360,7 +394,9 @@ class CustomerForm
     private static function cityOptions(mixed $provinceId): array
     {
         $provinceId = self::normalizeRegionId($provinceId);
-        if (!$provinceId) return [];
+        if (! $provinceId) {
+            return [];
+        }
 
         return Cache::remember("customer_form:cities:{$provinceId}", now()->addHours(12), function () use ($provinceId) {
             $cities = app(RajaOngkirService::class)->getCities((int) $provinceId);
@@ -371,9 +407,10 @@ class CustomerForm
                 $type = self::extractRajaOngkirValue($city, ['type']);
                 if ($id && $name) {
                     $label = $type ? "{$type} {$name}" : $name;
-                    $options[(string)$id] = Str::upper($label);
+                    $options[(string) $id] = Str::upper($label);
                 }
             }
+
             return $options;
         });
     }
@@ -381,15 +418,20 @@ class CustomerForm
     private static function districtOptions(mixed $cityId): array
     {
         $cityId = self::normalizeRegionId($cityId);
-        if (!$cityId) return [];
+        if (! $cityId) {
+            return [];
+        }
 
         return Cache::remember("customer_form:districts:{$cityId}", now()->addHours(12), function () use ($cityId) {
             $districts = app(RajaOngkirService::class)->getDistricts((int) $cityId);
             $options = [];
             foreach ($districts as $district) {
                 $name = self::extractRajaOngkirValue($district, ['district_name', 'subdistrict_name', 'name']);
-                if ($name) $options[Str::upper($name)] = Str::upper($name);
+                if ($name) {
+                    $options[Str::upper($name)] = Str::upper($name);
+                }
             }
+
             return $options;
         });
     }
@@ -402,9 +444,14 @@ class CustomerForm
     private static function extractRajaOngkirValue(mixed $row, array $keys): mixed
     {
         foreach ($keys as $key) {
-            if (is_array($row) && isset($row[$key])) return $row[$key];
-            if (is_object($row) && isset($row->{$key})) return $row->{$key};
+            if (is_array($row) && isset($row[$key])) {
+                return $row[$key];
+            }
+            if (is_object($row) && isset($row->{$key})) {
+                return $row->{$key};
+            }
         }
+
         return null;
     }
 
@@ -451,7 +498,7 @@ class CustomerForm
 
                 if ($usageCount >= self::MAX_CONTACT_USAGE) {
                     $label = $column === 'email' ? 'Email' : 'Nomor telepon/WhatsApp';
-                    $fail("{$label} ini sudah digunakan oleh " . self::MAX_CONTACT_USAGE . ' akun.');
+                    $fail("{$label} ini sudah digunakan oleh ".self::MAX_CONTACT_USAGE.' akun.');
                 }
             };
         };
