@@ -76,26 +76,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::before(function (mixed $user): ?bool {
-            if (! is_object($user)) {
+        Gate::before(function ($user, string $ability) {
+            if (! is_object($user) || ! method_exists($user, 'hasRole')) {
                 return null;
             }
 
-            $role = strtolower(trim((string) data_get($user, 'role', '')));
-
-            if ($role === 'developer' || $role === 'super_admin') {
-                return true;
-            }
-
-            if (! method_exists($user, 'hasRole')) {
-                return null;
-            }
-
-            try {
-                return $user->hasRole('developer') || $user->hasRole('super_admin') ? true : null;
-            } catch (\Throwable) {
-                return null;
-            }
+            // bypass semua ability untuk role ini
+            return $user->hasRole(['super_admin', 'developer']) ? true : null;
         });
 
         FilamentIcon::register([
