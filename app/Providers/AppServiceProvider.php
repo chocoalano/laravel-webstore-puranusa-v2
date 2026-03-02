@@ -77,11 +77,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::before(function ($user, string $ability) {
-            if (! is_object($user) || ! method_exists($user, 'hasRole')) {
-                return null;
-            }
+            if (! is_object($user) || ! method_exists($user, 'hasRole')) return null;
 
-            // bypass semua ability untuk role ini
             return $user->hasRole(['super_admin', 'developer']) ? true : null;
         });
 
