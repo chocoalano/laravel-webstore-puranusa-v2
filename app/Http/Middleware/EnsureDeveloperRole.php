@@ -27,7 +27,7 @@ class EnsureDeveloperRole
 
         $role = strtolower(trim((string) data_get($user, 'role', '')));
 
-        if ($role === 'developer') {
+        if ($role === 'developer' || $role === 'super_admin') {
             return true;
         }
 
@@ -36,7 +36,7 @@ class EnsureDeveloperRole
         }
 
         try {
-            return (bool) $user->hasRole('developer');
+            return (bool) $user->hasRole('developer') || (bool) $user->hasRole('super_admin');
         } catch (\Throwable) {
             return false;
         }

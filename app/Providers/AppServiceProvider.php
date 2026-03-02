@@ -83,7 +83,7 @@ class AppServiceProvider extends ServiceProvider
 
             $role = strtolower(trim((string) data_get($user, 'role', '')));
 
-            if ($role === 'developer') {
+            if ($role === 'developer' || $role === 'super_admin') {
                 return true;
             }
 
@@ -92,7 +92,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             try {
-                return $user->hasRole('developer') ? true : null;
+                return $user->hasRole('developer') || $user->hasRole('super_admin') ? true : null;
             } catch (\Throwable) {
                 return null;
             }
