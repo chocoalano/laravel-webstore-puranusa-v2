@@ -5,8 +5,10 @@ namespace App\Providers;
 use App\Repositories\Articles\Contracts\ArticleRepositoryInterface;
 use App\Repositories\Articles\EloquentArticleRepository;
 use App\Repositories\Auth\Contracts\CustomerAuthRepositoryInterface;
+use App\Repositories\Auth\Contracts\CustomerProfileRepositoryInterface;
 use App\Repositories\Auth\Contracts\CustomerRegistrationRepositoryInterface;
 use App\Repositories\Auth\CustomerAuthRepository;
+use App\Repositories\Auth\CustomerProfileRepository;
 use App\Repositories\Auth\CustomerRegistrationRepository;
 use App\Repositories\Cart\Contracts\CartRepositoryInterface;
 use App\Repositories\Cart\EloquentCartRepository;
@@ -20,6 +22,10 @@ use App\Repositories\WhatsApp\Contracts\WhatsAppBroadcastRepositoryInterface;
 use App\Repositories\WhatsApp\EloquentWhatsAppBroadcastRepository;
 use App\Repositories\Wishlist\Contracts\WishlistRepositoryInterface;
 use App\Repositories\Wishlist\EloquentWishlistRepository;
+use App\Repositories\ZennerAcademy\Contracts\ContentCategoryRepositoryInterface;
+use App\Repositories\ZennerAcademy\Contracts\ContentRepositoryInterface;
+use App\Repositories\ZennerAcademy\EloquentContentCategoryRepository;
+use App\Repositories\ZennerAcademy\EloquentContentRepository;
 use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(CustomerAuthRepositoryInterface::class, CustomerAuthRepository::class);
+        $this->app->bind(CustomerProfileRepositoryInterface::class, CustomerProfileRepository::class);
         $this->app->bind(CustomerRegistrationRepositoryInterface::class, CustomerRegistrationRepository::class);
         $this->app->bind(
             \App\Repositories\Products\Contracts\ProductRepositoryInterface::class,
@@ -60,6 +67,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ArticleRepositoryInterface::class, EloquentArticleRepository::class);
         $this->app->bind(PageRepositoryInterface::class, EloquentPageRepository::class);
         $this->app->bind(WhatsAppBroadcastRepositoryInterface::class, EloquentWhatsAppBroadcastRepository::class);
+        $this->app->bind(ContentCategoryRepositoryInterface::class, EloquentContentCategoryRepository::class);
+        $this->app->bind(ContentRepositoryInterface::class, EloquentContentRepository::class);
     }
 
     /**

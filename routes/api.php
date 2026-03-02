@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\OrderInvoiceDownloadController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\ZennerAcademyCategoryController;
+use App\Http\Controllers\Api\ZennerAccademyContentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +34,21 @@ Route::get('/shop/{slug}', [ShopController::class, 'show'])->name('api.shop.show
 Route::get('/articles', [ArticleController::class, 'index'])->name('api.articles.index');
 Route::get('/articles/{slug}', [ArticleController::class, 'show'])->name('api.articles.show');
 Route::get('/pages/{slug}', [PageController::class, 'show'])->name('api.pages.show');
+
+// Zenner Academy - publik (read-only)
+Route::prefix('zenner-academy')->name('api.zenner-academy.')->group(function (): void {
+    // Category
+    Route::get('/categories', [ZennerAcademyCategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/parents', [ZennerAcademyCategoryController::class, 'parents'])->name('categories.parents');
+    Route::get('/categories/slug/{slug}', [ZennerAcademyCategoryController::class, 'showBySlug'])->name('categories.show-by-slug');
+    Route::get('/categories/{category}', [ZennerAcademyCategoryController::class, 'show'])->whereNumber('category')->name('categories.show');
+
+    // Content
+    Route::get('/contents', [ZennerAccademyContentController::class, 'index'])->name('contents.index');
+    Route::get('/contents/slug/{slug}', [ZennerAccademyContentController::class, 'showBySlug'])->name('contents.show-by-slug');
+    Route::get('/contents/{content}', [ZennerAccademyContentController::class, 'show'])->whereNumber('content')->name('contents.show');
+    Route::get('/categories/{categorySlug}/contents', [ZennerAccademyContentController::class, 'byCategory'])->name('categories.contents');
+});
 
 Route::post('/newsletter/subscribe', NewsletterSubscriptionController::class)
     ->middleware('throttle:10,1')
@@ -120,4 +137,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/control-panel/orders/{order}/invoice', OrderInvoiceDownloadController::class)
         ->whereNumber('order')
         ->name('api.control-panel.orders.invoice');
+
+    // Zenner Academy - terproteksi (CRUD write)
+    Route::prefix('zenner-academy')->name('api.zenner-academy.')->group(function (): void {
+        Route::post('/categories', [ZennerAcademyCategoryController::class, 'store'])->name('categories.store');
+        Route::put('/categories/{category}', [ZennerAcademyCategoryController::class, 'update'])->whereNumber('category')->name('categories.update');
+        Route::delete('/categories/{category}', [ZennerAcademyCategoryController::class, 'destroy'])->whereNumber('category')->name('categories.destroy');
+
+        Route::post('/contents', [ZennerAccademyContentController::class, 'store'])->name('contents.store');
+        Route::put('/contents/{content}', [ZennerAccademyContentController::class, 'update'])->whereNumber('content')->name('contents.update');
+        Route::delete('/contents/{content}', [ZennerAccademyContentController::class, 'destroy'])->whereNumber('content')->name('contents.destroy');
+    });
 });

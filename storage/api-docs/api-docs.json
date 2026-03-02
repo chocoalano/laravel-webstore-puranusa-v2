@@ -530,43 +530,52 @@
                         "description": "Data profil customer",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "id": {
-                                            "type": "integer",
-                                            "example": 1
-                                        },
-                                        "name": {
-                                            "type": "string",
-                                            "example": "Budi Santoso"
-                                        },
-                                        "username": {
-                                            "type": "string",
-                                            "example": "budi01"
-                                        },
-                                        "email": {
-                                            "type": "string",
-                                            "example": "budi@example.com"
-                                        },
-                                        "phone": {
-                                            "type": "string",
-                                            "example": "08123456789",
-                                            "nullable": true
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "example": 3
-                                        }
-                                    },
-                                    "type": "object"
-                                },
+                                "schema": {},
                                 "example": {
-                                    "id": 1,
-                                    "name": "Budi Santoso",
-                                    "username": "budi01",
-                                    "email": "budi@example.com",
-                                    "phone": "08123456789",
-                                    "status": 3
+                                    "success": true,
+                                    "message": "Profile loaded",
+                                    "data": {
+                                        "id": 24,
+                                        "name": "Tumbur Siahaan",
+                                        "username": "ZENITH02",
+                                        "email": "3zenithsinergiutama@gmail.com",
+                                        "phone": "081312000697",
+                                        "status": 3,
+                                        "member_package": "ZENNER Ultra",
+                                        "summary": {
+                                            "total_bonus": 0,
+                                            "network_count": 0,
+                                            "sponsor_count": 0
+                                        },
+                                        "orders": {
+                                            "total": 0,
+                                            "processing": 0,
+                                            "completed": 0
+                                        },
+                                        "mitra": {
+                                            "prospek": 0,
+                                            "aktif": 0,
+                                            "pasif": 0
+                                        },
+                                        "network_binary": {
+                                            "bonus": 0,
+                                            "sponsor": 0,
+                                            "matching": 0,
+                                            "pairing": 0,
+                                            "cashback": 0,
+                                            "rewards": 0,
+                                            "retail": 0,
+                                            "lifetime_cash": 0
+                                        },
+                                        "promo": {
+                                            "active_count": 0
+                                        },
+                                        "wallet": {
+                                            "balance": 0,
+                                            "reward_points": 0,
+                                            "active": true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3972,6 +3981,508 @@
                     }
                 ]
             }
+        },
+        "/api/zenner-academy/categories": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Daftar kategori (pohon hierarki)",
+                "description": "Menampilkan semua kategori beserta sub-kategori dan jumlah konten. Gunakan ?parents_only=true untuk hanya mendapatkan kategori root.",
+                "operationId": "fe0c5fb4133b841a816b6e07c60b1cba",
+                "parameters": [
+                    {
+                        "name": "parents_only",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar kategori berhasil diambil"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Buat kategori baru",
+                "operationId": "73e589463016ad56f4e09cf99da3a034",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "parent_id": {
+                                        "type": "integer"
+                                    },
+                                    "slug": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Kategori berhasil dibuat"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/zenner-academy/categories/parents": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Daftar kategori root atau sub-kategori dari parent tertentu",
+                "description": "Tanpa ?parent: kembalikan semua kategori root. Dengan ?parent=<id>: kembalikan info parent beserta sub-kategorinya.",
+                "operationId": "7ac3d534d8719ce76ce7cf74a20db5e6",
+                "parameters": [
+                    {
+                        "name": "parent",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Kategori parent tidak ditemukan"
+                    }
+                }
+            }
+        },
+        "/api/zenner-academy/categories/{id}": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Detail kategori",
+                "operationId": "2f278750452282e2cca1e714bdab5e49",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail kategori berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Kategori tidak ditemukan"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Update kategori",
+                "operationId": "3e04008ed1e8d389f19f6326c3ee31a4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kategori berhasil diperbarui"
+                    },
+                    "404": {
+                        "description": "Kategori tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Hapus kategori",
+                "operationId": "e3674adf60aee22d48018c16dfd6a82a",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kategori berhasil dihapus"
+                    },
+                    "404": {
+                        "description": "Kategori tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/zenner-academy/categories/slug/{slug}": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Category"
+                ],
+                "summary": "Detail kategori berdasarkan slug",
+                "operationId": "ee393bd0ed05d56517757c6e2b26bf11",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail kategori berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Kategori tidak ditemukan"
+                    }
+                }
+            }
+        },
+        "/api/zenner-academy/contents": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Daftar konten",
+                "description": "Daftar konten dengan filter: search, status, category_id.",
+                "operationId": "4a7b9e3528b1f7a14dacb329164559b8",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "published",
+                                "draft"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar konten berhasil diambil"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Buat konten baru",
+                "operationId": "36b8ddbdf63c1af7303dbebe89d5db09",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "category_id": {
+                                        "type": "integer"
+                                    },
+                                    "slug": {
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "type": "string"
+                                    },
+                                    "file": {
+                                        "type": "string"
+                                    },
+                                    "vlink": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "published",
+                                            "draft"
+                                        ]
+                                    },
+                                    "created_by": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Konten berhasil dibuat"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/zenner-academy/contents/{id}": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Detail konten",
+                "operationId": "5f2ff99eb2edbd467033db75844e086f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail konten berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Konten tidak ditemukan"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Update konten",
+                "operationId": "d3d03b915cd6ead2ef215dbe2e681b89",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Konten berhasil diperbarui"
+                    },
+                    "404": {
+                        "description": "Konten tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Hapus konten",
+                "operationId": "241f03f804b1eebe7c177f2e66623bac",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Konten berhasil dihapus"
+                    },
+                    "404": {
+                        "description": "Konten tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/zenner-academy/categories/{categorySlug}/contents": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Daftar konten berdasarkan slug kategori",
+                "operationId": "632fd1b47eddd8ac3d41bc5c70abe5bf",
+                "parameters": [
+                    {
+                        "name": "categorySlug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "published",
+                                "draft"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar konten berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Kategori tidak ditemukan"
+                    }
+                }
+            }
+        },
+        "/api/zenner-academy/contents/slug/{slug}": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Content"
+                ],
+                "summary": "Detail konten berdasarkan slug",
+                "operationId": "578d47d58bcab63009a041a7a6a5be04",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail konten berhasil diambil"
+                    },
+                    "404": {
+                        "description": "Konten tidak ditemukan"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -4052,6 +4563,14 @@
         {
             "name": "Orders",
             "description": "Endpoint invoice order control panel"
+        },
+        {
+            "name": "Zenner Academy - Category",
+            "description": "Zenner Academy - Category"
+        },
+        {
+            "name": "Zenner Academy - Content",
+            "description": "Zenner Academy - Content"
         }
     ]
 }

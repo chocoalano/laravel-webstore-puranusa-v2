@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Auth\LoginCustomerApiRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\Customer;
 use App\Services\Auth\CustomerAuthService;
+use App\Services\Auth\CustomerProfileService;
 use App\Services\Auth\CustomerRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly CustomerAuthService $authService,
         private readonly CustomerRegistrationService $registrationService,
+        private readonly CustomerProfileService $profileService,
     ) {}
 
     /**
@@ -354,20 +356,24 @@ class AuthController extends Controller
      *
      *         @OA\JsonContent(
      *             example={
-     *                 "id":1,
-     *                 "name":"Budi Santoso",
-     *                 "username":"budi01",
-     *                 "email":"budi@example.com",
-     *                 "phone":"08123456789",
-     *                 "status":3
-     *             },
-     *
-     *             @OA\Property(property="id", type="integer", example=1),
-     *             @OA\Property(property="name", type="string", example="Budi Santoso"),
-     *             @OA\Property(property="username", type="string", example="budi01"),
-     *             @OA\Property(property="email", type="string", example="budi@example.com"),
-     *             @OA\Property(property="phone", type="string", nullable=true, example="08123456789"),
-     *             @OA\Property(property="status", type="integer", example=3)
+     *                 "success":true,
+     *                 "message":"Profile loaded",
+     *                 "data":{
+     *                     "id":24,
+     *                     "name":"Tumbur Siahaan",
+     *                     "username":"ZENITH02",
+     *                     "email":"3zenithsinergiutama@gmail.com",
+     *                     "phone":"081312000697",
+     *                     "status":3,
+     *                     "member_package":"ZENNER Ultra",
+     *                     "summary":{"total_bonus":0,"network_count":0,"sponsor_count":0},
+     *                     "orders":{"total":0,"processing":0,"completed":0},
+     *                     "mitra":{"prospek":0,"aktif":0,"pasif":0},
+     *                     "network_binary":{"bonus":0,"sponsor":0,"matching":0,"pairing":0,"cashback":0,"rewards":0,"retail":0,"lifetime_cash":0},
+     *                     "promo":{"active_count":0},
+     *                     "wallet":{"balance":0,"reward_points":0,"active":true}
+     *                 }
+     *             }
      *         )
      *     ),
      *
@@ -390,12 +396,9 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'id' => $customer->id,
-            'name' => $customer->name,
-            'username' => $customer->username,
-            'email' => $customer->email,
-            'phone' => $customer->phone,
-            'status' => $customer->status,
+            'success' => true,
+            'message' => 'Profile loaded',
+            'data' => $this->profileService->getApiProfile($customer),
         ]);
     }
 

@@ -15,10 +15,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 class ContentCategoryResource extends Resource
@@ -33,16 +35,31 @@ class ContentCategoryResource extends Resource
     protected static ?string $pluralModelLabel = 'Zenner Kategori Konten';
     protected static string | UnitEnum | null $navigationGroup = 'Zenner Club';
 
-    public static function form(Schema $schema): Schema
+    public static function form(Schema $form): Schema
     {
-        return $schema
-            ->components([
-                Select::make('parent_id')
-                    ->relationship('parent', 'name'),
+        return $form
+            ->schema([
                 TextInput::make('name')
-                    ->required(),
+                    ->label('Nama')
+                    ->required()
+                    ->maxLength(255)
+                    ->live(onBlur: true) // Memicu perubahan saat kursor keluar dari input
+                    ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state))),
+
                 TextInput::make('slug')
-                    ->required(),
+                    ->label('Slug / URL')
+                    ->required()
+                    ->maxLength(255)
+                    ->unique(ignoreRecord: true) // Validasi agar tidak duplikat di DB
+                    ->helperText('Otomatis terisi dari nama, namun tetap bisa diubah manual.'),
+                Select::make('parent_id')
+                    ->label('Induk (Parent)')
+                    ->relationship('parent', 'name')
+                    ->searchable() // Memudahkan jika data sudah ribuan
+                    ->preload()    // Memuat data di awal untuk UX yang lebih cepat
+                    ->placeholder('Pilih induk jika ada')
+                    ->helperText('Kosongkan jika ini adalah kategori utama.'),
+
             ]);
     }
 
