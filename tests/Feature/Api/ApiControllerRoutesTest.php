@@ -16,6 +16,7 @@ it('registers main api routes', function (): void {
         ->and(route('api.auth.login', [], false))->toBe('/api/auth/login')
         ->and(route('api.auth.impersonation.stop', [], false))->toBe('/api/auth/impersonation/stop')
         ->and(route('api.dashboard.index', [], false))->toBe('/api/dashboard')
+        ->and(route('api.dashboard.leaderboards', [], false))->toBe('/api/dashboard/leaderboards')
         ->and(route('api.cart.items.store', [], false))->toBe('/api/cart/items');
 });
 
@@ -70,5 +71,10 @@ it('subscribes newsletter through api endpoint', function (): void {
 
 it('requires sanctum authentication for dashboard endpoint', function (): void {
     $this->getJson(route('api.dashboard.index'))
+        ->assertUnauthorized();
+});
+
+it('requires sanctum authentication for dashboard leaderboard endpoint', function (): void {
+    $this->getJson(route('api.dashboard.leaderboards'))
         ->assertUnauthorized();
 });

@@ -18,64 +18,87 @@ class UpdateAccountProfileRequest extends FormRequest
      */
     public function rules(): array
     {
-        $customerId = $this->resolveAuthenticatedCustomer()?->id;
+        $authenticatedCustomer = $this->resolveAuthenticatedCustomer();
+
+        return self::profileRules(
+            $authenticatedCustomer?->id,
+            $authenticatedCustomer?->phone,
+        );
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    public static function profileRules(
+        ?int $customerId,
+        ?string $currentPhone = null,
+        bool $enforceUnique = true,
+    ): array {
+        $usernameRules = [
+            'required',
+            'string',
+            'min:3',
+            'max:30',
+            'regex:/^[a-zA-Z0-9_.]+$/',
+        ];
+        $nikRules = [
+            'required',
+            'string',
+            'digits:16',
+        ];
+        $emailRules = [
+            'required',
+            'string',
+            'email',
+            'max:255',
+        ];
+        $phoneRules = [
+            'required',
+            'string',
+            'min:8',
+            'max:20',
+            'regex:/^[0-9+]+$/',
+        ];
+
+        if ($enforceUnique) {
+            $usernameRules[] = Rule::unique('customers', 'username')->ignore($customerId);
+            $nikRules[] = Rule::unique('customers', 'nik')->ignore($customerId);
+            $emailRules[] = Rule::unique('customers', 'email')->ignore($customerId);
+
+            $currentPhoneNormalized = trim((string) ($currentPhone ?? ''));
+
+            $phoneRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($customerId, $currentPhoneNormalized): void {
+                $phone = trim((string) $value);
+
+                if ($phone === '') {
+                    return;
+                }
+
+                if ($currentPhoneNormalized === $phone) {
+                    return;
+                }
+
+                $usageCount = Customer::query()
+                    ->where('phone', $phone)
+                    ->when(
+                        $customerId !== null,
+                        fn ($query) => $query->where('id', '!=', $customerId)
+                    )
+                    ->count();
+
+                if ($usageCount >= 7) {
+                    $fail('Nomor telepon/WhatsApp ini sudah digunakan oleh 7 akun.');
+                }
+            };
+        }
 
         return [
-            'username' => [
-                'required',
-                'string',
-                'min:3',
-                'max:30',
-                'regex:/^[a-zA-Z0-9_.]+$/',
-                Rule::unique('customers', 'username')->ignore($customerId),
-            ],
+            'username' => $usernameRules,
             'name' => ['required', 'string', 'max:255'],
-            'nik' => [
-                'required',
-                'string',
-                'digits:16',
-                Rule::unique('customers', 'nik')->ignore($customerId),
-            ],
+            'nik' => $nikRules,
             'gender' => ['required', 'string', 'in:L,P'],
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:255',
-                Rule::unique('customers', 'email')->ignore($customerId),
-            ],
-            'phone' => [
-                'required',
-                'string',
-                'min:8',
-                'max:20',
-                'regex:/^[0-9+]+$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($customerId): void {
-                    $phone = trim((string) $value);
-
-                    if ($phone === '') {
-                        return;
-                    }
-
-                    $currentPhone = trim((string) ($this->resolveAuthenticatedCustomer()?->phone ?? ''));
-
-                    if ($currentPhone === $phone) {
-                        return;
-                    }
-
-                    $usageCount = Customer::query()
-                        ->where('phone', $phone)
-                        ->when(
-                            $customerId !== null,
-                            fn ($query) => $query->where('id', '!=', $customerId)
-                        )
-                        ->count();
-
-                    if ($usageCount >= 7) {
-                        $fail('Nomor telepon/WhatsApp ini sudah digunakan oleh 7 akun.');
-                    }
-                },
-            ],
+            'email' => $emailRules,
+            'phone' => $phoneRules,
             'bank_name' => ['required', 'string', 'max:100'],
             'bank_account' => ['required', 'string', 'min:5', 'max:50', 'regex:/^[0-9]+$/'],
             'npwp_nama' => ['nullable', 'string', 'max:255'],
@@ -135,6 +158,51 @@ class UpdateAccountProfileRequest extends FormRequest
     }
 
     /**
+     * @param  array<string, mixed>  $input
+     * @return array{
+     *   username:string,
+     *   name:string,
+     *   nik:string,
+     *   gender:string,
+     *   email:string,
+     *   phone:string,
+     *   bank_name:string,
+     *   bank_account:string,
+     *   npwp_nama:string,
+     *   npwp_number:string,
+     *   npwp_jk:?int,
+     *   npwp_date:string,
+     *   npwp_alamat:string,
+     *   npwp_menikah:?string,
+     *   npwp_anak:string,
+     *   npwp_kerja:?string,
+     *   npwp_office:string
+     * }
+     */
+    public static function normalizeForValidation(array $input): array
+    {
+        return [
+            'username' => strtolower(trim((string) ($input['username'] ?? ''))),
+            'name' => trim((string) ($input['name'] ?? '')),
+            'nik' => preg_replace('/\D+/', '', (string) ($input['nik'] ?? '')) ?? '',
+            'gender' => self::normalizeGender((string) ($input['gender'] ?? '')),
+            'email' => strtolower(trim((string) ($input['email'] ?? ''))),
+            'phone' => preg_replace('/\s+/', '', trim((string) ($input['phone'] ?? ''))) ?? '',
+            'bank_name' => trim((string) ($input['bank_name'] ?? '')),
+            'bank_account' => preg_replace('/\D+/', '', (string) ($input['bank_account'] ?? '')) ?? '',
+            'npwp_nama' => trim((string) ($input['npwp_nama'] ?? '')),
+            'npwp_number' => trim((string) ($input['npwp_number'] ?? '')),
+            'npwp_jk' => self::normalizeNpwpGender($input['npwp_jk'] ?? null),
+            'npwp_date' => trim((string) ($input['npwp_date'] ?? '')),
+            'npwp_alamat' => trim((string) ($input['npwp_alamat'] ?? '')),
+            'npwp_menikah' => self::normalizeYn($input['npwp_menikah'] ?? null),
+            'npwp_anak' => preg_replace('/\D+/', '', (string) ($input['npwp_anak'] ?? '')) ?? '',
+            'npwp_kerja' => self::normalizeYn($input['npwp_kerja'] ?? null),
+            'npwp_office' => trim((string) ($input['npwp_office'] ?? '')),
+        ];
+    }
+
+    /**
      * @return array{
      *   username:string,
      *   name:string,
@@ -159,43 +227,27 @@ class UpdateAccountProfileRequest extends FormRequest
      */
     public function payload(): array
     {
+        $normalized = self::normalizeForValidation($this->all());
+
         return [
-            'username' => strtolower(trim((string) $this->input('username'))),
-            'name' => trim((string) $this->input('name')),
-            'nik' => preg_replace('/\D+/', '', (string) $this->input('nik')) ?? '',
-            'gender' => $this->normalizeGender((string) $this->input('gender')),
-            'email' => strtolower(trim((string) $this->input('email'))),
-            'phone' => preg_replace('/\s+/', '', trim((string) $this->input('phone'))) ?? '',
-            'bank_name' => trim((string) $this->input('bank_name')),
-            'bank_account' => preg_replace('/\D+/', '', (string) $this->input('bank_account')) ?? '',
-            'npwp' => $this->npwpPayload(),
+            'username' => $normalized['username'],
+            'name' => $normalized['name'],
+            'nik' => $normalized['nik'],
+            'gender' => $normalized['gender'],
+            'email' => $normalized['email'],
+            'phone' => $normalized['phone'],
+            'bank_name' => $normalized['bank_name'],
+            'bank_account' => $normalized['bank_account'],
+            'npwp' => $this->npwpPayload($normalized),
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'username' => strtolower(trim((string) $this->input('username', ''))),
-            'name' => trim((string) $this->input('name', '')),
-            'nik' => preg_replace('/\D+/', '', (string) $this->input('nik', '')) ?? '',
-            'gender' => $this->normalizeGender((string) $this->input('gender', '')),
-            'email' => strtolower(trim((string) $this->input('email', ''))),
-            'phone' => preg_replace('/\s+/', '', trim((string) $this->input('phone', ''))) ?? '',
-            'bank_name' => trim((string) $this->input('bank_name', '')),
-            'bank_account' => preg_replace('/\D+/', '', (string) $this->input('bank_account', '')) ?? '',
-            'npwp_nama' => trim((string) $this->input('npwp_nama', '')),
-            'npwp_number' => trim((string) $this->input('npwp_number', '')),
-            'npwp_jk' => $this->normalizeNpwpGender($this->input('npwp_jk')),
-            'npwp_date' => trim((string) $this->input('npwp_date', '')),
-            'npwp_alamat' => trim((string) $this->input('npwp_alamat', '')),
-            'npwp_menikah' => $this->normalizeYn($this->input('npwp_menikah')),
-            'npwp_anak' => preg_replace('/\D+/', '', (string) $this->input('npwp_anak', '')) ?? '',
-            'npwp_kerja' => $this->normalizeYn($this->input('npwp_kerja')),
-            'npwp_office' => trim((string) $this->input('npwp_office', '')),
-        ]);
+        $this->merge(self::normalizeForValidation($this->all()));
     }
 
-    private function normalizeGender(string $gender): string
+    private static function normalizeGender(string $gender): string
     {
         $normalized = strtoupper(trim($gender));
 
@@ -206,7 +258,7 @@ class UpdateAccountProfileRequest extends FormRequest
         };
     }
 
-    private function normalizeNpwpGender(mixed $value): ?int
+    private static function normalizeNpwpGender(mixed $value): ?int
     {
         if ($value === null || $value === '') {
             return null;
@@ -221,7 +273,7 @@ class UpdateAccountProfileRequest extends FormRequest
         };
     }
 
-    private function normalizeYn(mixed $value): ?string
+    private static function normalizeYn(mixed $value): ?string
     {
         if ($value === null || $value === '') {
             return null;
@@ -249,18 +301,18 @@ class UpdateAccountProfileRequest extends FormRequest
      *   office:?string
      * }|null
      */
-    private function npwpPayload(): ?array
+    private function npwpPayload(array $normalized): ?array
     {
         $payload = [
-            'nama' => $this->nullableString($this->input('npwp_nama')),
-            'npwp' => $this->nullableString($this->input('npwp_number')),
-            'jk' => $this->normalizeNpwpGender($this->input('npwp_jk')),
-            'npwp_date' => $this->nullableString($this->input('npwp_date')),
-            'alamat' => $this->nullableString($this->input('npwp_alamat')),
-            'menikah' => $this->normalizeYn($this->input('npwp_menikah')),
-            'anak' => $this->nullableString($this->input('npwp_anak')),
-            'kerja' => $this->normalizeYn($this->input('npwp_kerja')),
-            'office' => $this->nullableString($this->input('npwp_office')),
+            'nama' => self::nullableString($normalized['npwp_nama'] ?? null),
+            'npwp' => self::nullableString($normalized['npwp_number'] ?? null),
+            'jk' => self::normalizeNpwpGender($normalized['npwp_jk'] ?? null),
+            'npwp_date' => self::nullableString($normalized['npwp_date'] ?? null),
+            'alamat' => self::nullableString($normalized['npwp_alamat'] ?? null),
+            'menikah' => self::normalizeYn($normalized['npwp_menikah'] ?? null),
+            'anak' => self::nullableString($normalized['npwp_anak'] ?? null),
+            'kerja' => self::normalizeYn($normalized['npwp_kerja'] ?? null),
+            'office' => self::nullableString($normalized['npwp_office'] ?? null),
         ];
 
         $hasAnyValue = collect($payload)->contains(fn (mixed $value): bool => $value !== null && $value !== '');
@@ -272,7 +324,7 @@ class UpdateAccountProfileRequest extends FormRequest
         return $payload;
     }
 
-    private function nullableString(mixed $value): ?string
+    private static function nullableString(mixed $value): ?string
     {
         $normalized = trim((string) ($value ?? ''));
 

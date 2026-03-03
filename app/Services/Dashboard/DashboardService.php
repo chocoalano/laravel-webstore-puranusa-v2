@@ -272,7 +272,18 @@ class DashboardService
     }
 
     /**
-     * @param  array{search:string,type:string,status:string,date_from:string,date_to:string}  $normalizedWalletFilters
+     * @param  array{
+     *   search:string|null,
+     *   type:string|null,
+     *   status:string|null,
+     *   direction:string|null,
+     *   payment_method:string|null,
+     *   date_from:string|null,
+     *   date_to:string|null,
+     *   amount_min:float|null,
+     *   amount_max:float|null,
+     *   sort:string
+     * }  $normalizedWalletFilters
      * @return array{
      *   transactions:array<string, mixed>,
      *   has_pending_withdrawal:bool
@@ -854,6 +865,164 @@ class DashboardService
             'balance' => (float) ($freshCustomer->ewallet_saldo ?? 0),
             'message' => 'Permintaan withdrawal berhasil dikirim.',
         ];
+    }
+
+    /**
+     * @param  array{
+     *   search?:string|null,
+     *   q?:string|null,
+     *   type?:string|null,
+     *   status?:string|null,
+     *   direction?:string|null,
+     *   payment_method?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null,
+     *   amount_min?:float|int|string|null,
+     *   amount_max?:float|int|string|null,
+     *   sort?:string|null
+     * } $filters
+     * @return array{
+     *   summary:array{
+     *     balance_available:float,
+     *     topup_30d:float,
+     *     withdrawal_30d:float,
+     *     netflow_30d:float,
+     *     pending_count:int
+     *   },
+     *   window:array{
+     *     days:int,
+     *     from:string,
+     *     to:string,
+     *     timezone:string
+     *   },
+     *   data:list<array{
+     *     id:int|string,
+     *     type:string,
+     *     type_label:string,
+     *     direction:string,
+     *     status:string,
+     *     status_label:string,
+     *     amount:float,
+     *     balance_before:float,
+     *     balance_after:float,
+     *     payment_method:mixed,
+     *     transaction_ref:mixed,
+     *     created_at:?string,
+     *     completed_at:?string,
+     *     description:string
+     *   }>,
+     *   current_page:int,
+     *   next_page:int|null,
+     *   has_more:bool,
+     *   per_page:int,
+     *   total:int
+     * }
+     */
+    public function getWalletTransactionsPagination(
+        Customer $authenticatedCustomer,
+        int $page = 1,
+        int $perPage = 15,
+        array $filters = [],
+    ): array {
+        $customer = $this->dashboardRepository->findCustomerById($authenticatedCustomer->id);
+
+        if (! $customer) {
+            throw ValidationException::withMessages([
+                'customer' => 'Customer tidak ditemukan.',
+            ]);
+        }
+
+        $normalizedFilters = $this->normalizeWalletFilters($filters);
+        $walletPagination = $this->dashboardRepository->getPaginatedWalletTransactions(
+            $customer->id,
+            max(1, min(100, $perPage)),
+            max(1, $page),
+            $normalizedFilters,
+        );
+
+        $window = $this->buildWalletSummaryWindow(30);
+        $summary = $this->dashboardRepository->getWalletTransactionSummary(
+            $customer->id,
+            $window['from_at'],
+            $window['to_at'],
+        );
+
+        $topupLast30Days = (float) ($summary['topup_total'] ?? 0);
+        $withdrawalLast30Days = (float) ($summary['withdrawal_total'] ?? 0);
+
+        return array_merge([
+            'summary' => [
+                'balance_available' => (float) ($customer->ewallet_saldo ?? 0),
+                'topup_30d' => $topupLast30Days,
+                'withdrawal_30d' => $withdrawalLast30Days,
+                'netflow_30d' => $topupLast30Days - $withdrawalLast30Days,
+                'pending_count' => (int) ($summary['pending_count'] ?? 0),
+            ],
+            'window' => [
+                'days' => $window['days'],
+                'from' => $window['from_at']->toIso8601String(),
+                'to' => $window['to_at']->toIso8601String(),
+                'timezone' => $window['timezone'],
+            ],
+        ], $this->formatWalletTransactionsListPagination($walletPagination));
+    }
+
+    /**
+     * @param array{
+     *   q?:string|null,
+     *   status?:string|null,
+     *   sort?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null
+     * } $filters
+     * @return array{
+     *   data:list<array<string,mixed>>,
+     *   current_page:int,
+     *   next_page:int|null,
+     *   has_more:bool,
+     *   per_page:int,
+     *   total:int
+     * }
+     */
+    public function getOrdersPagination(
+        Customer $authenticatedCustomer,
+        int $page = 1,
+        int $perPage = 10,
+        array $filters = [],
+    ): array {
+        $customer = $this->dashboardRepository->findCustomerById($authenticatedCustomer->id);
+
+        if (! $customer) {
+            throw ValidationException::withMessages([
+                'customer' => 'Customer tidak ditemukan.',
+            ]);
+        }
+
+        $normalizedFilters = $this->normalizeOrdersFilters($filters);
+        $ordersPagination = $this->dashboardRepository->getPaginatedOrders(
+            $customer->id,
+            max(1, min(100, $perPage)),
+            max(1, $page),
+            $normalizedFilters,
+        );
+
+        return $this->formatOrders($ordersPagination);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getOrderDetail(Customer $authenticatedCustomer, int $orderId): array
+    {
+        $order = $this->dashboardRepository->findOrderForCustomer($authenticatedCustomer->id, $orderId);
+
+        if (! $order) {
+            throw ValidationException::withMessages([
+                'order' => 'Order tidak ditemukan.',
+            ]);
+        }
+
+        return $this->formatOrder($order);
     }
 
     /**
@@ -1701,7 +1870,18 @@ class DashboardService
     }
 
     /**
-     * @param  array{search?:string|null,type?:string|null,status?:string|null}  $filters
+     * @param  array{
+     *   search?:string|null,
+     *   type?:string|null,
+     *   status?:string|null,
+     *   direction?:string|null,
+     *   payment_method?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null,
+     *   amount_min?:float|int|string|null,
+     *   amount_max?:float|int|string|null,
+     *   sort?:string|null
+     * }  $filters
      * @return array{
      *   data:list<array<string, mixed>>,
      *   current_page:int,
@@ -1709,7 +1889,18 @@ class DashboardService
      *   has_more:bool,
      *   per_page:int,
      *   total:int,
-     *   filters:array{search:string|null,type:string|null,status:string|null}
+     *   filters:array{
+     *     search:string|null,
+     *     type:string|null,
+     *     status:string|null,
+     *     direction:string|null,
+     *     payment_method:string|null,
+     *     date_from:string|null,
+     *     date_to:string|null,
+     *     amount_min:float|null,
+     *     amount_max:float|null,
+     *     sort:string
+     *   }
      * }
      */
     private function formatWalletTransactionsPagination(LengthAwarePaginator $paginator, array $filters): array
@@ -1728,6 +1919,91 @@ class DashboardService
             'per_page' => $paginator->perPage(),
             'total' => $paginator->total(),
             'filters' => $this->normalizeWalletFilters($filters),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   data:list<array{
+     *     id:int|string,
+     *     type:string,
+     *     type_label:string,
+     *     direction:string,
+     *     status:string,
+     *     status_label:string,
+     *     amount:float,
+     *     balance_before:float,
+     *     balance_after:float,
+     *     payment_method:mixed,
+     *     transaction_ref:mixed,
+     *     created_at:?string,
+     *     completed_at:?string,
+     *     description:string
+     *   }>,
+     *   current_page:int,
+     *   next_page:int|null,
+     *   has_more:bool,
+     *   per_page:int,
+     *   total:int
+     * }
+     */
+    private function formatWalletTransactionsListPagination(LengthAwarePaginator $paginator): array
+    {
+        $transactions = collect($paginator->items())
+            ->filter(fn (mixed $item): bool => $item instanceof CustomerWalletTransaction)
+            ->map(fn (CustomerWalletTransaction $transaction): array => $this->formatWalletTransactionListItem($transaction))
+            ->values()
+            ->all();
+
+        return [
+            'data' => $transactions,
+            'current_page' => $paginator->currentPage(),
+            'next_page' => $paginator->hasMorePages() ? $paginator->currentPage() + 1 : null,
+            'has_more' => $paginator->hasMorePages(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   id:int|string,
+     *   type:string,
+     *   type_label:string,
+     *   direction:string,
+     *   status:string,
+     *   status_label:string,
+     *   amount:float,
+     *   balance_before:float,
+     *   balance_after:float,
+     *   payment_method:mixed,
+     *   transaction_ref:mixed,
+     *   created_at:?string,
+     *   completed_at:?string,
+     *   description:string
+     * }
+     */
+    private function formatWalletTransactionListItem(CustomerWalletTransaction $transaction): array
+    {
+        $type = $this->normalizeWalletTransactionType((string) ($transaction->type ?? ''));
+        $status = $this->normalizeWalletTransactionStatus((string) ($transaction->status ?? ''));
+        $timezone = (string) config('app.timezone', 'Asia/Jakarta');
+
+        return [
+            'id' => $transaction->id,
+            'type' => $type,
+            'type_label' => $this->walletTransactionTypeLabel($type),
+            'direction' => $this->walletTransactionDirection($type),
+            'status' => $status,
+            'status_label' => $this->walletTransactionStatusLabel($status),
+            'amount' => (float) ($transaction->amount ?? 0),
+            'balance_before' => (float) ($transaction->balance_before ?? 0),
+            'balance_after' => (float) ($transaction->balance_after ?? 0),
+            'payment_method' => $transaction->payment_method,
+            'transaction_ref' => $transaction->transaction_ref,
+            'created_at' => $transaction->created_at?->copy()?->timezone($timezone)->toIso8601String(),
+            'completed_at' => $transaction->completed_at?->copy()?->timezone($timezone)->toIso8601String(),
+            'description' => $this->walletTransactionDescription($transaction, $type),
         ];
     }
 
@@ -1838,14 +2114,49 @@ class DashboardService
     }
 
     /**
-     * @param  array{search?:string|null,type?:string|null,status?:string|null}  $filters
-     * @return array{search:string|null,type:string|null,status:string|null}
+     * @param  array{
+     *   search?:string|null,
+     *   q?:string|null,
+     *   type?:string|null,
+     *   status?:string|null,
+     *   direction?:string|null,
+     *   payment_method?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null,
+     *   amount_min?:float|int|string|null,
+     *   amount_max?:float|int|string|null,
+     *   sort?:string|null
+     * }  $filters
+     * @return array{
+     *   search:string|null,
+     *   type:string|null,
+     *   status:string|null,
+     *   direction:string|null,
+     *   payment_method:string|null,
+     *   date_from:string|null,
+     *   date_to:string|null,
+     *   amount_min:float|null,
+     *   amount_max:float|null,
+     *   sort:string
+     * }
      */
     private function normalizeWalletFilters(array $filters): array
     {
-        $search = trim((string) ($filters['search'] ?? ''));
+        $search = trim((string) ($filters['search'] ?? ($filters['q'] ?? '')));
         $type = strtolower(trim((string) ($filters['type'] ?? '')));
         $status = strtolower(trim((string) ($filters['status'] ?? '')));
+        $direction = strtolower(trim((string) ($filters['direction'] ?? '')));
+        $paymentMethod = strtolower(trim((string) ($filters['payment_method'] ?? '')));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
+        $sort = strtolower(trim((string) ($filters['sort'] ?? 'newest')));
+
+        $amountMin = is_numeric($filters['amount_min'] ?? null)
+            ? max(0, (float) $filters['amount_min'])
+            : null;
+        $amountMax = is_numeric($filters['amount_max'] ?? null)
+            ? max(0, (float) $filters['amount_max'])
+            : null;
 
         if ($type === '' || $type === 'all' || ! in_array($type, $this->walletSupportedTypes(), true)) {
             $type = null;
@@ -1855,10 +2166,71 @@ class DashboardService
             $status = null;
         }
 
+        if ($direction === '' || $direction === 'all' || ! in_array($direction, $this->walletSupportedDirections(), true)) {
+            $direction = null;
+        }
+
+        if ($amountMin !== null && $amountMax !== null && $amountMax < $amountMin) {
+            $amountMax = $amountMin;
+        }
+
+        if (! in_array($sort, ['newest', 'oldest', 'highest', 'lowest'], true)) {
+            $sort = 'newest';
+        }
+
         return [
             'search' => $search !== '' ? $search : null,
             'type' => $type,
             'status' => $status,
+            'direction' => $direction,
+            'payment_method' => $paymentMethod !== '' ? $paymentMethod : null,
+            'date_from' => $dateFrom !== '' ? $dateFrom : null,
+            'date_to' => $dateTo !== '' ? $dateTo : null,
+            'amount_min' => $amountMin,
+            'amount_max' => $amountMax,
+            'sort' => $sort,
+        ];
+    }
+
+    /**
+     * @param array{
+     *   q?:string|null,
+     *   status?:string|null,
+     *   sort?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null
+     * } $filters
+     * @return array{
+     *   q:string|null,
+     *   status:string,
+     *   sort:string,
+     *   date_from:string|null,
+     *   date_to:string|null
+     * }
+     */
+    private function normalizeOrdersFilters(array $filters): array
+    {
+        $status = strtolower(trim((string) ($filters['status'] ?? 'all')));
+        $sort = strtolower(trim((string) ($filters['sort'] ?? 'newest')));
+
+        if (! in_array($status, ['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'], true)) {
+            $status = 'all';
+        }
+
+        if (! in_array($sort, ['newest', 'oldest', 'highest', 'lowest'], true)) {
+            $sort = 'newest';
+        }
+
+        $query = trim((string) ($filters['q'] ?? ''));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
+
+        return [
+            'q' => $query !== '' ? $query : null,
+            'status' => $status,
+            'sort' => $sort,
+            'date_from' => $dateFrom !== '' ? $dateFrom : null,
+            'date_to' => $dateTo !== '' ? $dateTo : null,
         ];
     }
 
@@ -1876,6 +2248,36 @@ class DashboardService
     private function walletSupportedStatuses(): array
     {
         return ['pending', 'completed', 'failed', 'cancelled'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function walletSupportedDirections(): array
+    {
+        return ['credit', 'debit'];
+    }
+
+    /**
+     * @return array{
+     *   days:int,
+     *   from_at:CarbonInterface,
+     *   to_at:CarbonInterface,
+     *   timezone:string
+     * }
+     */
+    private function buildWalletSummaryWindow(int $days): array
+    {
+        $safeDays = max(1, $days);
+        $timezone = (string) config('app.timezone', 'Asia/Jakarta');
+        $now = now()->timezone($timezone);
+
+        return [
+            'days' => $safeDays,
+            'from_at' => $now->copy()->subDays($safeDays - 1)->startOfDay(),
+            'to_at' => $now->copy()->endOfDay(),
+            'timezone' => $timezone,
+        ];
     }
 
     private function mapMidtransWalletStatus(string $transactionStatus, string $fraudStatus = ''): string

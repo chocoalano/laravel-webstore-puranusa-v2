@@ -109,14 +109,62 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
             ->count();
     }
 
-    public function getPaginatedOrders(int $customerId, int $perPage = 10, int $page = 1): LengthAwarePaginator
-    {
+    public function getPaginatedOrders(
+        int $customerId,
+        int $perPage = 10,
+        int $page = 1,
+        array $filters = [],
+    ): LengthAwarePaginator {
+        $safePerPage = max(1, $perPage);
+        $safePage = max(1, $page);
+        $search = trim((string) ($filters['q'] ?? ''));
+        $status = strtolower(trim((string) ($filters['status'] ?? '')));
+        $sort = strtolower(trim((string) ($filters['sort'] ?? 'newest')));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
+
         return Order::query()
             ->withCount('items')
             ->with($this->orderRelations())
             ->where('customer_id', $customerId)
-            ->orderByDesc('created_at')
-            ->paginate($perPage, ['*'], 'orders_page', $page);
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $inner) use ($search): void {
+                    $inner->where('order_no', 'like', '%'.$search.'%')
+                        ->orWhere('notes', 'like', '%'.$search.'%')
+                        ->orWhereHas('items', function (Builder $itemQuery) use ($search): void {
+                            $itemQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('sku', 'like', '%'.$search.'%');
+                        });
+
+                    if (is_numeric($search)) {
+                        $inner->orWhereKey((int) $search);
+                    }
+                });
+            })
+            ->when($status !== '' && $status !== 'all', function (Builder $query) use ($status): void {
+                $query->whereRaw('LOWER(status) = ?', [$status]);
+            })
+            ->when($dateFrom !== '', function (Builder $query) use ($dateFrom): void {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo !== '', function (Builder $query) use ($dateTo): void {
+                $query->whereDate('created_at', '<=', $dateTo);
+            })
+            ->when($sort === 'oldest', function (Builder $query): void {
+                $query->orderBy('created_at');
+            })
+            ->when($sort === 'highest', function (Builder $query): void {
+                $query->orderByDesc('grand_total')
+                    ->orderByDesc('created_at');
+            })
+            ->when($sort === 'lowest', function (Builder $query): void {
+                $query->orderBy('grand_total')
+                    ->orderByDesc('created_at');
+            })
+            ->when(! in_array($sort, ['oldest', 'highest', 'lowest'], true), function (Builder $query): void {
+                $query->orderByDesc('created_at');
+            })
+            ->paginate($safePerPage, ['*'], 'orders_page', $safePage);
     }
 
     public function findOrderForCustomer(int $customerId, int $orderId): ?Order
@@ -640,33 +688,109 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
         $safePerPage = max(1, $perPage);
         $safePage = max(1, $page);
         $search = trim((string) ($filters['search'] ?? ''));
-        $type = trim((string) ($filters['type'] ?? ''));
-        $status = trim((string) ($filters['status'] ?? ''));
+        $type = strtolower(trim((string) ($filters['type'] ?? '')));
+        $status = strtolower(trim((string) ($filters['status'] ?? '')));
+        $direction = strtolower(trim((string) ($filters['direction'] ?? '')));
+        $paymentMethod = strtolower(trim((string) ($filters['payment_method'] ?? '')));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
+        $sort = strtolower(trim((string) ($filters['sort'] ?? 'newest')));
+        $amountMin = is_numeric($filters['amount_min'] ?? null) ? max(0, (float) $filters['amount_min']) : null;
+        $amountMax = is_numeric($filters['amount_max'] ?? null) ? max(0, (float) $filters['amount_max']) : null;
 
         return CustomerWalletTransaction::query()
             ->where('customer_id', $customerId)
-            ->when($type !== '' && strtolower($type) !== 'all', function (Builder $query) use ($type): void {
-                $query->where('type', strtolower($type));
+            ->when($type !== '' && $type !== 'all', function (Builder $query) use ($type): void {
+                $query->whereRaw('LOWER(type) = ?', [$type]);
             })
-            ->when($status !== '' && strtolower($status) !== 'all', function (Builder $query) use ($status): void {
-                $normalizedStatus = strtolower($status);
-
-                $query->where(function (Builder $inner) use ($normalizedStatus): void {
-                    $inner->where('status', $normalizedStatus)
-                        ->orWhere('status', strtoupper($normalizedStatus));
-                });
+            ->when($status !== '' && $status !== 'all', function (Builder $query) use ($status): void {
+                $query->whereRaw('LOWER(status) = ?', [$status]);
+            })
+            ->when($direction === 'credit', function (Builder $query): void {
+                $query->whereRaw('LOWER(type) in (?, ?, ?)', ['topup', 'bonus', 'refund']);
+            })
+            ->when($direction === 'debit', function (Builder $query): void {
+                $query->whereRaw('LOWER(type) in (?, ?, ?)', ['withdrawal', 'purchase', 'tax']);
             })
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $inner) use ($search): void {
-                    $inner->where('transaction_ref', 'like', '%' . $search . '%')
-                        ->orWhere('payment_method', 'like', '%' . $search . '%')
-                        ->orWhere('midtrans_transaction_id', 'like', '%' . $search . '%')
-                        ->orWhere('notes', 'like', '%' . $search . '%');
+                    $inner->where('transaction_ref', 'like', '%'.$search.'%')
+                        ->orWhere('payment_method', 'like', '%'.$search.'%')
+                        ->orWhere('midtrans_transaction_id', 'like', '%'.$search.'%')
+                        ->orWhere('notes', 'like', '%'.$search.'%');
+
+                    if (is_numeric($search)) {
+                        $inner->orWhereKey((int) $search);
+                    }
                 });
             })
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->when($paymentMethod !== '', function (Builder $query) use ($paymentMethod): void {
+                $query->whereRaw('LOWER(payment_method) like ?', ['%'.$paymentMethod.'%']);
+            })
+            ->when($dateFrom !== '', function (Builder $query) use ($dateFrom): void {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo !== '', function (Builder $query) use ($dateTo): void {
+                $query->whereDate('created_at', '<=', $dateTo);
+            })
+            ->when($amountMin !== null, function (Builder $query) use ($amountMin): void {
+                $query->where('amount', '>=', $amountMin);
+            })
+            ->when($amountMax !== null, function (Builder $query) use ($amountMax): void {
+                $query->where('amount', '<=', $amountMax);
+            })
+            ->when($sort === 'oldest', function (Builder $query): void {
+                $query->orderBy('created_at')
+                    ->orderBy('id');
+            })
+            ->when($sort === 'highest', function (Builder $query): void {
+                $query->orderByDesc('amount')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id');
+            })
+            ->when($sort === 'lowest', function (Builder $query): void {
+                $query->orderBy('amount')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id');
+            })
+            ->when(! in_array($sort, ['oldest', 'highest', 'lowest'], true), function (Builder $query): void {
+                $query->orderByDesc('created_at')
+                    ->orderByDesc('id');
+            })
             ->paginate($safePerPage, ['*'], 'wallet_page', $safePage);
+    }
+
+    public function getWalletTransactionSummary(
+        int $customerId,
+        CarbonInterface $from,
+        CarbonInterface $to,
+    ): array {
+        $completedStatuses = ['completed', 'success', 'succeeded', 'settlement'];
+        $pendingStatuses = ['pending', 'challenge'];
+
+        $baseWindowQuery = CustomerWalletTransaction::query()
+            ->where('customer_id', $customerId)
+            ->whereBetween('created_at', [$from, $to]);
+
+        $topupTotal = (float) (clone $baseWindowQuery)
+            ->whereRaw('LOWER(type) = ?', ['topup'])
+            ->whereRaw('LOWER(status) in (?, ?, ?, ?)', $completedStatuses)
+            ->sum('amount');
+
+        $withdrawalTotal = (float) (clone $baseWindowQuery)
+            ->whereRaw('LOWER(type) = ?', ['withdrawal'])
+            ->whereRaw('LOWER(status) in (?, ?, ?, ?)', $completedStatuses)
+            ->sum('amount');
+
+        $pendingCount = (int) (clone $baseWindowQuery)
+            ->whereRaw('LOWER(status) in (?, ?)', $pendingStatuses)
+            ->count();
+
+        return [
+            'topup_total' => $topupTotal,
+            'withdrawal_total' => $withdrawalTotal,
+            'pending_count' => $pendingCount,
+        ];
     }
 
     public function hasPendingWithdrawal(int $customerId): bool

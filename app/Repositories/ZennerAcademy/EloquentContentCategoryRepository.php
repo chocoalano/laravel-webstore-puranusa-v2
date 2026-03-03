@@ -53,7 +53,13 @@ class EloquentContentCategoryRepository implements ContentCategoryRepositoryInte
             ->with([
                 'parent',
                 'children' => function ($query): void {
-                    $query->withCount('contents')->orderBy('name');
+                    $query->withCount('contents')
+                        ->with([
+                            'contents' => function ($query): void {
+                                $query->select('id', 'category_id', 'title', 'slug');
+                            },
+                        ])
+                        ->orderBy('name');
                 },
                 'contents' => function ($query): void {
                     $query->select('id', 'category_id', 'title', 'slug');

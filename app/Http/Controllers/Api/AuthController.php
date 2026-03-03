@@ -5,13 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\LoginCustomerApiRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Dashboard\UpdateAccountProfileRequest;
 use App\Models\Customer;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\CustomerProfileService;
 use App\Services\Auth\CustomerRegistrationService;
+use App\Services\Dashboard\DashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Unique;
+use Illuminate\Validation\ValidationException;
 use OpenApi\Annotations as OA;
 
 class AuthController extends Controller
@@ -193,7 +197,7 @@ class AuthController extends Controller
      *     path="/api/auth/login",
      *     tags={"Customer Auth"},
      *     summary="Login customer API",
-     *     description="Autentikasi customer menggunakan username dan password, lalu generate Sanctum personal access token.",
+     *     description="Autentikasi customer menggunakan username dan password untuk member aktif (status 3), lalu generate Sanctum personal access token.",
      *
      *     @OA\RequestBody(
      *         required=true,
@@ -269,7 +273,11 @@ class AuthController extends Controller
             $request->input('device_name')
         );
 
-        if ($result === null) {
+        if (
+            $result === null
+            || ! (($result['customer'] ?? null) instanceof Customer)
+            || (int) ($result['customer']->status ?? 0) !== 3
+        ) {
             return response()->json([
                 'message' => 'Username atau kata sandi salah.',
                 'errors' => [
@@ -366,6 +374,8 @@ class AuthController extends Controller
      *                     "phone":"081312000697",
      *                     "status":3,
      *                     "member_package":"ZENNER Ultra",
+     *                     "referral_code":"ABCD1234",
+     *                     "account_compleated":true,
      *                     "summary":{"total_bonus":0,"network_count":0,"sponsor_count":0},
      *                     "orders":{"total":0,"processing":0,"completed":0},
      *                     "mitra":{"prospek":0,"aktif":0,"pasif":0},
@@ -400,6 +410,212 @@ class AuthController extends Controller
             'message' => 'Profile loaded',
             'data' => $this->profileService->getApiProfile($customer),
         ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/auth/me-form",
+     *     tags={"Customer Auth"},
+     *     summary="Form profil customer saat ini",
+     *     description="Mengembalikan data nilai form profil customer beserta metadata validasi UpdateAccountProfileRequest.",
+     *     security={{"sanctum":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Data form profil berhasil diambil",
+     *
+     *         @OA\JsonContent(
+     *             example={
+     *                 "message":"Form profil akun berhasil diambil.",
+     *                 "data":{
+     *                     "form":{
+     *                         "username":"budi.santoso",
+     *                         "name":"Budi Santoso",
+     *                         "nik":"3276010101010001",
+     *                         "gender":"L",
+     *                         "email":"budi@example.com",
+     *                         "phone":"08123456789",
+     *                         "bank_name":"BCA",
+     *                         "bank_account":"1234567890",
+     *                         "npwp_nama":"Budi Santoso",
+     *                         "npwp_number":"12.345.678.9-012.000",
+     *                         "npwp_jk":1,
+     *                         "npwp_date":"2024-01-31",
+     *                         "npwp_alamat":"Jl. Merdeka No. 1, Bandung",
+     *                         "npwp_menikah":"Y",
+     *                         "npwp_anak":"2",
+     *                         "npwp_kerja":"Y",
+     *                         "npwp_office":"PT Contoh Sukses"
+     *                     },
+     *                     "validation":{
+     *                         "required_fields":{"username","name","nik","gender","email","phone","bank_name","bank_account"},
+     *                         "rules":{"username":{"required","string","min:3","max:30","regex:/^[a-zA-Z0-9_.]+$/","unique"}},
+     *                         "messages":{"username.required":"Username wajib diisi."}
+     *                     }
+     *                 }
+     *             }
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=401,
+     *         description="Tidak terautentikasi",
+     *
+     *         @OA\JsonContent(example={"message":"Tidak terautentikasi."})
+     *     )
+     * )
+     */
+    public function me_form(Request $request): JsonResponse
+    {
+        $authenticatedCustomer = $request->user('sanctum');
+
+        if (! $authenticatedCustomer instanceof Customer) {
+            return response()->json([
+                'message' => 'Tidak terautentikasi.',
+            ], 401);
+        }
+
+        $customer = Customer::query()
+            ->with('npwp')
+            ->find((int) $authenticatedCustomer->id) ?? $authenticatedCustomer;
+
+        $npwp = $customer->relationLoaded('npwp') ? $customer->getRelation('npwp') : null;
+        $rules = UpdateAccountProfileRequest::profileRules((int) $customer->id, $customer->phone);
+        $form = UpdateAccountProfileRequest::normalizeForValidation([
+            'username' => $customer->username,
+            'name' => $customer->name,
+            'nik' => $customer->nik,
+            'gender' => $customer->gender,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'bank_name' => $customer->bank_name,
+            'bank_account' => $customer->bank_account,
+            'npwp_nama' => $npwp?->nama,
+            'npwp_number' => $npwp?->npwp,
+            'npwp_jk' => $npwp?->jk,
+            'npwp_date' => $npwp?->npwp_date?->toDateString(),
+            'npwp_alamat' => $npwp?->alamat,
+            'npwp_menikah' => $npwp?->menikah,
+            'npwp_anak' => $npwp?->anak,
+            'npwp_kerja' => $npwp?->kerja,
+            'npwp_office' => $npwp?->office,
+        ]);
+
+        return response()->json([
+            'message' => 'Form profil akun berhasil diambil.',
+            'data' => [
+                'form' => $form,
+                'validation' => [
+                    'required_fields' => collect($rules)
+                        ->filter(fn (array $fieldRules): bool => in_array('required', $fieldRules, true))
+                        ->keys()
+                        ->values()
+                        ->all(),
+                    'rules' => $this->serializeValidationRules($rules),
+                    'messages' => (new UpdateAccountProfileRequest)->messages(),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/api/auth/me",
+     *     tags={"Customer Auth"},
+     *     summary="Perbarui profil customer saat ini",
+     *     description="Memperbarui data profil customer yang sedang login menggunakan payload form profil customer.",
+     *     security={{"sanctum":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *             required={"username","name","nik","gender","email","phone","bank_name","bank_account"},
+     *
+     *             @OA\Property(property="username", type="string", example="budi.santoso"),
+     *             @OA\Property(property="name", type="string", example="Budi Santoso"),
+     *             @OA\Property(property="nik", type="string", example="3276010101010001"),
+     *             @OA\Property(property="gender", type="string", enum={"L","P"}, example="L"),
+     *             @OA\Property(property="email", type="string", format="email", example="budi@example.com"),
+     *             @OA\Property(property="phone", type="string", example="08123456789"),
+     *             @OA\Property(property="bank_name", type="string", example="BCA"),
+     *             @OA\Property(property="bank_account", type="string", example="1234567890"),
+     *             @OA\Property(property="npwp_nama", type="string", nullable=true, example="Budi Santoso"),
+     *             @OA\Property(property="npwp_number", type="string", nullable=true, example="12.345.678.9-012.000"),
+     *             @OA\Property(property="npwp_jk", type="integer", nullable=true, enum={1,2}, example=1),
+     *             @OA\Property(property="npwp_date", type="string", format="date", nullable=true, example="2024-01-31"),
+     *             @OA\Property(property="npwp_alamat", type="string", nullable=true, example="Jl. Merdeka No. 1, Bandung"),
+     *             @OA\Property(property="npwp_menikah", type="string", nullable=true, enum={"Y","N"}, example="Y"),
+     *             @OA\Property(property="npwp_anak", type="string", nullable=true, example="2"),
+     *             @OA\Property(property="npwp_kerja", type="string", nullable=true, enum={"Y","N"}, example="Y"),
+     *             @OA\Property(property="npwp_office", type="string", nullable=true, example="PT Contoh Sukses")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=200, description="Profil berhasil diperbarui", @OA\JsonContent(example={"message":"Profil akun berhasil diperbarui."})),
+     *     @OA\Response(response=401, description="Tidak terautentikasi", @OA\JsonContent(example={"message":"Tidak terautentikasi."})),
+     *     @OA\Response(response=422, description="Validasi gagal", @OA\JsonContent(example={"message":"Data tidak valid.","errors":{"field":{"Field wajib diisi."}}}))
+     * )
+     */
+    public function updateMe(
+        UpdateAccountProfileRequest $request,
+        DashboardService $dashboardService,
+    ): JsonResponse {
+        $customer = $request->user('sanctum');
+
+        if (! $customer instanceof Customer) {
+            return response()->json([
+                'message' => 'Tidak terautentikasi.',
+            ], 401);
+        }
+
+        try {
+            $dashboardService->updateAccountProfile($customer, $request->payload());
+
+            return response()->json([
+                'message' => 'Profil akun berhasil diperbarui.',
+            ]);
+        } catch (ValidationException $exception) {
+            $firstError = collect($exception->errors())->flatten()->first();
+            $message = is_string($firstError) ? $firstError : 'Gagal memperbarui profil akun.';
+
+            return response()->json([
+                'message' => $message,
+                'errors' => $exception->errors(),
+            ], 422);
+        }
+    }
+
+    /**
+     * @param  array<string, array<int, mixed>>  $rules
+     * @return array<string, array<int, string>>
+     */
+    private function serializeValidationRules(array $rules): array
+    {
+        return collect($rules)
+            ->map(function (array $fieldRules, string $field): array {
+                return collect($fieldRules)
+                    ->map(function (mixed $rule) use ($field): string {
+                        if (is_string($rule)) {
+                            return $rule;
+                        }
+
+                        if ($rule instanceof Unique) {
+                            return 'unique';
+                        }
+
+                        if ($rule instanceof \Closure) {
+                            return $field === 'phone'
+                                ? 'custom:phone_max_7_accounts'
+                                : 'custom';
+                        }
+
+                        return strtolower(class_basename($rule));
+                    })
+                    ->values()
+                    ->all();
+            })
+            ->all();
     }
 
     /**

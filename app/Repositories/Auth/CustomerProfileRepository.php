@@ -24,7 +24,10 @@ class CustomerProfileRepository implements CustomerProfileRepositoryInterface
     public function findByIdWithPackage(int $customerId): ?Customer
     {
         return Customer::query()
-            ->with('package:id,name')
+            ->with([
+                'package:id,name',
+                'npwp:id,member_id,nama,npwp,jk,npwp_date,alamat,menikah,anak,kerja,office',
+            ])
             ->find($customerId);
     }
 

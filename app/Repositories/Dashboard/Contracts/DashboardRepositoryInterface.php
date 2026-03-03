@@ -27,7 +27,7 @@ interface DashboardRepositoryInterface
     public function countCustomersByPhone(string $phone, ?int $exceptCustomerId = null): int;
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function updateCustomerAccount(Customer $customer, array $attributes): void;
 
@@ -51,26 +51,40 @@ interface DashboardRepositoryInterface
     public function countOrders(int $customerId): int;
 
     /**
-     * @param list<string> $pendingStatuses
+     * @param  list<string>  $pendingStatuses
      */
     public function countPendingOrders(int $customerId, array $pendingStatuses): int;
 
-    public function getPaginatedOrders(int $customerId, int $perPage = 10, int $page = 1): LengthAwarePaginator;
+    /**
+     * @param array{
+     *   q?:string|null,
+     *   status?:string|null,
+     *   sort?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null
+     * } $filters
+     */
+    public function getPaginatedOrders(
+        int $customerId,
+        int $perPage = 10,
+        int $page = 1,
+        array $filters = [],
+    ): LengthAwarePaginator;
 
     public function findOrderForCustomer(int $customerId, int $orderId): ?Order;
 
     /**
-     * @param array<string, mixed> $gatewayPayload
+     * @param  array<string, mixed>  $gatewayPayload
      */
     public function updatePaymentFromGateway(Payment $payment, string $status, array $gatewayPayload): void;
 
     /**
-     * @param array<string, mixed> $rawPayload
+     * @param  array<string, mixed>  $rawPayload
      */
     public function createPaymentTransaction(Payment $payment, string $status, float $amount, array $rawPayload): void;
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function updatePaymentMetadata(Payment $payment, array $metadata): void;
 
@@ -180,7 +194,14 @@ interface DashboardRepositoryInterface
      * @param array{
      *   search?:string|null,
      *   type?:string|null,
-     *   status?:string|null
+     *   status?:string|null,
+     *   direction?:string|null,
+     *   payment_method?:string|null,
+     *   date_from?:string|null,
+     *   date_to?:string|null,
+     *   amount_min?:float|int|string|null,
+     *   amount_max?:float|int|string|null,
+     *   sort?:string|null
      * } $filters
      */
     public function getPaginatedWalletTransactions(
@@ -189,6 +210,19 @@ interface DashboardRepositoryInterface
         int $page = 1,
         array $filters = [],
     ): LengthAwarePaginator;
+
+    /**
+     * @return array{
+     *   topup_total:float,
+     *   withdrawal_total:float,
+     *   pending_count:int
+     * }
+     */
+    public function getWalletTransactionSummary(
+        int $customerId,
+        CarbonInterface $from,
+        CarbonInterface $to,
+    ): array;
 
     public function hasPendingWithdrawal(int $customerId): bool;
 
@@ -199,12 +233,12 @@ interface DashboardRepositoryInterface
     ): ?CustomerWalletTransaction;
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function createWalletTransaction(array $attributes): CustomerWalletTransaction;
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function updateWalletTransaction(CustomerWalletTransaction $transaction, array $attributes): void;
 

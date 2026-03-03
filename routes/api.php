@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\ZennerAcademyCategoryController;
+use App\Http\Controllers\Api\ZennerAcademyDashboardController;
 use App\Http\Controllers\Api\ZennerAccademyContentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -66,12 +67,16 @@ Route::prefix('auth')->name('api.auth.')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/me', [AuthController::class, 'me'])->name('me');
+        Route::get('/me-form', [AuthController::class, 'me_form'])->name('me_form');
+        Route::put('/me', [AuthController::class, 'updateMe'])->name('me.update');
         Route::post('/impersonation/stop', [AuthController::class, 'stopImpersonation'])->name('impersonation.stop');
     });
 });
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');
+    Route::get('/dashboard/leaderboards', [DashboardController::class, 'leaderboards'])->name('api.dashboard.leaderboards');
+    Route::get('/dashboard/network', [DashboardController::class, 'getNetworkUser'])->name('api.dashboard.network');
     Route::post('/mlm/place-member', [MlmPlacementController::class, 'store'])->name('api.mlm.place-member');
 
     Route::prefix('cart')->name('api.cart.')->group(function (): void {
@@ -112,6 +117,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     });
 
     Route::prefix('dashboard/orders')->name('api.dashboard.orders.')->group(function (): void {
+        Route::get('/', [DashboardOrderController::class, 'index'])
+            ->name('index');
+        Route::get('/{order}', [DashboardOrderController::class, 'show'])
+            ->name('show');
         Route::post('/{order}/payment-status', [DashboardOrderController::class, 'checkPaymentStatus'])
             ->whereNumber('order')
             ->name('check-payment-status');
@@ -124,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     });
 
     Route::prefix('dashboard/wallet')->name('api.dashboard.wallet.')->group(function (): void {
+        Route::get('/transactions', [DashboardWalletController::class, 'index'])->name('transactions.index');
         Route::post('/topup/token', [DashboardWalletController::class, 'createTopupToken'])->name('topup-token');
         Route::post('/topup/{walletTransaction}/payment-status', [DashboardWalletController::class, 'syncTopupStatus'])
             ->whereNumber('walletTransaction')
@@ -137,6 +147,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/control-panel/orders/{order}/invoice', OrderInvoiceDownloadController::class)
         ->whereNumber('order')
         ->name('api.control-panel.orders.invoice');
+
+    // Zenner Academy - terproteksi
+    Route::prefix('zenner-academy')->name('api.zenner-academy.')->group(function (): void {
+        Route::get('/dashboard', [ZennerAcademyDashboardController::class, 'index'])->name('dashboard');
+    });
 
     // Zenner Academy - terproteksi (CRUD write)
     Route::prefix('zenner-academy')->name('api.zenner-academy.')->group(function (): void {

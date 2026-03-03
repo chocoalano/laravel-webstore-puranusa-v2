@@ -22,8 +22,10 @@ use App\Repositories\WhatsApp\Contracts\WhatsAppBroadcastRepositoryInterface;
 use App\Repositories\WhatsApp\EloquentWhatsAppBroadcastRepository;
 use App\Repositories\Wishlist\Contracts\WishlistRepositoryInterface;
 use App\Repositories\Wishlist\EloquentWishlistRepository;
+use App\Repositories\ZennerAcademy\Contracts\AcademyDashboardRepositoryInterface;
 use App\Repositories\ZennerAcademy\Contracts\ContentCategoryRepositoryInterface;
 use App\Repositories\ZennerAcademy\Contracts\ContentRepositoryInterface;
+use App\Repositories\ZennerAcademy\EloquentAcademyDashboardRepository;
 use App\Repositories\ZennerAcademy\EloquentContentCategoryRepository;
 use App\Repositories\ZennerAcademy\EloquentContentRepository;
 use Filament\Support\Facades\FilamentIcon;
@@ -69,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WhatsAppBroadcastRepositoryInterface::class, EloquentWhatsAppBroadcastRepository::class);
         $this->app->bind(ContentCategoryRepositoryInterface::class, EloquentContentCategoryRepository::class);
         $this->app->bind(ContentRepositoryInterface::class, EloquentContentRepository::class);
+        $this->app->bind(AcademyDashboardRepositoryInterface::class, EloquentAcademyDashboardRepository::class);
     }
 
     /**
@@ -77,7 +80,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::before(function ($user, string $ability) {
-            if (! is_object($user) || ! method_exists($user, 'hasRole')) return null;
+            if (! is_object($user) || ! method_exists($user, 'hasRole')) {
+                return null;
+            }
 
             return $user->hasRole(['super_admin', 'developer']) ? true : null;
         });

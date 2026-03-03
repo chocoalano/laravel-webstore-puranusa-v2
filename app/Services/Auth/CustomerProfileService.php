@@ -2,8 +2,10 @@
 
 namespace App\Services\Auth;
 
+use App\Http\Requests\Dashboard\UpdateAccountProfileRequest;
 use App\Models\Customer;
 use App\Repositories\Auth\Contracts\CustomerProfileRepositoryInterface;
+use Illuminate\Support\Facades\Validator;
 
 class CustomerProfileService
 {
@@ -27,6 +29,8 @@ class CustomerProfileService
             'phone' => $customer->phone,
             'status' => (int) ($customer->status ?? 0),
             'member_package' => $customer->package?->name,
+            'referral_code' => $customer->ref_code,
+            'account_compleated' => $this->isAccountCompleted($customer),
             'summary' => [
                 'total_bonus' => $metrics['bonus_total'],
                 'network_count' => $metrics['network_count'],
@@ -63,5 +67,71 @@ class CustomerProfileService
                     || $walletBalance > 0,
             ],
         ];
+    }
+
+    private function isAccountCompleted(Customer $customer): bool
+    {
+        $customer->loadMissing('npwp');
+
+        $normalizedInput = UpdateAccountProfileRequest::normalizeForValidation([
+            'username' => $customer->username,
+            'name' => $customer->name,
+            'nik' => $customer->nik,
+            'gender' => $customer->gender,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'bank_name' => $customer->bank_name,
+            'bank_account' => $customer->bank_account,
+            'npwp_nama' => $customer->npwp?->nama,
+            'npwp_number' => $customer->npwp?->npwp,
+            'npwp_jk' => $customer->npwp?->jk,
+            'npwp_date' => $customer->npwp?->npwp_date?->toDateString(),
+            'npwp_alamat' => $customer->npwp?->alamat,
+            'npwp_menikah' => $customer->npwp?->menikah,
+            'npwp_anak' => $customer->npwp?->anak,
+            'npwp_kerja' => $customer->npwp?->kerja,
+            'npwp_office' => $customer->npwp?->office,
+        ]);
+
+        /** @var list<string> $requiredProfileFields */
+        $requiredProfileFields = [
+            'username',
+            'name',
+            'nik',
+            'gender',
+            'email',
+            'phone',
+            'bank_name',
+            'bank_account',
+            'npwp_nama',
+            'npwp_number',
+            'npwp_jk',
+            'npwp_date',
+            'npwp_alamat',
+            'npwp_menikah',
+            'npwp_anak',
+            'npwp_kerja',
+            'npwp_office',
+        ];
+
+        foreach ($requiredProfileFields as $field) {
+            if (! $this->isFieldFilled($normalizedInput[$field] ?? null)) {
+                return false;
+            }
+        }
+
+        return Validator::make(
+            $normalizedInput,
+            UpdateAccountProfileRequest::profileRules((int) $customer->id, $customer->phone, false)
+        )->passes();
+    }
+
+    private function isFieldFilled(mixed $value): bool
+    {
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        return $value !== null;
     }
 }

@@ -345,7 +345,7 @@
                     "Customer Auth"
                 ],
                 "summary": "Login customer API",
-                "description": "Autentikasi customer menggunakan username dan password, lalu generate Sanctum personal access token.",
+                "description": "Autentikasi customer menggunakan username dan password untuk member aktif (status 3), lalu generate Sanctum personal access token.",
                 "operationId": "dd51a484b7fa0f97c7680fdbde14cf5f",
                 "requestBody": {
                     "required": true,
@@ -542,6 +542,8 @@
                                         "phone": "081312000697",
                                         "status": 3,
                                         "member_package": "ZENNER Ultra",
+                                        "referral_code": "ABCD1234",
+                                        "account_compleated": true,
                                         "summary": {
                                             "total_bonus": 0,
                                             "network_count": 0,
@@ -574,6 +576,261 @@
                                             "balance": 0,
                                             "reward_points": 0,
                                             "active": true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Customer Auth"
+                ],
+                "summary": "Perbarui profil customer saat ini",
+                "description": "Memperbarui data profil customer yang sedang login menggunakan payload form profil customer.",
+                "operationId": "809289166dfbad93a5234bd644ed1de9",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "username",
+                                    "name",
+                                    "nik",
+                                    "gender",
+                                    "email",
+                                    "phone",
+                                    "bank_name",
+                                    "bank_account"
+                                ],
+                                "properties": {
+                                    "username": {
+                                        "type": "string",
+                                        "example": "budi.santoso"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Budi Santoso"
+                                    },
+                                    "nik": {
+                                        "type": "string",
+                                        "example": "3276010101010001"
+                                    },
+                                    "gender": {
+                                        "type": "string",
+                                        "enum": [
+                                            "L",
+                                            "P"
+                                        ],
+                                        "example": "L"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "budi@example.com"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "08123456789"
+                                    },
+                                    "bank_name": {
+                                        "type": "string",
+                                        "example": "BCA"
+                                    },
+                                    "bank_account": {
+                                        "type": "string",
+                                        "example": "1234567890"
+                                    },
+                                    "npwp_nama": {
+                                        "type": "string",
+                                        "example": "Budi Santoso",
+                                        "nullable": true
+                                    },
+                                    "npwp_number": {
+                                        "type": "string",
+                                        "example": "12.345.678.9-012.000",
+                                        "nullable": true
+                                    },
+                                    "npwp_jk": {
+                                        "type": "integer",
+                                        "enum": [
+                                            1,
+                                            2
+                                        ],
+                                        "example": 1,
+                                        "nullable": true
+                                    },
+                                    "npwp_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2024-01-31",
+                                        "nullable": true
+                                    },
+                                    "npwp_alamat": {
+                                        "type": "string",
+                                        "example": "Jl. Merdeka No. 1, Bandung",
+                                        "nullable": true
+                                    },
+                                    "npwp_menikah": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Y",
+                                            "N"
+                                        ],
+                                        "example": "Y",
+                                        "nullable": true
+                                    },
+                                    "npwp_anak": {
+                                        "type": "string",
+                                        "example": "2",
+                                        "nullable": true
+                                    },
+                                    "npwp_kerja": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Y",
+                                            "N"
+                                        ],
+                                        "example": "Y",
+                                        "nullable": true
+                                    },
+                                    "npwp_office": {
+                                        "type": "string",
+                                        "example": "PT Contoh Sukses",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profil berhasil diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Profil akun berhasil diperbarui."
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Data tidak valid.",
+                                    "errors": {
+                                        "field": [
+                                            "Field wajib diisi."
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/me-form": {
+            "get": {
+                "tags": [
+                    "Customer Auth"
+                ],
+                "summary": "Form profil customer saat ini",
+                "description": "Mengembalikan data nilai form profil customer beserta metadata validasi UpdateAccountProfileRequest.",
+                "operationId": "6d57b16ea1060c4d1110765a9d4551c8",
+                "responses": {
+                    "200": {
+                        "description": "Data form profil berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Form profil akun berhasil diambil.",
+                                    "data": {
+                                        "form": {
+                                            "username": "budi.santoso",
+                                            "name": "Budi Santoso",
+                                            "nik": "3276010101010001",
+                                            "gender": "L",
+                                            "email": "budi@example.com",
+                                            "phone": "08123456789",
+                                            "bank_name": "BCA",
+                                            "bank_account": "1234567890",
+                                            "npwp_nama": "Budi Santoso",
+                                            "npwp_number": "12.345.678.9-012.000",
+                                            "npwp_jk": 1,
+                                            "npwp_date": "2024-01-31",
+                                            "npwp_alamat": "Jl. Merdeka No. 1, Bandung",
+                                            "npwp_menikah": "Y",
+                                            "npwp_anak": "2",
+                                            "npwp_kerja": "Y",
+                                            "npwp_office": "PT Contoh Sukses"
+                                        },
+                                        "validation": {
+                                            "required_fields": [
+                                                "username",
+                                                "name",
+                                                "nik",
+                                                "gender",
+                                                "email",
+                                                "phone",
+                                                "bank_name",
+                                                "bank_account"
+                                            ],
+                                            "rules": {
+                                                "username": [
+                                                    "required",
+                                                    "string",
+                                                    "min:3",
+                                                    "max:30",
+                                                    "regex:/^[a-zA-Z0-9_.]+$/",
+                                                    "unique"
+                                                ]
+                                            },
+                                            "messages": {
+                                                "username.required": "Username wajib diisi."
+                                            }
                                         }
                                     }
                                 }
@@ -2518,12 +2775,544 @@
                 ]
             }
         },
+        "/api/dashboard/leaderboards": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Leaderboard customer",
+                "description": "Mengembalikan data leaderboard customer dengan filter periode harian, mingguan, dan bulanan.",
+                "operationId": "c8c84ae051babd7ff3ca89234973b440",
+                "parameters": [
+                    {
+                        "name": "tab",
+                        "in": "query",
+                        "description": "Filter tab: 1=Harian, 2=Mingguan, 3=Bulanan",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "enum": [
+                                1,
+                                2,
+                                3
+                            ]
+                        }
+                    },
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "description": "Alternatif filter periode: daily/weekly/monthly atau harian/mingguan/bulanan",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "daily",
+                                "weekly",
+                                "monthly",
+                                "harian",
+                                "mingguan",
+                                "bulanan"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Leaderboard berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": true,
+                                    "message": "Leaderboard fetched successfully",
+                                    "data": {
+                                        "tabs": [
+                                            "Harian",
+                                            "Mingguan",
+                                            "Bulanan"
+                                        ],
+                                        "selected_tab": 1,
+                                        "my_rank": {
+                                            "rank": 12,
+                                            "name": "Budi Santoso",
+                                            "avatar": "BS",
+                                            "level": "Gold Member",
+                                            "trend": "up",
+                                            "streak": 7,
+                                            "points": 18500
+                                        },
+                                        "leaderboard": [
+                                            {
+                                                "id": 101,
+                                                "name": "Andi Wijaya",
+                                                "avatar": "AW",
+                                                "level": "Diamond",
+                                                "trend": "up",
+                                                "streak": 21,
+                                                "points": 125000
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": false,
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "The given data was invalid."
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/network": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Network tree customer",
+                "description": "Mengembalikan struktur jaringan lengkap (network tree) dari customer beserta statistik jaringan.",
+                "operationId": "f80b33ec7d80c17bb43fddb630e546d8",
+                "responses": {
+                    "200": {
+                        "description": "Network tree customer berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Network tree retrieved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "statistics": {
+                                                    "properties": {
+                                                        "total_downline": {
+                                                            "type": "integer",
+                                                            "example": 1024
+                                                        },
+                                                        "active_members": {
+                                                            "type": "integer",
+                                                            "example": 856
+                                                        },
+                                                        "inactive_members": {
+                                                            "type": "integer",
+                                                            "example": 168
+                                                        },
+                                                        "total_levels": {
+                                                            "type": "integer",
+                                                            "example": 5
+                                                        },
+                                                        "total_points": {
+                                                            "type": "integer",
+                                                            "example": 12500
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "user": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "example": "user_001"
+                                                        },
+                                                        "username": {
+                                                            "type": "string",
+                                                            "example": "johndoe"
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "John Doe"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "john@example.com"
+                                                        },
+                                                        "phone": {
+                                                            "type": "string",
+                                                            "example": "+62812345678"
+                                                        },
+                                                        "avatar_url": {
+                                                            "type": "string",
+                                                            "example": null,
+                                                            "nullable": true
+                                                        },
+                                                        "level": {
+                                                            "type": "integer",
+                                                            "example": 0
+                                                        },
+                                                        "is_active": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "points": {
+                                                            "type": "integer",
+                                                            "example": 1200
+                                                        },
+                                                        "joined_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "example": "2024-01-15T08:30:00Z"
+                                                        },
+                                                        "sponsor_id": {
+                                                            "type": "string",
+                                                            "example": null,
+                                                            "nullable": true
+                                                        },
+                                                        "sponsor_name": {
+                                                            "type": "string",
+                                                            "example": null,
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "tree": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "example": "user_001"
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "John Doe"
+                                                        },
+                                                        "username": {
+                                                            "type": "string",
+                                                            "example": "johndoe"
+                                                        },
+                                                        "level": {
+                                                            "type": "integer",
+                                                            "example": 0
+                                                        },
+                                                        "is_active": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "points": {
+                                                            "type": "integer",
+                                                            "example": 1200
+                                                        },
+                                                        "total_downline": {
+                                                            "type": "integer",
+                                                            "example": 15
+                                                        },
+                                                        "direct_referrals": {
+                                                            "type": "integer",
+                                                            "example": 4
+                                                        },
+                                                        "children": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "success": false,
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/orders": {
+            "get": {
+                "tags": [
+                    "Dashboard Orders"
+                ],
+                "summary": "Daftar order customer (filter + pagination)",
+                "description": "Mengembalikan daftar order milik customer yang sedang login (current user) dengan filter status, pencarian, rentang tanggal, urutan, dan pagination.",
+                "operationId": "00e0fb465aa18803225512b088916bb3",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "example": 10
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "ORD-202603",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "pending",
+                                "paid",
+                                "processing",
+                                "shipped",
+                                "delivered",
+                                "cancelled",
+                                "refunded"
+                            ],
+                            "example": "all",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "newest",
+                                "oldest",
+                                "highest",
+                                "lowest"
+                            ],
+                            "example": "newest",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-01",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-31",
+                            "nullable": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar order berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Data order berhasil diambil.",
+                                    "data": {
+                                        "data": [
+                                            {
+                                                "id": 1201,
+                                                "code": "ORD-20260301-ABC123",
+                                                "status": "pending",
+                                                "payment_status": "unpaid",
+                                                "total": 550000
+                                            }
+                                        ],
+                                        "current_page": 1,
+                                        "next_page": 2,
+                                        "has_more": true,
+                                        "per_page": 10,
+                                        "total": 32
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Data tidak valid.",
+                                    "errors": {
+                                        "field": [
+                                            "Field wajib diisi."
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/orders/{order}": {
+            "get": {
+                "tags": [
+                    "Dashboard Orders"
+                ],
+                "summary": "Detail order customer",
+                "description": "Mengembalikan detail lengkap order milik customer yang sedang login (current user).",
+                "operationId": "135dcef9428ff6662d1ae4a17f479eb0",
+                "parameters": [
+                    {
+                        "name": "order",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail order berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Detail order berhasil diambil.",
+                                    "data": {
+                                        "id": 1201,
+                                        "code": "ORD-20260301-ABC123",
+                                        "status": "pending",
+                                        "payment_status": "unpaid",
+                                        "subtotal": 500000,
+                                        "shipping_cost": 25000,
+                                        "tax_amount": 25000,
+                                        "discount_amount": 0,
+                                        "total": 550000,
+                                        "items_count": 2
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal / order tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Order tidak ditemukan.",
+                                    "errors": {
+                                        "order": [
+                                            "Order tidak ditemukan."
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/dashboard/orders/{order}/payment-status": {
             "post": {
                 "tags": [
                     "Dashboard Orders"
                 ],
                 "summary": "Sinkronisasi status pembayaran order",
+                "description": "Sinkronisasi status pembayaran untuk order milik customer yang sedang login (current user).",
                 "operationId": "db6cf974a516a3babaa28954926a88be",
                 "parameters": [
                     {
@@ -2615,6 +3404,7 @@
                     "Dashboard Orders"
                 ],
                 "summary": "Generate token Midtrans pay now untuk order",
+                "description": "Membuat token pembayaran Midtrans untuk order milik customer yang sedang login (current user).",
                 "operationId": "bb223687ef2596a8d7885e9b24fb384e",
                 "parameters": [
                     {
@@ -2702,7 +3492,7 @@
                     "Dashboard Orders"
                 ],
                 "summary": "Download invoice order customer",
-                "description": "Menghasilkan file PDF invoice untuk order customer yang sudah dibayar.",
+                "description": "Menghasilkan file PDF invoice untuk order milik customer yang sedang login (current user) dan sudah dibayar.",
                 "operationId": "fecbdb46d996b340a1bfbef9cadad2b4",
                 "parameters": [
                     {
@@ -2764,6 +3554,265 @@
                                 "schema": {},
                                 "example": {
                                     "message": "Invoice hanya tersedia untuk pesanan yang sudah dibayar."
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/dashboard/wallet/transactions": {
+            "get": {
+                "tags": [
+                    "Dashboard Wallet"
+                ],
+                "summary": "Daftar transaksi wallet customer (filter + pagination)",
+                "description": "Mengembalikan daftar transaksi wallet milik customer yang sedang login (current user) dengan filter pencarian, tipe, status, arah mutasi, metode pembayaran, rentang tanggal, rentang nominal, urutan, dan pagination.",
+                "operationId": "a95f3e849c3138c90c7e2e3be8f952b7",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "example": 15
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "TOPUP-2201",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "bank_transfer",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "topup",
+                                "withdrawal",
+                                "bonus",
+                                "purchase",
+                                "refund",
+                                "tax"
+                            ],
+                            "example": "all",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "pending",
+                                "completed",
+                                "failed",
+                                "cancelled"
+                            ],
+                            "example": "all",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "credit",
+                                "debit"
+                            ],
+                            "example": "all",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "payment_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "midtrans",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-01",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-03-31",
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "amount_min",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "minimum": 0,
+                            "example": 10000,
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "amount_max",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "format": "float",
+                            "minimum": 0,
+                            "example": 500000,
+                            "nullable": true
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "newest",
+                                "oldest",
+                                "highest",
+                                "lowest"
+                            ],
+                            "example": "newest",
+                            "nullable": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar transaksi wallet berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Data transaksi wallet berhasil diambil.",
+                                    "data": {
+                                        "summary": {
+                                            "balance_available": 2993250,
+                                            "topup_30d": 640000,
+                                            "withdrawal_30d": 150000,
+                                            "netflow_30d": 490000,
+                                            "pending_count": 12
+                                        },
+                                        "window": {
+                                            "days": 30,
+                                            "from": "2026-02-02T00:00:00+07:00",
+                                            "to": "2026-03-03T23:59:59+07:00",
+                                            "timezone": "Asia/Jakarta"
+                                        },
+                                        "data": [
+                                            {
+                                                "id": 1207,
+                                                "type": "topup",
+                                                "type_label": "Top Up Saldo",
+                                                "direction": "credit",
+                                                "status": "pending",
+                                                "status_label": "Menunggu",
+                                                "amount": 50000,
+                                                "balance_before": 2993250,
+                                                "balance_after": 2993250,
+                                                "payment_method": "midtrans",
+                                                "transaction_ref": "TOPUP-24-20260303180112-F24707",
+                                                "created_at": "2026-03-03T18:01:12+07:00",
+                                                "completed_at": null,
+                                                "description": "Top Up Saldo • Ref: TOPUP-24-20260303180112-F24707 • MIDTRANS"
+                                            }
+                                        ],
+                                        "current_page": 1,
+                                        "next_page": 2,
+                                        "has_more": true,
+                                        "per_page": 15,
+                                        "total": 24
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Tidak terautentikasi."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {},
+                                "example": {
+                                    "message": "Data tidak valid.",
+                                    "errors": {
+                                        "field": [
+                                            "Field wajib diisi."
+                                        ]
+                                    }
                                 }
                             }
                         }
@@ -4190,6 +5239,183 @@
                 }
             }
         },
+        "/api/zenner-academy/dashboard": {
+            "get": {
+                "tags": [
+                    "Zenner Academy - Dashboard"
+                ],
+                "summary": "Data dashboard Zenner Academy",
+                "description": "Mengembalikan data lengkap halaman utama Zenner Academy: bagian hero, kursus yang sedang ditonton, dan daftar kategori.",
+                "operationId": "a647970273ae37228cc3173902cdaa3e",
+                "responses": {
+                    "200": {
+                        "description": "Data dashboard berhasil diambil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OK"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "hero": {
+                                                    "description": "Bagian atas halaman dengan judul dan notifikasi.",
+                                                    "properties": {
+                                                        "title": {
+                                                            "type": "string",
+                                                            "example": "Pusat Edukasi"
+                                                        },
+                                                        "subtitle": {
+                                                            "type": "string",
+                                                            "example": "Belajar lebih cepat dengan materi singkat & terstruktur."
+                                                        },
+                                                        "unreadNotifications": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "continueWatching": {
+                                                    "description": "Kursus terakhir yang sedang ditonton. Null jika belum ada progres.",
+                                                    "properties": {
+                                                        "courseId": {
+                                                            "type": "string",
+                                                            "example": "crs_pemasaran-digital"
+                                                        },
+                                                        "courseTitle": {
+                                                            "type": "string",
+                                                            "example": "Pemasaran Digital"
+                                                        },
+                                                        "moduleId": {
+                                                            "type": "string",
+                                                            "example": "mod_3",
+                                                            "nullable": true
+                                                        },
+                                                        "moduleTitle": {
+                                                            "type": "string",
+                                                            "example": "Modul 3: Lead Generation",
+                                                            "nullable": true
+                                                        },
+                                                        "progress": {
+                                                            "type": "number",
+                                                            "format": "float",
+                                                            "example": 0.65
+                                                        },
+                                                        "resume": {
+                                                            "properties": {
+                                                                "contentType": {
+                                                                    "type": "string",
+                                                                    "example": "video"
+                                                                },
+                                                                "positionSec": {
+                                                                    "type": "integer",
+                                                                    "example": 742
+                                                                },
+                                                                "durationSec": {
+                                                                    "type": "integer",
+                                                                    "example": 1142
+                                                                }
+                                                            },
+                                                            "type": "object",
+                                                            "nullable": true
+                                                        },
+                                                        "thumbnailUrl": {
+                                                            "type": "string",
+                                                            "example": "https://cdn.example.com/thumbs/crs_001.jpg",
+                                                            "nullable": true
+                                                        },
+                                                        "action": {
+                                                            "properties": {
+                                                                "label": {
+                                                                    "type": "string",
+                                                                    "example": "Lanjutkan"
+                                                                },
+                                                                "deeplink": {
+                                                                    "type": "string",
+                                                                    "example": "app://education/course/pemasaran-digital/module/slug-modul"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object",
+                                                    "nullable": true
+                                                },
+                                                "categories": {
+                                                    "description": "Daftar kategori Zenner Academy terurut.",
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "example": "cat_marketing"
+                                                            },
+                                                            "label": {
+                                                                "type": "string",
+                                                                "example": "Pemasaran"
+                                                            },
+                                                            "iconKey": {
+                                                                "type": "string",
+                                                                "example": "campaign_rounded",
+                                                                "nullable": true
+                                                            },
+                                                            "accentHex": {
+                                                                "type": "string",
+                                                                "example": "#60A5FA",
+                                                                "nullable": true
+                                                            },
+                                                            "sort": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Tidak terautentikasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Tidak terautentikasi."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/zenner-academy/contents": {
             "get": {
                 "tags": [
@@ -4567,6 +5793,10 @@
         {
             "name": "Zenner Academy - Category",
             "description": "Zenner Academy - Category"
+        },
+        {
+            "name": "Zenner Academy - Dashboard",
+            "description": "Zenner Academy - Dashboard"
         },
         {
             "name": "Zenner Academy - Content",

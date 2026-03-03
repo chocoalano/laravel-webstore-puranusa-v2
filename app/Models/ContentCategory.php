@@ -16,6 +16,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $parent_id Kategori induk
  * @property string $name Nama kategori
  * @property string $slug URL-friendly identifier
+ * @property string|null $icon_key Kunci ikon Material Symbols (e.g. campaign_rounded)
+ * @property string|null $accent_hex Warna aksen hex (e.g. #60A5FA)
+ * @property int $sort_order Urutan tampil di UI
+ * @property string|null $thumbnail_url URL thumbnail kursus
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -30,6 +34,10 @@ class ContentCategory extends BaseModel
         'parent_id',
         'name',
         'slug',
+        'icon_key',
+        'accent_hex',
+        'sort_order',
+        'thumbnail_url',
     ];
 
     /**

@@ -33,6 +33,10 @@ class CustomerAuthService
             return null;
         }
 
+        if ((int) ($customer->status ?? 0) !== 3) {
+            return null;
+        }
+
         $tokenName = trim((string) $deviceName) !== '' ? trim((string) $deviceName) : 'customer-api';
         $accessToken = $this->repository->createApiToken($customer, $tokenName, ['customer:api']);
 
