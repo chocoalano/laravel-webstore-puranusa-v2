@@ -36,6 +36,7 @@ function logout(): void {
     <UPage class="min-h-screen bg-gray-50/60 dark:bg-gray-950">
         <DashboardPageHeader
             :customer="customer"
+            :network-profile="props.networkProfile"
             :promo-active="props.stats?.promo_active"
             @logout="logout"
         />

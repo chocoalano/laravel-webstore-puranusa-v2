@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CustomerWithdrawals\Tables;
 
 use App\Jobs\SendWithdrawalApprovedWhatsAppJob;
+use App\Models\Customer;
 use App\Models\CustomerWalletTransaction;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerWithdrawalsTable
 {
+    private const WITHDRAWAL_ADMIN_FEE = 6500.0;
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -149,11 +152,11 @@ class CustomerWithdrawalsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≥ Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Nominal ≥ Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≤ Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Nominal ≤ Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -174,51 +177,105 @@ class CustomerWithdrawalsTable
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (CustomerWalletTransaction $record): bool => $record->status === 'pending')
+                    ->visible(fn (CustomerWalletTransaction $record): bool => self::normalizeStatus($record->status) === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Setujui Withdrawal')
-                    ->modalDescription('Withdrawal akan ditandai completed dan notifikasi WhatsApp dikirim ke customer melalui queue.')
+                    ->modalDescription('Withdrawal akan ditandai completed, saldo customer disesuaikan, dan notifikasi WhatsApp dikirim.')
                     ->modalSubmitActionLabel('Ya, Setujui')
                     ->action(function (CustomerWalletTransaction $record): void {
                         try {
-                            DB::transaction(function () use ($record): void {
-                                $transaction = CustomerWalletTransaction::query()
-                                    ->whereKey($record->id)
-                                    ->lockForUpdate()
-                                    ->first();
-
-                                if (! $transaction) {
-                                    throw new \RuntimeException('Data withdrawal tidak ditemukan.');
-                                }
-
-                                if ($transaction->status !== 'pending') {
-                                    throw new \RuntimeException('Withdrawal ini sudah diproses sebelumnya.');
-                                }
-
-                                $transaction->forceFill([
-                                    'status' => 'completed',
-                                    'completed_at' => now(),
-                                ])->save();
-                            });
-
-                            SendWithdrawalApprovedWhatsAppJob::dispatch((int) $record->id)->afterCommit();
-
-                            Notification::make()
-                                ->success()
-                                ->title('Withdrawal Disetujui')
-                                ->body('Status withdrawal berhasil diubah menjadi completed. Notifikasi WhatsApp sedang diproses queue.')
-                                ->send();
+                            $approvedTransactionId = self::approvePendingWithdrawal((int) $record->id);
                         } catch (\Throwable $exception) {
                             Notification::make()
                                 ->danger()
                                 ->title('Gagal Menyetujui Withdrawal')
                                 ->body($exception->getMessage())
                                 ->send();
+
+                            return;
+                        }
+
+                        try {
+                            dispatch_sync(new SendWithdrawalApprovedWhatsAppJob($approvedTransactionId));
+
+                            Notification::make()
+                                ->success()
+                                ->title('Withdrawal Disetujui')
+                                ->body('Withdrawal berhasil disetujui, saldo diperbarui, dan notifikasi WhatsApp berhasil dikirim.')
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Withdrawal Disetujui, Notifikasi WA Gagal')
+                                ->body('Status dan saldo sudah diperbarui, namun notifikasi WhatsApp gagal terkirim: '.$exception->getMessage())
+                                ->send();
                         }
                     }),
                 ViewAction::make(),
             ])
             ->toolbarActions([]);
+    }
+
+    private static function approvePendingWithdrawal(int $transactionId): int
+    {
+        return DB::transaction(function () use ($transactionId): int {
+            $transaction = CustomerWalletTransaction::query()
+                ->whereKey($transactionId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $transaction) {
+                throw new \RuntimeException('Data withdrawal tidak ditemukan.');
+            }
+
+            if (self::normalizeType($transaction->type) !== 'withdrawal') {
+                throw new \RuntimeException('Transaksi ini bukan withdrawal.');
+            }
+
+            if (self::normalizeStatus($transaction->status) !== 'pending') {
+                throw new \RuntimeException('Withdrawal ini sudah diproses sebelumnya.');
+            }
+
+            /** @var Customer|null $customer */
+            $customer = Customer::query()
+                ->whereKey($transaction->customer_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $customer) {
+                throw new \RuntimeException('Customer untuk transaksi withdrawal tidak ditemukan.');
+            }
+
+            $currentBalance = (float) ($customer->ewallet_saldo ?? 0);
+            $grossAmount = max(0.0, (float) ($transaction->amount ?? 0));
+            $recordedBalanceBefore = (float) ($transaction->balance_before ?? 0);
+            $recordedBalanceAfter = (float) ($transaction->balance_after ?? 0);
+            $alreadyDeductedGross = max(0.0, $recordedBalanceBefore - $recordedBalanceAfter);
+            $missingGrossDeduction = max(0.0, $grossAmount - $alreadyDeductedGross);
+            $additionalDeduction = $missingGrossDeduction + self::WITHDRAWAL_ADMIN_FEE;
+
+            if ($currentBalance < $additionalDeduction) {
+                throw new \RuntimeException('Saldo wallet customer tidak mencukupi untuk proses approval withdrawal.');
+            }
+
+            if ($additionalDeduction > 0) {
+                $customer->decrement('ewallet_saldo', $additionalDeduction);
+                $customer->refresh();
+            }
+
+            $transaction->forceFill([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'balance_after' => (float) ($customer->ewallet_saldo ?? 0),
+                'notes' => self::appendApprovalNotes(
+                    $transaction->notes,
+                    self::WITHDRAWAL_ADMIN_FEE,
+                    $missingGrossDeduction
+                ),
+            ])->save();
+
+            return (int) $transaction->id;
+        });
     }
 
     private static function betweenDateFilter(string $name, string $label, string $column): Filter
@@ -244,11 +301,11 @@ class CustomerWithdrawalsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;
@@ -273,5 +330,38 @@ class CustomerWithdrawalsTable
             'failed' => 'danger',
             'cancelled' => 'gray',
         ];
+    }
+
+    private static function appendApprovalNotes(?string $existingNotes, float $adminFee, float $missingGrossDeduction): string
+    {
+        $chunks = [];
+        $normalized = trim((string) $existingNotes);
+
+        if ($normalized !== '') {
+            $chunks[] = $normalized;
+        }
+
+        $chunks[] = 'Biaya admin approval: '.self::formatIdr($adminFee);
+
+        if ($missingGrossDeduction > 0) {
+            $chunks[] = 'Potongan gross saat approve: '.self::formatIdr($missingGrossDeduction);
+        }
+
+        return implode(PHP_EOL, $chunks);
+    }
+
+    private static function formatIdr(float $amount): string
+    {
+        return 'Rp '.number_format((int) round($amount), 0, ',', '.');
+    }
+
+    private static function normalizeStatus(mixed $status): string
+    {
+        return strtolower(trim((string) $status));
+    }
+
+    private static function normalizeType(mixed $type): string
+    {
+        return strtolower(trim((string) $type));
     }
 }

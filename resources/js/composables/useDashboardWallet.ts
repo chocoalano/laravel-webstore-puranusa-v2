@@ -73,6 +73,15 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
 
     const balance = computed(() => Number(options.walletBalance.value ?? options.customer.value?.wallet_balance ?? 0))
     const formattedBalance = computed(() => formatIDR(balance.value))
+    const withdrawalMinimumAmount = 10000
+    const withdrawalAdminFee = 6500
+    const withdrawalStepAmount = 1000
+    const maxWithdrawalAmount = computed(() => Math.max(0, Math.floor(balance.value)))
+    const minimumWithdrawalRequestAmount = computed(() => {
+        const rounded = Math.ceil(withdrawalMinimumAmount / withdrawalStepAmount) * withdrawalStepAmount
+
+        return Math.max(withdrawalStepAmount, rounded)
+    })
 
     const typeItems = computed<WalletFilterOption[]>(() => [
         { label: 'Semua tipe', value: 'all' },
@@ -421,10 +430,10 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
             return
         }
 
-        if (!withdrawalAmount.value || withdrawalAmount.value < 10000) {
+        if (maxWithdrawalAmount.value < minimumWithdrawalRequestAmount.value) {
             toast?.add?.({
-                title: 'Nominal withdrawal tidak valid',
-                description: 'Nominal withdrawal minimal Rp 10.000.',
+                title: 'Saldo belum mencukupi',
+                description: `Saldo wallet Anda saat ini ${formatIDR(maxWithdrawalAmount.value)}.`,
                 color: 'warning',
                 icon: 'i-lucide-alert-circle',
             })
@@ -432,7 +441,57 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
             return
         }
 
-        if (!withdrawalPassword.value) {
+        const amountValue = Number(withdrawalAmount.value ?? 0)
+
+        if (!Number.isFinite(amountValue) || amountValue < minimumWithdrawalRequestAmount.value) {
+            toast?.add?.({
+                title: 'Nominal withdrawal tidak valid',
+                description: `Nominal withdrawal minimal ${formatIDR(minimumWithdrawalRequestAmount.value)}.`,
+                color: 'warning',
+                icon: 'i-lucide-alert-circle',
+            })
+
+            return
+        }
+
+        if (!Number.isInteger(amountValue) || amountValue % withdrawalStepAmount !== 0) {
+            toast?.add?.({
+                title: 'Nominal withdrawal tidak valid',
+                description: 'Nominal withdrawal harus kelipatan Rp 1.000.',
+                color: 'warning',
+                icon: 'i-lucide-alert-circle',
+            })
+
+            return
+        }
+
+        if (amountValue > maxWithdrawalAmount.value) {
+            toast?.add?.({
+                title: 'Nominal melebihi saldo',
+                description: `Maksimal withdrawal ${formatIDR(maxWithdrawalAmount.value)} sesuai saldo wallet Anda.`,
+                color: 'warning',
+                icon: 'i-lucide-alert-circle',
+            })
+
+            return
+        }
+
+        const estimatedReceivedAmount = amountValue - withdrawalAdminFee
+
+        if (estimatedReceivedAmount <= 0) {
+            toast?.add?.({
+                title: 'Nominal withdrawal tidak valid',
+                description: `Nominal withdrawal harus lebih besar dari biaya admin ${formatIDR(withdrawalAdminFee)}.`,
+                color: 'warning',
+                icon: 'i-lucide-alert-circle',
+            })
+
+            return
+        }
+
+        const passwordValue = withdrawalPassword.value.trim()
+
+        if (passwordValue === '') {
             toast?.add?.({
                 title: 'Password wajib diisi',
                 description: 'Masukkan password untuk konfirmasi withdrawal.',
@@ -449,8 +508,8 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
             const response = await inertiaPost(
                 '/dashboard/wallet/withdrawal',
                 {
-                    amount: withdrawalAmount.value,
-                    password: withdrawalPassword.value,
+                    amount: amountValue,
+                    password: passwordValue,
                     notes: withdrawalNotes.value.trim() || null,
                 },
                 ['flash', 'errors', 'walletTransactions', 'stats', 'customer', 'hasPendingWithdrawal', 'midtrans']
@@ -511,6 +570,7 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
     return {
         balance,
         formattedBalance,
+        withdrawalAdminFee,
         allTransactions,
         shownCount,
         totalCount,

@@ -20,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const { formatIDR } = useDashboard()
+const defaultWithdrawalAdminFee = 6500
 
 const typeMeta: Record<DashboardWalletTransactionType, { icon: string; label: string }> = {
     topup: { icon: 'i-lucide-circle-plus', label: 'Top Up Saldo' },
@@ -53,6 +54,39 @@ function signedAmount(transaction: DashboardWalletTransaction): string {
     const sign = transaction.direction === 'credit' ? '+' : '-'
 
     return `${sign} ${formatIDR(Math.abs(Number(transaction.amount ?? 0)))}`
+}
+
+function parseAdminFeeFromNotes(notes?: string | null): number | null {
+    if (!notes) {
+        return null
+    }
+
+    const lines = notes.split(/\r?\n/)
+    const matchedLine = lines.find((line) => /biaya admin/i.test(line))
+
+    if (!matchedLine) {
+        return null
+    }
+
+    const numericValue = matchedLine.replace(/[^0-9]/g, '')
+
+    if (numericValue === '') {
+        return null
+    }
+
+    const parsed = Number(numericValue)
+
+    return Number.isFinite(parsed) ? parsed : null
+}
+
+function withdrawalAdminFeeLabel(transaction: DashboardWalletTransaction): string | null {
+    if (transaction.type !== 'withdrawal') {
+        return null
+    }
+
+    const adminFee = parseAdminFeeFromNotes(transaction.notes) ?? defaultWithdrawalAdminFee
+
+    return `Biaya admin: ${formatIDR(adminFee)}`
 }
 
 function formatDateTime(value?: string | null): string {
@@ -163,6 +197,12 @@ onBeforeUnmount(() => {
                     <div class="text-left sm:text-right">
                         <p class="text-sm font-bold" :class="amountClass(transaction)">
                             {{ signedAmount(transaction) }}
+                        </p>
+                        <p
+                            v-if="withdrawalAdminFeeLabel(transaction)"
+                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                        >
+                            {{ withdrawalAdminFeeLabel(transaction) }}
                         </p>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Saldo akhir: {{ formatIDR(transaction.balance_after) }}

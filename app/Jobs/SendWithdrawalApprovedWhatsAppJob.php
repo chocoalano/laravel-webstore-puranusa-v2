@@ -7,6 +7,7 @@ use App\Services\QontactService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class SendWithdrawalApprovedWhatsAppJob implements ShouldQueue
 {
@@ -30,42 +31,51 @@ class SendWithdrawalApprovedWhatsAppJob implements ShouldQueue
             ->first();
 
         if (! $transaction) {
-            Log::warning('Withdrawal approved WhatsApp skipped: transaction not found.', [
+            Log::error('Withdrawal approved WhatsApp failed: transaction not found.', [
                 'transaction_id' => $this->transactionId,
             ]);
 
-            return;
+            throw new RuntimeException('Data transaksi withdrawal tidak ditemukan.');
         }
 
         if (($transaction->type !== 'withdrawal') || ($transaction->status !== 'completed')) {
-            Log::warning('Withdrawal approved WhatsApp skipped: invalid transaction state.', [
+            Log::error('Withdrawal approved WhatsApp failed: invalid transaction state.', [
                 'transaction_id' => $transaction->id,
                 'type' => $transaction->type,
                 'status' => $transaction->status,
             ]);
 
-            return;
+            throw new RuntimeException('Status transaksi tidak valid untuk kirim notifikasi WhatsApp.');
         }
 
         $customerName = (string) ($transaction->customer?->name ?? '');
         $customerPhone = (string) ($transaction->customer?->phone ?? '');
 
         if ($customerName === '' || $customerPhone === '') {
-            Log::warning('Withdrawal approved WhatsApp skipped: customer contact incomplete.', [
+            Log::error('Withdrawal approved WhatsApp failed: customer contact incomplete.', [
                 'transaction_id' => $transaction->id,
                 'customer_id' => $transaction->customer_id,
             ]);
 
-            return;
+            throw new RuntimeException('Data kontak customer tidak lengkap untuk kirim notifikasi WhatsApp.');
         }
 
-        $formattedAmount = 'Rp ' . number_format((float) $transaction->amount, 0, ',', '.');
+        $formattedAmount = 'Rp '.number_format((float) $transaction->amount, 0, ',', '.');
 
-        $qontactService->sendWithdrawalApproved(
+        $sent = $qontactService->sendWithdrawalApproved(
             $customerName,
             $customerPhone,
             $formattedAmount
         );
+
+        if (! $sent) {
+            Log::error('Withdrawal approved WhatsApp failed: provider send returned false.', [
+                'transaction_id' => $transaction->id,
+                'customer_id' => $transaction->customer_id,
+            ]);
+
+            throw new RuntimeException('Pengiriman notifikasi WhatsApp gagal.');
+        }
     }
 
     public function failed(?\Throwable $exception): void

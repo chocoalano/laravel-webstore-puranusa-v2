@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import type { Customer } from '@/types/dashboard'
+import { computed } from 'vue'
+import type { Customer, NetworkProfile } from '@/types/dashboard'
 import { useDashboard } from '@/composables/useDashboard'
 
 const props = withDefaults(
     defineProps<{
         customer?: Customer | null
+        networkProfile?: NetworkProfile | null
         promoActive?: number | null
     }>(),
     {
         customer: null,
+        networkProfile: null,
         promoActive: 0,
     }
 )
@@ -17,10 +20,37 @@ const emit = defineEmits<{
     (e: 'logout'): void
 }>()
 
-const { formatDate } = useDashboard()
+const { formatDate, copyToClipboard } = useDashboard()
+
+const referralPath = computed<string | null>(() => {
+    const referralCode = props.networkProfile?.referral_code?.trim()
+
+    if (!referralCode) {
+        return null
+    }
+
+    return `/register?referral_code=${encodeURIComponent(referralCode)}`
+})
+
+const referralUrlLabel = computed<string>(() => {
+    if (!referralPath.value) {
+        return '—'
+    }
+
+    if (typeof window === 'undefined') {
+        return referralPath.value
+    }
+
+    return `${window.location.origin}${referralPath.value}`
+})
 
 function handleLogout(): void {
     emit('logout')
+}
+
+function handleCopyReferral(): void {
+    const referralCode = props.networkProfile?.referral_code ?? ''
+    void copyToClipboard(referralCode)
 }
 </script>
 
@@ -46,10 +76,34 @@ function handleLogout(): void {
         </template>
 
         <template #description>
-            <div class="flex flex-wrap items-center gap-2">
-                <UBadge :label="props.customer?.tier ? `Member ${props.customer.tier}` : 'Member'" color="neutral" variant="soft" class="rounded-full" />
-                <UBadge :label="`Member sejak ${formatDate(props.customer?.member_since)}`" color="neutral" variant="soft" class="rounded-full" />
-                <UBadge :label="props.promoActive ? `${props.promoActive} promo aktif` : 'Tidak ada promo aktif'" :color="props.promoActive ? 'primary' : 'neutral'" variant="soft" class="rounded-full" />
+            <div class="space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <UBadge :label="props.customer?.tier ? `Member ${props.customer.tier}` : 'Member'" color="neutral" variant="soft" class="rounded-full" />
+                    <UBadge :label="`Member sejak ${formatDate(props.customer?.member_since)}`" color="neutral" variant="soft" class="rounded-full" />
+                    <UBadge :label="props.promoActive ? `${props.promoActive} promo aktif` : 'Tidak ada promo aktif'" :color="props.promoActive ? 'primary' : 'neutral'" variant="soft" class="rounded-full" />
+                </div>
+
+                <div v-if="referralPath" class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Link Referral:</span>
+                    <a
+                        :href="referralPath"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="max-w-full truncate text-xs font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-200"
+                    >
+                        {{ referralUrlLabel }}
+                    </a>
+                    <UButton
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        icon="i-lucide-copy"
+                        class="rounded-lg"
+                        @click="handleCopyReferral"
+                    >
+                        Copy
+                    </UButton>
+                </div>
             </div>
         </template>
 

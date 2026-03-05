@@ -106,7 +106,7 @@ function updatePlacementSearchQuery(value: string): void {
                 />
             </template>
 
-            <div class="space-y-4 p-4 sm:p-6">
+            <div class="space-y-4">
                 <NetworkTreePanel
                     :current-tree="currentTree"
                     :zoom="zoom"

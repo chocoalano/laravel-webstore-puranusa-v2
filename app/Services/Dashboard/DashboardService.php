@@ -33,6 +33,12 @@ use Illuminate\Validation\ValidationException;
 
 class DashboardService
 {
+    private const WITHDRAWAL_MIN_AMOUNT = 10000;
+
+    private const WITHDRAWAL_ADMIN_FEE = 6500;
+
+    private const WITHDRAWAL_STEP_AMOUNT = 1000;
+
     public function __construct(
         protected DashboardRepositoryInterface $dashboardRepository,
         protected CustomerAddressRepositoryInterface $customerAddressRepository,
@@ -778,9 +784,12 @@ class DashboardService
             ]);
         }
 
-        $amount = (float) ($payload['amount'] ?? 0);
+        $rawAmount = (float) ($payload['amount'] ?? 0);
+        $amount = (float) round($rawAmount);
         $password = (string) ($payload['password'] ?? '');
         $notes = $this->normalizeWalletTransactionNotes($payload['notes'] ?? null);
+        $minimumRequestAmount = (float) $this->withdrawalMinimumRequestAmount();
+        $estimatedReceivedAmount = max(0, $amount - self::WITHDRAWAL_ADMIN_FEE);
 
         if (! Hash::check($password, (string) $customer->password)) {
             throw ValidationException::withMessages([
@@ -794,9 +803,33 @@ class DashboardService
             ]);
         }
 
-        if ($amount <= 0) {
+        if ($rawAmount <= 0 || abs($rawAmount - $amount) > 0.0001) {
             throw ValidationException::withMessages([
                 'amount' => 'Nominal withdrawal tidak valid.',
+            ]);
+        }
+
+        if (((int) $amount) % self::WITHDRAWAL_STEP_AMOUNT !== 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'Nominal withdrawal harus kelipatan Rp 1.000.',
+            ]);
+        }
+
+        if ($amount < $minimumRequestAmount) {
+            throw ValidationException::withMessages([
+                'amount' => sprintf(
+                    'Nominal withdrawal minimal %s.',
+                    $this->formatRupiahAmount($minimumRequestAmount),
+                ),
+            ]);
+        }
+
+        if ($estimatedReceivedAmount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => sprintf(
+                    'Nominal withdrawal harus lebih besar dari biaya admin %s.',
+                    $this->formatRupiahAmount(self::WITHDRAWAL_ADMIN_FEE),
+                ),
             ]);
         }
 
@@ -845,7 +878,7 @@ class DashboardService
                 'payment_method' => 'bank_transfer',
                 'transaction_ref' => $transactionRef,
                 'midtrans_transaction_id' => null,
-                'notes' => $this->buildWithdrawalNotes($lockedCustomer, $notes),
+                'notes' => $this->buildWithdrawalNotes($lockedCustomer, $notes, $amount),
                 'completed_at' => null,
                 'is_system' => false,
                 'midtrans_signature_key' => null,
@@ -2319,14 +2352,28 @@ class DashboardService
         return $base.PHP_EOL.$addition;
     }
 
-    private function buildWithdrawalNotes(Customer $customer, ?string $notes): string
+    private function buildWithdrawalNotes(Customer $customer, ?string $notes, float $amount): string
     {
         $bankName = trim((string) ($customer->bank_name ?? '-'));
         $bankAccount = trim((string) ($customer->bank_account ?? '-'));
-        $base = "Bank: {$bankName} ({$bankAccount})";
+        $adminFee = $this->formatRupiahAmount(self::WITHDRAWAL_ADMIN_FEE);
+        $estimatedReceived = $this->formatRupiahAmount(max(0, $amount - self::WITHDRAWAL_ADMIN_FEE));
+        $base = "Bank: {$bankName} ({$bankAccount})".PHP_EOL
+            ."Biaya admin: {$adminFee}".PHP_EOL
+            ."Estimasi diterima: {$estimatedReceived}";
         $extra = $this->normalizeWalletTransactionNotes($notes);
 
         return $extra !== null ? $base.PHP_EOL.$extra : $base;
+    }
+
+    private function withdrawalMinimumRequestAmount(): int
+    {
+        return (int) (ceil(self::WITHDRAWAL_MIN_AMOUNT / self::WITHDRAWAL_STEP_AMOUNT) * self::WITHDRAWAL_STEP_AMOUNT);
+    }
+
+    private function formatRupiahAmount(float|int $amount): string
+    {
+        return 'Rp '.number_format((int) round($amount), 0, ',', '.');
     }
 
     private function memberStatusLabel(int $status): string

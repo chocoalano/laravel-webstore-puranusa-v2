@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import type { DashboardNetworkTreeNode, DashboardNetworkTreeStats } from '@/types/dashboard'
 
 export type NetworkTreeSearchResult = {
@@ -61,6 +61,14 @@ function flattenTree(node: DashboardNetworkTreeNode | null): NetworkTreeSearchRe
     ]
 }
 
+function resolveDefaultZoom(): number {
+    if (typeof window === 'undefined') {
+        return 0.9
+    }
+
+    return window.matchMedia('(max-width: 640px)').matches ? 0.75 : 0.9
+}
+
 export function useNetworkTree(
     binaryTree: Ref<DashboardNetworkTreeNode | null>,
     networkTreeStats: Ref<DashboardNetworkTreeStats | null>,
@@ -69,11 +77,13 @@ export function useNetworkTree(
     const treeSearchQuery = ref('')
     const showTreeSearchResults = ref(false)
 
-    const zoom = ref(1)
+    const defaultZoom = resolveDefaultZoom()
+    const zoom = ref(defaultZoom)
     const minZoom = 0.65
     const maxZoom = 1.6
 
     const collapsedIds = ref<number[]>([])
+    const hasInitializedCollapsedState = ref(false)
 
     const rootTree = computed(() => binaryTree.value ?? null)
 
@@ -179,6 +189,28 @@ export function useNetworkTree(
             .filter((id) => id !== currentTree.value?.id)
     }
 
+    watch(
+        currentTree,
+        (tree) => {
+            if (!tree) {
+                collapsedIds.value = []
+                hasInitializedCollapsedState.value = false
+
+                return
+            }
+
+            if (hasInitializedCollapsedState.value) {
+                return
+            }
+
+            collapsedIds.value = flattenTree(tree)
+                .map((member) => member.id)
+                .filter((id) => id !== tree.id)
+            hasInitializedCollapsedState.value = true
+        },
+        { immediate: true }
+    )
+
     function handleZoomIn(): void {
         zoom.value = Math.min(maxZoom, Number((zoom.value + 0.1).toFixed(2)))
     }
@@ -188,7 +220,7 @@ export function useNetworkTree(
     }
 
     function handleResetZoom(): void {
-        zoom.value = 1
+        zoom.value = defaultZoom
     }
 
     function handleTreeSearchInput(): void {

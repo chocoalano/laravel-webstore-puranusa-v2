@@ -47,7 +47,9 @@ const props = withDefaults(
 const hasPendingWithdrawal = computed(() => Boolean(props.hasPendingWithdrawal))
 
 const {
+    balance,
     formattedBalance,
+    withdrawalAdminFee,
     allTransactions,
     shownCount,
     totalCount,
@@ -126,6 +128,9 @@ const {
             v-model:amount="withdrawalAmount"
             v-model:password="withdrawalPassword"
             v-model:notes="withdrawalNotes"
+            :max-amount="balance"
+            :max-amount-label="formattedBalance"
+            :admin-fee="withdrawalAdminFee"
             :loading="isSubmittingWithdrawal"
             @submit="submitWithdrawal"
         />

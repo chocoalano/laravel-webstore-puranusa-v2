@@ -4,6 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Widgets\AccountWidget;
 use App\Filament\Widgets\AppInfoWidget;
+use App\Filament\Widgets\QueueListWidget;
+use App\Filament\Widgets\QueueSystemMonitorWidget;
 use App\Filament\Widgets\ShoppingDataInstructionCalloutWidget;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
@@ -93,6 +95,8 @@ class ControlPanelPanelProvider extends PanelProvider
                 ShoppingDataInstructionCalloutWidget::class,
                 AccountWidget::class,
                 AppInfoWidget::class,
+                QueueSystemMonitorWidget::class,
+                QueueListWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

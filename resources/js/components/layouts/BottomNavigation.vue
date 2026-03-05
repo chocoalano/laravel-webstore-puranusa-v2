@@ -31,16 +31,16 @@ const navItems = computed<BottomNavItem[]>(() => {
         { kind: 'link', label: 'Home', icon: 'i-lucide-house', to: '/' },
         { kind: 'link', label: 'Explore', icon: 'i-lucide-search', to: '/shop' },
     ]
-    const dynamicBottomPage = bottomMainPages.value[0]
+    // const dynamicBottomPage = bottomMainPages.value[0]
 
-    if (dynamicBottomPage) {
-        baseItems.push({
-            kind: 'link',
-            label: dynamicBottomPage.label,
-            icon: 'i-lucide-file-text',
-            to: dynamicBottomPage.to,
-        })
-    }
+    // if (dynamicBottomPage) {
+    //     baseItems.push({
+    //         kind: 'link',
+    //         label: dynamicBottomPage.label,
+    //         icon: 'i-lucide-file-text',
+    //         to: dynamicBottomPage.to,
+    //     })
+    // }
 
     if (!isLoggedIn.value) {
         return baseItems

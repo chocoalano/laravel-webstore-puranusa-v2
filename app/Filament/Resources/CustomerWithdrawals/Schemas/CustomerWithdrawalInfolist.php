@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\CustomerWithdrawals\Schemas;
 
+use App\Models\CustomerWalletTransaction;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 
 class CustomerWithdrawalInfolist
 {
+    private const WITHDRAWAL_ADMIN_FEE = 6500;
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -40,15 +43,35 @@ class CustomerWithdrawalInfolist
                 ->color(fn (string $state): string => self::statusColors()[$state] ?? 'gray'),
 
             TextEntry::make('amount')
-                ->label('Nominal Penarikan')
+                ->label('Nominal Transfer ke Customer (Net)')
                 ->money('IDR'),
 
             TextEntry::make('balance_before')
                 ->label('Saldo Sebelum')
                 ->money('IDR'),
 
+            TextEntry::make('admin')
+                ->label('Biaya Admin Withdrawal')
+                ->state(fn (): int => self::adminFee())
+                ->money('IDR'),
+
+            TextEntry::make('total_diterima')
+                ->label('Total Diterima Customer (Net)')
+                ->state(fn (?CustomerWalletTransaction $record): int => self::totalReceived($record))
+                ->money('IDR'),
+
+            TextEntry::make('total_potongan')
+                ->label('Total Potongan Wallet (Net + Admin)')
+                ->state(fn (?CustomerWalletTransaction $record): int => self::totalDeducted($record))
+                ->money('IDR'),
+
+            TextEntry::make('balance_after_formula')
+                ->label('Saldo Sesudah (Formula Akunting)')
+                ->state(fn (?CustomerWalletTransaction $record): int => self::balanceAfterByFormula($record))
+                ->money('IDR'),
+
             TextEntry::make('balance_after')
-                ->label('Saldo Sesudah')
+                ->label('Saldo Sesudah (Actual)')
                 ->money('IDR'),
 
             TextEntry::make('payment_method')
@@ -139,5 +162,30 @@ class CustomerWithdrawalInfolist
             'failed' => 'danger',
             'cancelled' => 'gray',
         ];
+    }
+
+    private static function adminFee(): int
+    {
+        return self::WITHDRAWAL_ADMIN_FEE;
+    }
+
+    private static function totalReceived(?CustomerWalletTransaction $record): int
+    {
+        $amount = (int) round((float) ($record?->amount ?? 0));
+
+        return max(0, $amount);
+    }
+
+    private static function totalDeducted(?CustomerWalletTransaction $record): int
+    {
+        return self::totalReceived($record) + self::adminFee();
+    }
+
+    private static function balanceAfterByFormula(?CustomerWalletTransaction $record): int
+    {
+        $balanceBefore = (int) round((float) ($record?->balance_before ?? 0));
+        $totalDeducted = self::totalDeducted($record);
+
+        return $balanceBefore - $totalDeducted;
     }
 }

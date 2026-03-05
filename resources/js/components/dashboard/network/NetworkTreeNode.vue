@@ -38,12 +38,12 @@ const levelLabel = computed(() => `L${props.node.level}`)
 
 <template>
     <div class="flex flex-col items-center">
-        <UCard class="w-[260px] rounded-2xl border border-default shadow-sm">
-            <div class="space-y-2">
+        <UCard class="w-40 max-w-[calc(100vw-3rem)] rounded-xl border border-default sm:w-60 sm:max-w-none sm:rounded-2xl lg:w-65">
+            <div class="space-y-1 sm:space-y-2">
                 <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold text-highlighted">{{ node.name }}</p>
-                        <p class="truncate text-[11px] text-muted">@{{ node.username }}</p>
+                        <p class="truncate text-xs font-semibold text-highlighted sm:text-sm">{{ node.name }}</p>
+                        <p class="truncate text-[10px] text-muted sm:text-[11px]">@{{ node.username }}</p>
                     </div>
 
                     <div class="flex items-center gap-1">
@@ -53,6 +53,7 @@ const levelLabel = computed(() => `L${props.node.level}`)
                             color="neutral"
                             variant="ghost"
                             :icon="isCollapsed ? 'i-lucide-plus' : 'i-lucide-minus'"
+                            class="rounded-lg"
                             @click="emit('toggleExpand', node.id)"
                         />
                         <UButton
@@ -60,12 +61,13 @@ const levelLabel = computed(() => `L${props.node.level}`)
                             color="neutral"
                             variant="ghost"
                             icon="i-lucide-scan-search"
+                            class="rounded-lg"
                             @click="emit('memberClick', node.id)"
                         />
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-1.5">
+                <div class="flex flex-wrap gap-0.5 sm:gap-1">
                     <UBadge color="neutral" variant="subtle" size="xs" class="rounded-full">
                         {{ packageLabel }}
                     </UBadge>
@@ -73,10 +75,10 @@ const levelLabel = computed(() => `L${props.node.level}`)
                         {{ levelLabel }}
                     </UBadge>
                     <UBadge color="success" variant="subtle" size="xs" class="rounded-full">
-                        Kiri {{ node.total_left }}
+                        L {{ node.total_left }}
                     </UBadge>
                     <UBadge color="info" variant="subtle" size="xs" class="rounded-full">
-                        Kanan {{ node.total_right }}
+                        R {{ node.total_right }}
                     </UBadge>
                 </div>
             </div>
@@ -84,15 +86,15 @@ const levelLabel = computed(() => `L${props.node.level}`)
 
         <div
             v-if="showChildren"
-            class="mt-4 w-full"
+            class="mt-3 w-full sm:mt-4"
         >
-            <div class="mx-auto h-4 w-px bg-gray-300 dark:bg-gray-700" />
+            <div class="mx-auto h-3 w-px bg-gray-300 dark:bg-gray-700 sm:h-4" />
 
-            <div class="relative grid grid-cols-2 gap-4 px-2 sm:gap-8">
-                <div class="absolute left-1/4 right-1/4 top-0 h-px bg-gray-300 dark:bg-gray-700" />
+            <div class="relative grid grid-cols-2 gap-1 px-0.5 sm:gap-6 sm:px-2">
+                <div class="absolute left-[29%] right-[29%] top-0 h-px bg-gray-300 dark:bg-gray-700 sm:left-[27%] sm:right-[27%]" />
 
-                <div class="relative flex justify-center pt-4">
-                    <div class="absolute left-1/2 top-0 h-4 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700" />
+                <div class="relative flex justify-center pt-3 sm:pt-4">
+                    <div class="absolute left-[58%] top-0 h-3 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[55%] sm:h-4" />
 
                     <NetworkTreeNode
                         v-if="node.left"
@@ -108,17 +110,17 @@ const levelLabel = computed(() => `L${props.node.level}`)
 
                     <UCard
                         v-else-if="allowPlacement"
-                        class="w-[220px] rounded-2xl border border-dashed border-default bg-elevated/40"
+                        class="w-36 rounded-xl border border-dashed border-default bg-elevated/40 sm:w-52 sm:rounded-2xl lg:w-55"
                     >
-                        <div class="flex flex-col items-center gap-2 py-2 text-center">
-                            <UIcon name="i-lucide-user-round-plus" class="size-5 text-muted" />
-                            <p class="text-xs text-muted">Slot kiri kosong</p>
+                        <div class="flex flex-col items-center gap-1.5 py-1.5 text-center sm:gap-2 sm:py-2">
+                            <UIcon name="i-lucide-user-round-plus" class="size-4 text-muted sm:size-5" />
+                            <p class="text-[11px] text-muted sm:text-xs">Slot kiri kosong</p>
                             <UButton
                                 size="xs"
                                 color="primary"
                                 variant="soft"
                                 icon="i-lucide-plus"
-                                class="rounded-xl"
+                                class="rounded-lg sm:rounded-xl"
                                 @click="emit('openPlacement', { uplineId: node.id, position: 'left' })"
                             >
                                 Tempatkan
@@ -127,8 +129,8 @@ const levelLabel = computed(() => `L${props.node.level}`)
                     </UCard>
                 </div>
 
-                <div class="relative flex justify-center pt-4">
-                    <div class="absolute left-1/2 top-0 h-4 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700" />
+                <div class="relative flex justify-center pt-3 sm:pt-4">
+                    <div class="absolute left-[42%] top-0 h-3 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[45%] sm:h-4" />
 
                     <NetworkTreeNode
                         v-if="node.right"
@@ -144,17 +146,17 @@ const levelLabel = computed(() => `L${props.node.level}`)
 
                     <UCard
                         v-else-if="allowPlacement"
-                        class="w-[220px] rounded-2xl border border-dashed border-default bg-elevated/40"
+                        class="w-36 rounded-xl border border-dashed border-default bg-elevated/40 sm:w-52 sm:rounded-2xl lg:w-55"
                     >
-                        <div class="flex flex-col items-center gap-2 py-2 text-center">
-                            <UIcon name="i-lucide-user-round-plus" class="size-5 text-muted" />
-                            <p class="text-xs text-muted">Slot kanan kosong</p>
+                        <div class="flex flex-col items-center gap-1.5 py-1.5 text-center sm:gap-2 sm:py-2">
+                            <UIcon name="i-lucide-user-round-plus" class="size-4 text-muted sm:size-5" />
+                            <p class="text-[11px] text-muted sm:text-xs">Slot kanan kosong</p>
                             <UButton
                                 size="xs"
                                 color="primary"
                                 variant="soft"
                                 icon="i-lucide-plus"
-                                class="rounded-xl"
+                                class="rounded-lg sm:rounded-xl"
                                 @click="emit('openPlacement', { uplineId: node.id, position: 'right' })"
                             >
                                 Tempatkan

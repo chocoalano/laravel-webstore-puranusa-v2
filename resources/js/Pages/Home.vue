@@ -82,7 +82,7 @@ const categories = computed(() => page.props.categories)
         <ProductCTA />
 
         <!-- Brand Showcase -->
-        <BrandShowcase :brands="brands" />
+        <!-- <BrandShowcase :brands="brands" /> -->
 
         <!-- Affiliate / Referral Business CTA -->
         <AffiliateCTA />

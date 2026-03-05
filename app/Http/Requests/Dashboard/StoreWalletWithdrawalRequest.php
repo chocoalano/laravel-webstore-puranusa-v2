@@ -16,7 +16,7 @@ class StoreWalletWithdrawalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'min:10000'],
+            'amount' => ['required', 'numeric', 'integer', 'min:10000', 'multiple_of:1000'],
             'password' => ['required', 'string'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -28,7 +28,9 @@ class StoreWalletWithdrawalRequest extends FormRequest
         return [
             'amount.required' => 'Nominal withdrawal wajib diisi.',
             'amount.numeric' => 'Nominal withdrawal harus berupa angka.',
+            'amount.integer' => 'Nominal withdrawal harus berupa bilangan bulat.',
             'amount.min' => 'Nominal withdrawal minimal Rp 10.000.',
+            'amount.multiple_of' => 'Nominal withdrawal harus kelipatan Rp 1.000.',
             'password.required' => 'Password wajib diisi untuk konfirmasi withdrawal.',
             'notes.max' => 'Catatan withdrawal maksimal 500 karakter.',
         ];

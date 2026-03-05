@@ -30,7 +30,8 @@ const rightUtilityLinks = computed(() => headerBottomBarPages.value)
                             <span class="flex items-center gap-2.5">
                                 <div
                                     class="grid size-9 place-items-center rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm">
-                                    <UIcon name="i-lucide-shopping-bag" class="size-4.5" />
+                                    <img src="/assets/logo-puranusa-light.webp" class="size-4.5 dark:hidden" alt="Puranusa logo" />
+                                    <img src="/assets/logo-puranusa.webp" class="hidden size-4.5 dark:block" alt="Puranusa logo" />
                                 </div>
                                 <div class="hidden sm:block text-left leading-tight">
                                     <p class="text-lg font-bold tracking-tight text-gray-900 dark:text-white">{{ appName
