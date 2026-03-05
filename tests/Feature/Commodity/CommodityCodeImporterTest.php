@@ -81,3 +81,14 @@ it('upserts commodity code row by code', function (): void {
         ->and((bool) $record?->dangerous_good)->toBeTrue()
         ->and((bool) $record?->is_quarantine)->toBeTrue();
 });
+
+it('uses database connection and default queue for import jobs', function (): void {
+    $importer = new CommodityCodeImporter(
+        import: new Import,
+        columnMap: [],
+        options: [],
+    );
+
+    expect($importer->getJobConnection())->toBe('database')
+        ->and($importer->getJobQueue())->toBe('default');
+});

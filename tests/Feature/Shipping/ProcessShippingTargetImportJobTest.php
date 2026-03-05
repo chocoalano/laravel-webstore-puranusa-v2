@@ -79,3 +79,14 @@ it('deletes temporary file when import service throws exception', function (): v
     expect(fn () => $job->handle($importService))->toThrow(RuntimeException::class, 'import failed');
     expect(Storage::disk('local')->exists($storedFilePath))->toBeFalse();
 });
+
+it('uses database connection and default queue for shipping target import job', function (): void {
+    $job = new ProcessShippingTargetImportJob(
+        storedFilePath: 'imports/shipping-targets/targets.csv',
+        initiatorUserId: 1,
+        originalFileName: 'targets.csv',
+    );
+
+    expect($job->connection)->toBe('database')
+        ->and($job->queue)->toBe('default');
+});

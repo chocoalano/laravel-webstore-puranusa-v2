@@ -12,6 +12,16 @@ class CommodityCodeImporter extends Importer
 {
     protected static ?string $model = CommodityCode::class;
 
+    public function getJobQueue(): ?string
+    {
+        return 'default';
+    }
+
+    public function getJobConnection(): ?string
+    {
+        return 'database';
+    }
+
     public static function getColumns(): array
     {
         return [
