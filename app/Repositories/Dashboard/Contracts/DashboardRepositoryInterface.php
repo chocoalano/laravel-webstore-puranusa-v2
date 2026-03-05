@@ -252,7 +252,7 @@ interface DashboardRepositoryInterface
     /**
      * @return Collection<int, Customer>
      */
-    public function getBinaryTreeMembers(int $rootCustomerId, int $maxDepth = 6): Collection;
+    public function getBinaryTreeMembers(int $rootCustomerId, int $maxDepth = 5): Collection;
 
     public function hasBinaryChildAtPosition(int $customerId, string $position): bool;
 

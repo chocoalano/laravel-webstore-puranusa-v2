@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WhatsAppBroadcasts\Tables;
 
+use App\Jobs\ProcessWhatsAppBroadcastJob;
 use App\Models\WhatsAppBroadcast;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -9,6 +10,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -54,10 +56,12 @@ class WhatsAppBroadcastTable
                         }
 
                         $pct = (int) round(($ok / $total) * 100);
+
                         return "{$ok}/{$total} ({$pct}%)";
                     })
                     ->description(function (WhatsAppBroadcast $r): ?string {
                         $fail = max(0, (int) $r->failed_recipients);
+
                         return $fail > 0 ? "Gagal: {$fail}" : null;
                     })
                     ->sortable(query: function ($query, string $direction) {
@@ -107,8 +111,36 @@ class WhatsAppBroadcastTable
             ])
             ->recordActions([
                 Action::make('resend')
+                    ->label('Resend')
                     ->icon(Heroicon::OutlinedArrowRightEndOnRectangle)
-                    ->action(fn() => dd('resend')),
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Kirim Ulang Broadcast')
+                    ->modalDescription('Broadcast ini akan diproses ulang dan status penerima akan di-reset ke antrean.')
+                    ->modalSubmitActionLabel('Ya, kirim ulang')
+                    ->visible(fn (WhatsAppBroadcast $record): bool => $record->status !== 'processing')
+                    ->action(function (WhatsAppBroadcast $record): void {
+                        try {
+                            self::scheduleResend($record);
+
+                            Notification::make()
+                                ->title('Broadcast dijadwalkan ulang')
+                                ->body('Proses resend WhatsApp berhasil dimasukkan ke queue.')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            $record->update([
+                                'status' => 'failed',
+                                'last_error' => $exception->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->title('Gagal melakukan resend')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 ViewAction::make(),
 
                 EditAction::make()
@@ -126,5 +158,25 @@ class WhatsAppBroadcastTable
                         ->requiresConfirmation(),
                 ]),
             ]);
+    }
+
+    private static function scheduleResend(WhatsAppBroadcast $record): void
+    {
+        $record->update([
+            'status' => 'processing',
+            'total_recipients' => 0,
+            'success_recipients' => 0,
+            'failed_recipients' => 0,
+            'last_error' => null,
+            'sent_at' => null,
+        ]);
+
+        $record->recipients()->update([
+            'status' => 'queued',
+            'response_message' => null,
+            'sent_at' => null,
+        ]);
+
+        ProcessWhatsAppBroadcastJob::dispatch((int) $record->id);
     }
 }

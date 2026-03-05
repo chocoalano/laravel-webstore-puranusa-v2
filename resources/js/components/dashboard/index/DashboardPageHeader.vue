@@ -29,7 +29,7 @@ const referralPath = computed<string | null>(() => {
         return null
     }
 
-    return `/register?referral_code=${encodeURIComponent(referralCode)}`
+    return `?referral_code=${encodeURIComponent(referralCode)}`
 })
 
 const referralUrlLabel = computed<string>(() => {

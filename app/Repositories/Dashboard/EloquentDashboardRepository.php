@@ -873,7 +873,7 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
             ]);
     }
 
-    public function getBinaryTreeMembers(int $rootCustomerId, int $maxDepth = 6): Collection
+    public function getBinaryTreeMembers(int $rootCustomerId, int $maxDepth = 5): Collection
     {
         $safeDepth = max(1, $maxDepth);
         $collectedIds = [$rootCustomerId => $rootCustomerId];

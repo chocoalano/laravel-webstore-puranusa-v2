@@ -105,6 +105,7 @@ function clearCart(): void {
 
 function goToCheckout(): void {
     if (checkedCount.value === 0) return
+    cartSlideoverOpen.value = false
     router.visit('/checkout', { data: { items: checkedIds.value } })
 }
 </script>

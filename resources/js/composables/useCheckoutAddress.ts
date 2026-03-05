@@ -1,8 +1,18 @@
 import { computed, onMounted, ref, watch } from 'vue'
-import type { AddressMode, AddressPayload, CheckoutAddress, ShippingRate } from '@/types/checkout'
+import type { AddressMode, AddressPayload, CheckoutAddress, PickupLocation, ShippingRate } from '@/types/checkout'
 
-export function useCheckoutAddress(savedAddresses: CheckoutAddress[]) {
-    const addressMode = ref<AddressMode>(savedAddresses.length ? 'saved' : 'manual')
+function hasPickupData(location: PickupLocation | null): boolean {
+    if (!location) {
+        return false
+    }
+
+    return [location.address_line, location.city, location.province]
+        .some((part) => String(part ?? '').trim() !== '')
+}
+
+export function useCheckoutAddress(savedAddresses: CheckoutAddress[], pickupLocation: PickupLocation | null = null) {
+    const hasPickupLocation = computed<boolean>(() => hasPickupData(pickupLocation))
+    const addressMode = ref<AddressMode>(savedAddresses.length ? 'saved' : (hasPickupLocation.value ? 'pickup' : 'manual'))
     const selectedAddressId = ref<string | number | null>(null)
 
     // Manual form fields
@@ -152,6 +162,17 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[]) {
         shippingRates.value = []
         selectedRate.value = null
         shippingError.value = null
+
+        if (addressMode.value === 'saved' && selectedAddressId.value) {
+            const address = savedAddresses.find((a) => a.id === selectedAddressId.value)
+            if (address?.province && address?.city) {
+                loadShippingRates(address.province, address.city)
+            }
+        }
+
+        if (addressMode.value === 'manual' && selectedProvince.value && selectedCity.value) {
+            loadShippingRates(selectedProvince.value, selectedCity.value, selectedDistrict.value || undefined)
+        }
     })
 
     const selectedAddress = computed<CheckoutAddress | null>(() => {
@@ -160,6 +181,14 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[]) {
     })
 
     const addressPayload = computed<AddressPayload | null>(() => {
+        if (addressMode.value === 'pickup') {
+            if (!hasPickupLocation.value) {
+                return null
+            }
+
+            return { address_mode: 'pickup' }
+        }
+
         if (addressMode.value === 'saved') {
             if (!selectedAddress.value) return null
             return { address_mode: 'saved', address_id: selectedAddress.value.id }
@@ -179,6 +208,10 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[]) {
     })
 
     const isAddressValid = computed<boolean>(() => {
+        if (addressMode.value === 'pickup') {
+            return hasPickupLocation.value
+        }
+
         if (addressMode.value === 'saved') return !!selectedAddress.value
 
         const p = addressPayload.value
@@ -210,5 +243,7 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[]) {
         selectedRate,
         isLoadingRates,
         shippingError,
+        pickupLocation,
+        hasPickupLocation,
     }
 }

@@ -243,9 +243,9 @@ class CheckoutController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"address_mode","order_type","shipping_cost"},
+     *             required={"address_mode","order_type"},
      *
-     *             @OA\Property(property="address_mode", type="string", enum={"saved","manual"}, example="saved"),
+     *             @OA\Property(property="address_mode", type="string", enum={"saved","manual","pickup"}, example="saved"),
      *             @OA\Property(property="order_type", type="string", enum={"planA","planB"}, example="planA"),
      *             @OA\Property(property="address_id", type="integer", nullable=true, example=12),
      *             @OA\Property(property="recipient_name", type="string", nullable=true, example="Budi Santoso"),
@@ -341,9 +341,9 @@ class CheckoutController extends Controller
      *         required=true,
      *
      *         @OA\JsonContent(
-     *             required={"address_mode","order_type","shipping_cost"},
+     *             required={"address_mode","order_type"},
      *
-     *             @OA\Property(property="address_mode", type="string", enum={"saved","manual"}, example="saved"),
+     *             @OA\Property(property="address_mode", type="string", enum={"saved","manual","pickup"}, example="saved"),
      *             @OA\Property(property="order_type", type="string", enum={"planA","planB"}, example="planA"),
      *             @OA\Property(property="address_id", type="integer", nullable=true, example=12),
      *             @OA\Property(property="recipient_name", type="string", nullable=true, example="Budi Santoso"),

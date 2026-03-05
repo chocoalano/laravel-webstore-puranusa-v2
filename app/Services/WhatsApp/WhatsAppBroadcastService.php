@@ -63,6 +63,8 @@ class WhatsAppBroadcastService
                         (string) $recipient->customer_name,
                         (string) $broadcast->message,
                     ),
+                    'id',
+                    $this->resolveBroadcastHeaderImageUrl(),
                 );
 
                 if ((bool) ($result['success'] ?? false)) {
@@ -179,5 +181,30 @@ class WhatsAppBroadcastService
         }
 
         return "Sent via Qontak (HTTP {$statusCode})";
+    }
+
+    private function resolveBroadcastHeaderImageUrl(): ?string
+    {
+        $configuredBroadcastHeader = trim((string) config('services.qontak.broadcast_header_image_url', ''));
+
+        if (($configuredBroadcastHeader !== '') && $this->isSupportedHeaderImageUrl($configuredBroadcastHeader)) {
+            return $configuredBroadcastHeader;
+        }
+
+        $configuredWithdrawalHeader = trim((string) config('services.qontak.wd_approved_header_image_url', ''));
+
+        if (($configuredWithdrawalHeader !== '') && $this->isSupportedHeaderImageUrl($configuredWithdrawalHeader)) {
+            return $configuredWithdrawalHeader;
+        }
+
+        return 'https://puranusa.id/logo.png';
+    }
+
+    private function isSupportedHeaderImageUrl(string $url): bool
+    {
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png'], true);
     }
 }

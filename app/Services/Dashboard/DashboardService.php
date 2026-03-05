@@ -2661,7 +2661,7 @@ class DashboardService
      *   }
      * }
      */
-    private function formatBinaryTreeData(Customer $customer, int $maxDepth = 6): array
+    private function formatBinaryTreeData(Customer $customer, int $maxDepth = 5): array
     {
         $leftCount = (int) ($customer->total_left ?? 0);
         $rightCount = (int) ($customer->total_right ?? 0);

@@ -14,7 +14,7 @@ const props = withDefaults(
     {
         currentTree: null,
         collapsedIds: () => [],
-        maxDepth: 6,
+        maxDepth: 5,
         allowPlacement: true,
     }
 )

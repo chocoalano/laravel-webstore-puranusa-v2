@@ -111,7 +111,7 @@ function updatePlacementSearchQuery(value: string): void {
                     :current-tree="currentTree"
                     :zoom="zoom"
                     :collapsed-ids="collapsedIds"
-                    :max-depth="6"
+                    :max-depth="5"
                     @member-click="focusToMember"
                     @open-placement="openPlacementDialog"
                     @toggle-expand="toggleNode"

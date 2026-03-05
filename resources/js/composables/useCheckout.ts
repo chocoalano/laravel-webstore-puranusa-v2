@@ -8,6 +8,7 @@ export function useCheckout() {
     const items = computed<CheckoutItem[]>(() => page.props.items ?? [])
     const cart = computed<CartTotals | null>(() => page.props.cart ?? null)
     const addresses = computed(() => page.props.addresses ?? [])
+    const pickup = computed(() => page.props.pickup ?? null)
     const saldo = computed(() => page.props.saldo ?? 0)
     const midtrans = computed(() => page.props.midtrans)
 
@@ -21,5 +22,5 @@ export function useCheckout() {
         }).format(n)
     }
 
-    return { items, cart, addresses, saldo, midtrans, itemCount, formatIDR }
+    return { items, cart, addresses, pickup, saldo, midtrans, itemCount, formatIDR }
 }

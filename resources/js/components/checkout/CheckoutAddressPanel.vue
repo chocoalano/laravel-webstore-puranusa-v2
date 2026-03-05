@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { watch } from 'vue'
-import type { AddressPayload, CheckoutAddress, ShippingRate } from '@/types/checkout'
+import type { AddressPayload, CheckoutAddress, PickupLocation, ShippingRate } from '@/types/checkout'
 import { useCheckoutAddress } from '@/composables/useCheckoutAddress'
 
 const props = defineProps<{
     addresses: CheckoutAddress[]
+    pickupLocation: PickupLocation | null
     shippingFee: number
 }>()
 
@@ -37,7 +38,8 @@ const {
     selectedRate,
     isLoadingRates,
     shippingError,
-} = useCheckoutAddress(props.addresses)
+    hasPickupLocation,
+} = useCheckoutAddress(props.addresses, props.pickupLocation)
 
 watch(addressPayload, (val) => emit('update:payload', val), { immediate: true })
 watch(isAddressValid, (val) => emit('update:isValid', val), { immediate: true })
@@ -55,20 +57,24 @@ function formatIDR(n: number): string {
                 <div class="min-w-0">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">Alamat Pengiriman</p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Pilih alamat tersimpan atau isi manual. Pastikan nomor HP aktif untuk kurir.
+                        Pilih kirim ke alamat atau ambil langsung di kantor pickup.
                     </p>
                 </div>
 
                 <div class="w-full sm:w-auto">
                     <div
-                        class="grid w-full grid-cols-2 rounded-2xl border border-gray-200 bg-white/70 p-1 backdrop-blur dark:border-gray-800 dark:bg-gray-950/40">
+                        class="grid w-full grid-cols-3 rounded-2xl border border-gray-200 bg-white/70 p-1 backdrop-blur dark:border-gray-800 dark:bg-gray-950/40">
                         <UButton class="w-full rounded-xl" size="sm" color="neutral"
                             :variant="addressMode === 'saved' ? 'solid' : 'ghost'" @click="addressMode = 'saved'">
-                            Pilih alamat
+                            Alamat
                         </UButton>
                         <UButton class="w-full rounded-xl" size="sm" color="neutral"
                             :variant="addressMode === 'manual' ? 'solid' : 'ghost'" @click="addressMode = 'manual'">
-                            Isi manual
+                            Manual
+                        </UButton>
+                        <UButton class="w-full rounded-xl" size="sm" color="neutral"
+                            :variant="addressMode === 'pickup' ? 'solid' : 'ghost'" @click="addressMode = 'pickup'">
+                            Self pickup
                         </UButton>
                     </div>
                 </div>
@@ -126,7 +132,7 @@ function formatIDR(n: number): string {
         </div>
 
         <!-- MANUAL FORM -->
-        <div v-else class="space-y-4">
+        <div v-else-if="addressMode === 'manual'" class="space-y-4">
             <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
                 <UFormField label="Nama penerima" required class="w-full">
                     <UInput v-model="recipientName" placeholder="Nama lengkap" class="w-full" />
@@ -193,8 +199,52 @@ function formatIDR(n: number): string {
             </div>
         </div>
 
+        <!-- SELF PICKUP -->
+        <div v-else class="space-y-3">
+            <div v-if="hasPickupLocation && pickupLocation"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-200">
+                <div class="flex items-start gap-2">
+                    <UIcon name="i-lucide-map-pin" class="mt-0.5 size-4 shrink-0" />
+                    <div class="min-w-0">
+                        <p class="font-semibold">Lokasi Pickup Kantor</p>
+                        <p class="mt-1">
+                            {{ pickupLocation.label }}
+                        </p>
+                        <p class="mt-1">
+                            {{ pickupLocation.address_line }}
+                        </p>
+                        <p class="mt-1">
+                            {{ pickupLocation.district ? `${pickupLocation.district}, ` : '' }}{{ pickupLocation.city }}, {{ pickupLocation.province }}{{ pickupLocation.postal_code ? ` ${pickupLocation.postal_code}` : '' }}
+                        </p>
+                        <p v-if="pickupLocation.phone" class="mt-1 text-xs">
+                            Kontak: {{ pickupLocation.phone }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else
+                class="rounded-2xl border border-dashed border-rose-300 p-4 text-sm text-rose-700 dark:border-rose-800 dark:text-rose-300">
+                Lokasi pickup kantor belum dikonfigurasi admin. Pilih metode alamat lain terlebih dahulu.
+            </div>
+
+            <div
+                class="rounded-2xl border border-gray-200 bg-white/70 p-3 text-sm text-gray-600 backdrop-blur dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
+                <div class="flex items-start gap-2">
+                    <UIcon name="i-lucide-info" class="mt-0.5 size-4 text-gray-500 dark:text-gray-400" />
+                    <div class="min-w-0">
+                        <p class="font-semibold text-gray-900 dark:text-white">Informasi self pickup</p>
+                        <ul class="mt-1 list-disc space-y-1 pl-5">
+                            <li>Pesanan diambil sendiri oleh pembeli ke lokasi pickup kantor.</li>
+                            <li>Ongkir otomatis gratis.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- SHIPPING RATES -->
-        <div v-if="isLoadingRates" class="mt-4">
+        <div v-if="addressMode !== 'pickup' && isLoadingRates" class="mt-4">
             <div
                 class="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white/70 p-4 backdrop-blur dark:border-gray-800 dark:bg-gray-950/40">
                 <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin text-gray-400" />
@@ -202,7 +252,7 @@ function formatIDR(n: number): string {
             </div>
         </div>
 
-        <div v-else-if="shippingError" class="mt-4">
+        <div v-else-if="addressMode !== 'pickup' && shippingError" class="mt-4">
             <div
                 class="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
                 <div class="flex items-center gap-2">
@@ -212,7 +262,7 @@ function formatIDR(n: number): string {
             </div>
         </div>
 
-        <div v-else-if="shippingRates.length > 0" class="mt-4 space-y-3">
+        <div v-else-if="addressMode !== 'pickup' && shippingRates.length > 0" class="mt-4 space-y-3">
             <p class="text-sm font-semibold text-gray-900 dark:text-white">Layanan Pengiriman (Lion Parcel)</p>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button v-for="rate in shippingRates" :key="rate.product" type="button"
@@ -250,7 +300,11 @@ function formatIDR(n: number): string {
                     </span>
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                    <template v-if="selectedRate">
+                    <template v-if="addressMode === 'pickup'">
+                        Ongkir:
+                        <span class="font-semibold text-gray-900 dark:text-white">Gratis (Self pickup)</span>
+                    </template>
+                    <template v-else-if="selectedRate">
                         Ongkir:
                         <span class="font-semibold text-gray-900 dark:text-white">{{ formatIDR(selectedRate.total_tariff) }}</span>
                         via {{ selectedRate.product }}

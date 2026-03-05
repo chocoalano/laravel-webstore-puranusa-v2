@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\Setting;
 use App\Repositories\Checkout\Contracts\CheckoutRepositoryInterface;
 use App\Services\Shipping\LionParcelService;
 use Illuminate\Support\Collection;
@@ -29,20 +30,21 @@ class CheckoutService
     /**
      * Data halaman checkout: items, totals, addresses, saldo, midtrans config.
      *
-     * @return array{items: list<array>, cart: array<string,float>|null, addresses: list<array>, saldo: float, midtrans: array{env: string, client_key: string}}
+     * @return array{items: list<array>, cart: array<string,float>|null, addresses: list<array>, pickup: array<string,mixed>|null, saldo: float, midtrans: array{env: string, client_key: string}}
      */
     public function getPageData(Customer $customer): array
     {
-        $cart      = $this->checkoutRepository->getCartWithItems($customer->id);
+        $cart = $this->checkoutRepository->getCartWithItems($customer->id);
         $addresses = $this->checkoutRepository->getCustomerAddresses($customer->id);
 
         return [
-            'items'     => $cart ? $this->formatItems($cart) : [],
-            'cart'      => $cart ? $this->formatCart($cart) : null,
+            'items' => $cart ? $this->formatItems($cart) : [],
+            'cart' => $cart ? $this->formatCart($cart) : null,
             'addresses' => $this->formatAddresses($addresses),
-            'saldo'     => (float) ($customer->ewallet_saldo ?? 0),
-            'midtrans'  => [
-                'env'        => config('services.midtrans.env', 'sandbox'),
+            'pickup' => $this->resolvePickupLocation(),
+            'saldo' => (float) ($customer->ewallet_saldo ?? 0),
+            'midtrans' => [
+                'env' => config('services.midtrans.env', 'sandbox'),
                 'client_key' => config('services.midtrans.client_key', ''),
             ],
         ];
@@ -91,7 +93,8 @@ class CheckoutService
     /**
      * Buat order + payment, potong saldo ewallet customer.
      *
-     * @param array<string, mixed> $addressData
+     * @param  array<string, mixed>  $addressData
+     *
      * @throws ValidationException
      */
     public function payWithSaldo(Customer $customer, array $addressData): Order
@@ -100,8 +103,8 @@ class CheckoutService
         $this->assertCartNotEmpty($cart);
 
         $orderType = (string) ($addressData['order_type'] ?? 'planA');
-        $shippingAmount = (float) ($addressData['shipping_cost'] ?? 0);
-        $total          = (float) $cart->subtotal_amount
+        $shippingAmount = $this->resolveShippingAmount($addressData);
+        $total = (float) $cart->subtotal_amount
             + $shippingAmount
             + (float) $cart->tax_amount
             - (float) $cart->discount_amount;
@@ -114,16 +117,16 @@ class CheckoutService
 
         $order = DB::transaction(function () use ($customer, $cart, $addressData, $total, $shippingAmount, $orderType): Order {
             $shippingAddressId = $this->resolveShippingAddressId($customer, $addressData);
-            $order             = $this->buildOrder($customer, $cart, $shippingAddressId, 'processing', $shippingAmount, $orderType);
+            $order = $this->buildOrder($customer, $cart, $shippingAddressId, 'processing', $shippingAmount, $orderType);
 
             $order->update(['paid_at' => now()]);
 
             Payment::create([
-                'order_id'  => $order->id,
+                'order_id' => $order->id,
                 'method_id' => PaymentMethod::where('code', 'p-002')->value('id'),
-                'status'    => 'paid',
-                'amount'    => $total,
-                'currency'  => $cart->currency,
+                'status' => 'paid',
+                'amount' => $total,
+                'currency' => $cart->currency,
             ]);
 
             $customer->decrement('ewallet_saldo', $total);
@@ -141,8 +144,9 @@ class CheckoutService
     /**
      * Buat order pending + payment pending, siapkan data untuk Midtrans Snap.
      *
-     * @param array<string, mixed> $addressData
+     * @param  array<string, mixed>  $addressData
      * @return array{order: Order, cart: Cart}
+     *
      * @throws ValidationException
      */
     public function prepareMidtransOrder(Customer $customer, array $addressData): array
@@ -151,11 +155,11 @@ class CheckoutService
         $this->assertCartNotEmpty($cart);
 
         $orderType = (string) ($addressData['order_type'] ?? 'planA');
-        $shippingAmount = (float) ($addressData['shipping_cost'] ?? 0);
+        $shippingAmount = $this->resolveShippingAmount($addressData);
 
         $result = DB::transaction(function () use ($customer, $cart, $addressData, $shippingAmount, $orderType): array {
             $shippingAddressId = $this->resolveShippingAddressId($customer, $addressData);
-            $order             = $this->buildOrder($customer, $cart, $shippingAddressId, 'pending', $shippingAmount, $orderType);
+            $order = $this->buildOrder($customer, $cart, $shippingAddressId, 'pending', $shippingAmount, $orderType);
 
             $grandTotal = (float) $cart->subtotal_amount
                 + $shippingAmount
@@ -163,11 +167,11 @@ class CheckoutService
                 - (float) $cart->discount_amount;
 
             Payment::create([
-                'order_id'  => $order->id,
+                'order_id' => $order->id,
                 'method_id' => PaymentMethod::where('code', 'p-001')->value('id'),
-                'status'    => 'pending',
-                'amount'    => $grandTotal,
-                'currency'  => $cart->currency,
+                'status' => 'pending',
+                'amount' => $grandTotal,
+                'currency' => $cart->currency,
             ]);
 
             return ['order' => $order, 'cart' => $cart];
@@ -192,11 +196,13 @@ class CheckoutService
     }
 
     /**
-     * @param array<string, mixed> $addressData
+     * @param  array<string, mixed>  $addressData
      */
     private function resolveShippingAddressId(Customer $customer, array $addressData): int
     {
-        if ($addressData['address_mode'] === 'saved') {
+        $addressMode = (string) ($addressData['address_mode'] ?? 'saved');
+
+        if ($addressMode === 'saved') {
             $addressId = (int) $addressData['address_id'];
 
             $isOwnedByCustomer = CustomerAddress::query()
@@ -213,25 +219,137 @@ class CheckoutService
             return $addressId;
         }
 
+        if ($addressMode === 'pickup') {
+            $pickupLocation = $this->resolvePickupLocation();
+
+            if (! $pickupLocation) {
+                throw ValidationException::withMessages([
+                    'address_mode' => 'Alamat pickup kantor belum dikonfigurasi.',
+                ]);
+            }
+
+            $provinceId = (int) ($pickupLocation['province_id'] ?? $customer->province_id ?? 0);
+            $cityId = (int) ($pickupLocation['city_id'] ?? $customer->city_id ?? 0);
+            $recipientPhone = trim((string) ($pickupLocation['phone'] ?? $customer->phone ?? ''));
+
+            $address = CustomerAddress::create([
+                'customer_id' => $customer->id,
+                'label' => (string) ($pickupLocation['label'] ?? 'Pickup Kantor'),
+                'recipient_name' => (string) ($pickupLocation['recipient_name'] ?? config('app.name')),
+                'recipient_phone' => $recipientPhone !== '' ? $recipientPhone : '-',
+                'address_line1' => (string) ($pickupLocation['address_line'] ?? ''),
+                'province_label' => (string) ($pickupLocation['province'] ?? ''),
+                'province_id' => $provinceId,
+                'city_label' => (string) ($pickupLocation['city'] ?? ''),
+                'city_id' => $cityId,
+                'district' => (string) ($pickupLocation['district'] ?? ''),
+                'district_lion' => (string) ($pickupLocation['district'] ?? ''),
+                'postal_code' => (string) ($pickupLocation['postal_code'] ?? ''),
+                'description' => 'Self pickup ke kantor.',
+                'country' => 'Indonesia',
+            ]);
+
+            return (int) $address->id;
+        }
+
         $provinceId = (int) ($addressData['province_id'] ?? $customer->province_id ?? 0);
-        $cityId     = (int) ($addressData['city_id'] ?? $customer->city_id ?? 0);
+        $cityId = (int) ($addressData['city_id'] ?? $customer->city_id ?? 0);
 
         $address = CustomerAddress::create([
-            'customer_id'     => $customer->id,
-            'label'           => 'Checkout',
-            'recipient_name'  => $addressData['recipient_name'],
+            'customer_id' => $customer->id,
+            'label' => 'Checkout',
+            'recipient_name' => $addressData['recipient_name'],
             'recipient_phone' => $addressData['phone'],
-            'address_line1'   => $addressData['address_line'],
-            'province_label'  => $addressData['province'],
-            'province_id'     => $provinceId,
-            'city_label'      => $addressData['city'],
-            'city_id'         => $cityId,
-            'postal_code'     => $addressData['postal_code'] ?? null,
-            'description'     => $addressData['notes'] ?? null,
-            'country'         => 'Indonesia',
+            'address_line1' => $addressData['address_line'],
+            'province_label' => $addressData['province'],
+            'province_id' => $provinceId,
+            'city_label' => $addressData['city'],
+            'city_id' => $cityId,
+            'postal_code' => $addressData['postal_code'] ?? null,
+            'description' => $addressData['notes'] ?? null,
+            'country' => 'Indonesia',
         ]);
 
         return $address->id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $addressData
+     */
+    private function resolveShippingAmount(array $addressData): float
+    {
+        if (($addressData['address_mode'] ?? null) === 'pickup') {
+            return 0.0;
+        }
+
+        return (float) ($addressData['shipping_cost'] ?? 0);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolvePickupLocation(): ?array
+    {
+        $settings = Setting::query()
+            ->whereIn('key', [
+                'store.name',
+                'store.phone',
+                'shipping.origin_province_id',
+                'shipping.origin_province_label',
+                'shipping.origin_city_id',
+                'shipping.origin_city_label',
+                'shipping.origin_district_label',
+                'shipping.origin_postal_code',
+                'shipping.origin_address',
+                'address.line1',
+                'address.line2',
+                'address.city',
+                'address.province',
+                'address.postal_code',
+            ])
+            ->pluck('value', 'key')
+            ->all();
+
+        $originAddress = trim((string) ($settings['shipping.origin_address'] ?? ''));
+        $fallbackAddress = collect([
+            $settings['address.line1'] ?? null,
+            $settings['address.line2'] ?? null,
+        ])
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter(fn (string $value): bool => $value !== '')
+            ->implode(', ');
+
+        $addressLine = $originAddress !== '' ? $originAddress : $fallbackAddress;
+        $district = trim((string) ($settings['shipping.origin_district_label'] ?? ''));
+        $city = trim((string) ($settings['shipping.origin_city_label'] ?? $settings['address.city'] ?? ''));
+        $province = trim((string) ($settings['shipping.origin_province_label'] ?? $settings['address.province'] ?? ''));
+        $postalCode = trim((string) ($settings['shipping.origin_postal_code'] ?? $settings['address.postal_code'] ?? ''));
+
+        if ($addressLine === '' && $city === '' && $province === '') {
+            return null;
+        }
+
+        $provinceId = is_numeric($settings['shipping.origin_province_id'] ?? null)
+            ? (int) $settings['shipping.origin_province_id']
+            : null;
+        $cityId = is_numeric($settings['shipping.origin_city_id'] ?? null)
+            ? (int) $settings['shipping.origin_city_id']
+            : null;
+        $storeName = trim((string) ($settings['store.name'] ?? config('app.name')));
+        $storePhone = trim((string) ($settings['store.phone'] ?? ''));
+
+        return [
+            'label' => 'Pickup Kantor',
+            'recipient_name' => $storeName !== '' ? $storeName : config('app.name'),
+            'phone' => $storePhone !== '' ? $storePhone : null,
+            'address_line' => $addressLine,
+            'district' => $district !== '' ? $district : null,
+            'city' => $city,
+            'province' => $province,
+            'postal_code' => $postalCode !== '' ? $postalCode : null,
+            'province_id' => $provinceId,
+            'city_id' => $cityId,
+        ];
     }
 
     private function buildOrder(
@@ -250,33 +368,33 @@ class CheckoutService
             - (float) $cart->discount_amount;
 
         $order = Order::create([
-            'order_no'            => 'ORD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
-            'customer_id'         => $customer->id,
-            'currency'            => $cart->currency,
-            'status'              => $status,
-            'type'                => $normalizedOrderType,
-            'subtotal_amount'     => $cart->subtotal_amount,
-            'discount_amount'     => $cart->discount_amount,
-            'shipping_amount'     => $shippingAmount,
-            'tax_amount'          => $cart->tax_amount,
-            'grand_total'         => $grandTotal,
+            'order_no' => 'ORD-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
+            'customer_id' => $customer->id,
+            'currency' => $cart->currency,
+            'status' => $status,
+            'type' => $normalizedOrderType,
+            'subtotal_amount' => $cart->subtotal_amount,
+            'discount_amount' => $cart->discount_amount,
+            'shipping_amount' => $shippingAmount,
+            'tax_amount' => $cart->tax_amount,
+            'grand_total' => $grandTotal,
             'shipping_address_id' => $shippingAddressId,
-            'placed_at'           => now(),
+            'placed_at' => now(),
         ]);
 
         foreach ($cart->items as $item) {
             OrderItem::create([
-                'order_id'    => $order->id,
-                'product_id'  => $item->product_id,
-                'name'        => $item->product_name,
-                'sku'         => $item->product_sku,
-                'qty'         => $item->qty,
-                'unit_price'  => $item->unit_price,
-                'row_total'   => $item->row_total,
+                'order_id' => $order->id,
+                'product_id' => $item->product_id,
+                'name' => $item->product_name,
+                'sku' => $item->product_sku,
+                'qty' => $item->qty,
+                'unit_price' => $item->unit_price,
+                'row_total' => $item->row_total,
                 'weight_gram' => $item->product?->weight_gram,
-                'length_mm'   => $item->product?->length_mm,
-                'width_mm'    => $item->product?->width_mm,
-                'height_mm'   => $item->product?->height_mm,
+                'length_mm' => $item->product?->length_mm,
+                'width_mm' => $item->product?->width_mm,
+                'height_mm' => $item->product?->height_mm,
             ]);
         }
 
@@ -319,15 +437,15 @@ class CheckoutService
     {
         return $cart->items->map(function (CartItem $item): array {
             return [
-                'id'          => $item->id,
-                'product_id'  => $item->product_id,
-                'name'        => $item->product_name,
-                'sku'         => $item->product_sku,
-                'variant'     => $item->meta_json['variant'] ?? null,
-                'price'       => (float) $item->unit_price,
-                'qty'         => $item->qty,
-                'row_total'   => (float) $item->row_total,
-                'image'       => ($url = $item->product?->primaryMedia->first()?->url) ? Storage::url($url) : null,
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'name' => $item->product_name,
+                'sku' => $item->product_sku,
+                'variant' => $item->meta_json['variant'] ?? null,
+                'price' => (float) $item->unit_price,
+                'qty' => $item->qty,
+                'row_total' => (float) $item->row_total,
+                'image' => ($url = $item->product?->primaryMedia->first()?->url) ? Storage::url($url) : null,
                 'weight_gram' => $item->product?->weight_gram,
             ];
         })->toArray();
@@ -340,31 +458,31 @@ class CheckoutService
             'subtotal' => (float) $cart->subtotal_amount,
             'discount' => (float) $cart->discount_amount,
             'shipping' => (float) $cart->shipping_amount,
-            'tax'      => (float) $cart->tax_amount,
-            'total'    => (float) $cart->grand_total,
+            'tax' => (float) $cart->tax_amount,
+            'total' => (float) $cart->grand_total,
         ];
     }
 
     /**
-     * @param Collection<int, CustomerAddress> $addresses
+     * @param  Collection<int, CustomerAddress>  $addresses
      * @return list<array<string, mixed>>
      */
     private function formatAddresses(Collection $addresses): array
     {
         return $addresses->map(fn (CustomerAddress $a): array => [
-            'id'             => $a->id,
-            'label'          => $a->label,
+            'id' => $a->id,
+            'label' => $a->label,
             'recipient_name' => $a->recipient_name,
-            'phone'          => $a->recipient_phone,
-            'address_line'   => $a->address_line1,
-            'address_line2'  => $a->address_line2,
-            'province'       => $a->province_label,
-            'province_id'    => $a->province_id,
-            'city'           => $a->city_label,
-            'city_id'        => $a->city_id,
-            'postal_code'    => $a->postal_code,
-            'description'    => $a->description,
-            'is_default'     => $a->is_default,
+            'phone' => $a->recipient_phone,
+            'address_line' => $a->address_line1,
+            'address_line2' => $a->address_line2,
+            'province' => $a->province_label,
+            'province_id' => $a->province_id,
+            'city' => $a->city_label,
+            'city_id' => $a->city_id,
+            'postal_code' => $a->postal_code,
+            'description' => $a->description,
+            'is_default' => $a->is_default,
         ])->toArray();
     }
 }

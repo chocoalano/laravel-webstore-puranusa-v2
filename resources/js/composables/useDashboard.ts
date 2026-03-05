@@ -29,7 +29,7 @@ export function useDashboard() {
             return
         }
 
-        const referralUrl = `${window.location.origin}/register?referral_code=${encodeURIComponent(referralCode)}`
+        const referralUrl = `${window.location.origin}?referral_code=${encodeURIComponent(referralCode)}`
         let copied = false
 
         try {

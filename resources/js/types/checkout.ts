@@ -41,7 +41,18 @@ export type ShippingRate = {
     estimasi_sla: string
 }
 
-export type AddressMode = 'saved' | 'manual'
+export type PickupLocation = {
+    label: string
+    recipient_name?: string | null
+    phone?: string | null
+    address_line: string
+    district?: string | null
+    city: string
+    province: string
+    postal_code?: string | null
+}
+
+export type AddressMode = 'saved' | 'manual' | 'pickup'
 
 export type PaymentMethod = 'saldo' | 'midtrans'
 export type OrderPlanType = 'planA' | 'planB'
@@ -55,12 +66,14 @@ export type CheckoutPageProps = {
     items: CheckoutItem[]
     cart?: CartTotals | null
     addresses: CheckoutAddress[]
+    pickup?: PickupLocation | null
     saldo: number
     midtrans: MidtransConfig
 }
 
 export type AddressPayload =
     | { address_mode: 'saved'; address_id: number | string }
+    | { address_mode: 'pickup' }
     | {
           address_mode: 'manual'
           recipient_name: string

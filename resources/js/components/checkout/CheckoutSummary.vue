@@ -7,6 +7,7 @@ const props = defineProps<{
     selectedPlan: OrderPlanType
     selectedMethod: PaymentMethod | null
     selectedRate: ShippingRate | null
+    isSelfPickup: boolean
     isAddressValid: boolean
     isSubmitting: boolean
     errorMessage: string | null
@@ -119,6 +120,9 @@ const canPay = () => !!(
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-gray-600 dark:text-gray-300">
                         Ongkir
+                        <span v-if="isSelfPickup" class="text-xs text-gray-400 dark:text-gray-500">
+                            (Self pickup)
+                        </span>
                         <span v-if="selectedRate" class="text-xs text-gray-400 dark:text-gray-500">
                             ({{ selectedRate.product }})
                         </span>
@@ -154,10 +158,10 @@ const canPay = () => !!(
                     <p class="font-semibold text-gray-900 dark:text-white">Checklist sebelum bayar</p>
                     <ul class="mt-1 list-disc space-y-1 pl-5">
                         <li :class="isAddressValid ? 'text-emerald-600 dark:text-emerald-400' : ''">
-                            Alamat pengiriman lengkap
+                            {{ isSelfPickup ? 'Lokasi self pickup tersedia' : 'Alamat pengiriman lengkap' }}
                         </li>
-                        <li :class="selectedRate ? 'text-emerald-600 dark:text-emerald-400' : ''">
-                            Layanan pengiriman dipilih
+                        <li :class="isSelfPickup || selectedRate ? 'text-emerald-600 dark:text-emerald-400' : ''">
+                            {{ isSelfPickup ? 'Self pickup aktif (gratis ongkir)' : 'Layanan pengiriman dipilih' }}
                         </li>
                         <li :class="selectedMethod ? 'text-emerald-600 dark:text-emerald-400' : ''">
                             Metode pembayaran dipilih

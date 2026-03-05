@@ -16,7 +16,7 @@ const props = withDefaults(
     }>(),
     {
         depth: 1,
-        maxDepth: 6,
+        maxDepth: 5,
         collapsedIds: () => [],
         allowPlacement: true,
     }

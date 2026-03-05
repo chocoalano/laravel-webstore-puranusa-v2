@@ -11,7 +11,7 @@ import type { AddressPayload, OrderPlanType, PaymentMethod, ShippingRate } from 
 
 defineOptions({ layout: AppLayout })
 
-const { items, cart, addresses, saldo, midtrans, itemCount } = useCheckout()
+const { items, cart, addresses, pickup, saldo, midtrans, itemCount } = useCheckout()
 
 const { isSubmitting, errorMessage, payViaMidtrans, payViaSaldo } = useMidtrans(
     midtrans.value.env,
@@ -27,7 +27,14 @@ const selectedRate = ref<ShippingRate | null>(null)
 const selectedMethod = ref<PaymentMethod | null>(null)
 const selectedPlan = ref<OrderPlanType>('planA')
 
-const shippingCost = computed(() => selectedRate.value?.total_tariff ?? cart.value?.shipping ?? 0)
+const isSelfPickup = computed(() => addressPayload.value?.address_mode === 'pickup')
+const shippingCost = computed(() => {
+    if (isSelfPickup.value) {
+        return 0
+    }
+
+    return selectedRate.value?.total_tariff ?? cart.value?.shipping ?? 0
+})
 const total = computed(() => (cart.value?.subtotal ?? 0) + shippingCost.value + (cart.value?.tax ?? 0) - (cart.value?.discount ?? 0))
 
 async function payNow(): Promise<void> {
@@ -36,9 +43,9 @@ async function payNow(): Promise<void> {
     const payload = {
         ...addressPayload.value,
         order_type: selectedPlan.value,
-        shipping_service_code: selectedRate.value?.product ?? '',
+        shipping_service_code: isSelfPickup.value ? 'SELF_PICKUP' : (selectedRate.value?.product ?? ''),
         shipping_cost: shippingCost.value,
-        shipping_etd: selectedRate.value?.estimasi_sla ?? '',
+        shipping_etd: isSelfPickup.value ? 'Self pickup di kantor' : (selectedRate.value?.estimasi_sla ?? ''),
     }
 
     if (selectedMethod.value === 'saldo') {
@@ -68,6 +75,7 @@ async function payNow(): Promise<void> {
                     <div class="space-y-5 lg:col-span-8">
                         <CheckoutAddressPanel
                             :addresses="addresses"
+                            :pickup-location="pickup"
                             :shipping-fee="cart?.shipping ?? 0"
                             @update:payload="addressPayload = $event"
                             @update:is-valid="isAddressValid = $event"
@@ -91,6 +99,7 @@ async function payNow(): Promise<void> {
                             :selected-plan="selectedPlan"
                             :selected-method="selectedMethod"
                             :selected-rate="selectedRate"
+                            :is-self-pickup="isSelfPickup"
                             :is-address-valid="isAddressValid"
                             :is-submitting="isSubmitting"
                             :error-message="errorMessage"
