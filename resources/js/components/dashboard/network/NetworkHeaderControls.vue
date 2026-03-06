@@ -7,12 +7,14 @@ withDefaults(
         isViewingMemberTree: boolean
         selectedMemberForTree: DashboardNetworkTreeNode | null
         maxLoadedLevel: number
+        zoom?: number
         treeSearchQuery: string
         showTreeSearchResults: boolean
         treeSearchResults: NetworkTreeSearchResult[]
     }>(),
     {
         selectedMemberForTree: null,
+        zoom: 1,
         treeSearchQuery: '',
         showTreeSearchResults: false,
         treeSearchResults: () => [],
@@ -39,8 +41,8 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-2 sm:gap-3">
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
             <UButton
                 v-if="isViewingMemberTree"
                 color="neutral"
@@ -54,23 +56,23 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
             </UButton>
 
             <div>
-                <p class="text-sm font-semibold text-highlighted sm:text-base">
+                <p class="text-xs font-semibold text-highlighted sm:text-sm">
                     {{ isViewingMemberTree && selectedMemberForTree ? `Jaringan ${selectedMemberForTree.name}` : 'Struktur Binary Tree MLM' }}
                 </p>
-                <p class="text-xs text-muted">
+                <p class="text-[11px] text-muted">
                     {{ isViewingMemberTree && selectedMemberForTree ? `@${selectedMemberForTree.username}` : `Data model customer • depth termuat hingga level ${maxLoadedLevel}` }}
                 </p>
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-1.5">
             <div class="relative">
                 <UInput
                     :model-value="treeSearchQuery"
                     icon="i-lucide-search"
                     placeholder="Cari member..."
-                    size="sm"
-                    class="w-56"
+                    size="xs"
+                    class="w-44 sm:w-52"
                     @update:model-value="handleTreeSearchModelUpdate"
                     @input="emit('searchInput')"
                     @focus="emit('searchFocus')"
@@ -79,7 +81,7 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
 
                 <div
                     v-if="showTreeSearchResults"
-                    class="absolute right-0 top-full z-20 mt-1 w-72 overflow-hidden rounded-xl border border-default bg-default shadow-lg"
+                    class="absolute right-0 top-full z-20 mt-1 w-64 overflow-hidden rounded-xl border border-default bg-default shadow-lg"
                 >
                     <div v-if="treeSearchResults.length === 0" class="p-3 text-sm text-muted">
                         Tidak ditemukan member.
@@ -98,15 +100,19 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
                 </div>
             </div>
 
-            <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-unfold-vertical" class="rounded-xl" @click="emit('expandAll')">
-                Expand
+            <span class="inline-flex items-center rounded-lg border border-default px-2 py-1 text-[10px] font-semibold text-muted">
+                {{ Math.round(zoom * 100) }}%
+            </span>
+
+            <UButton color="neutral" variant="outline" size="xs" icon="i-lucide-unfold-vertical" class="rounded-lg" @click="emit('expandAll')">
+                <span class="hidden sm:inline">Expand</span>
             </UButton>
-            <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-fold-vertical" class="rounded-xl" @click="emit('collapseAll')">
-                Collapse
+            <UButton color="neutral" variant="outline" size="xs" icon="i-lucide-fold-vertical" class="rounded-lg" @click="emit('collapseAll')">
+                <span class="hidden sm:inline">Collapse</span>
             </UButton>
-            <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-zoom-out" class="rounded-xl" @click="emit('zoomOut')" />
-            <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-zoom-in" class="rounded-xl" @click="emit('zoomIn')" />
-            <UButton color="neutral" variant="ghost" size="sm" icon="i-lucide-rotate-ccw" class="rounded-xl" @click="emit('resetZoom')" />
+            <UButton color="neutral" variant="outline" size="xs" icon="i-lucide-zoom-out" class="rounded-lg" @click="emit('zoomOut')" />
+            <UButton color="neutral" variant="outline" size="xs" icon="i-lucide-zoom-in" class="rounded-lg" @click="emit('zoomIn')" />
+            <UButton color="neutral" variant="ghost" size="xs" icon="i-lucide-rotate-ccw" class="rounded-lg" @click="emit('resetZoom')" />
         </div>
     </div>
 </template>

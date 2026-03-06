@@ -34,134 +34,105 @@ const isCollapsed = computed(() => props.collapsedIds.includes(props.node.id))
 const showChildren = computed(() => canRenderChildren.value && hasChildNode.value && !isCollapsed.value)
 const packageLabel = computed(() => props.node.package_name ?? 'Member')
 const levelLabel = computed(() => `L${props.node.level}`)
+const isRightNode = computed(() => props.node.position === 'right')
+const packageBadgeClass = computed(() =>
+    isRightNode.value
+        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30'
+        : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-500/30'
+)
+
+function getSlotLabel(position: 'left' | 'right'): string {
+    return position === 'left' ? '+ Kiri' : '+ Kanan'
+}
+
+function getSlotCardClass(position: 'left' | 'right'): string {
+    return position === 'right'
+        ? 'border-emerald-300/80 text-emerald-700 hover:bg-emerald-50/70 dark:border-emerald-500/35 dark:text-emerald-300 dark:hover:bg-emerald-500/10'
+        : 'border-blue-300/80 text-blue-700 hover:bg-blue-50/70 dark:border-blue-500/35 dark:text-blue-300 dark:hover:bg-blue-500/10'
+}
 </script>
 
 <template>
     <div class="flex flex-col items-center">
-        <UCard class="w-40 max-w-[calc(100vw-3rem)] rounded-xl border border-default sm:w-60 sm:max-w-none sm:rounded-2xl lg:w-65">
-            <div class="space-y-1 sm:space-y-2">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                        <p class="truncate text-xs font-semibold text-highlighted sm:text-sm">{{ node.name }}</p>
-                        <p class="truncate text-[10px] text-muted sm:text-[11px]">@{{ node.username }}</p>
-                    </div>
-
-                    <div class="flex items-center gap-1">
-                        <UButton
-                            v-if="hasChildNode"
-                            size="xs"
-                            color="neutral"
-                            variant="ghost"
-                            :icon="isCollapsed ? 'i-lucide-plus' : 'i-lucide-minus'"
-                            class="rounded-lg"
-                            @click="emit('toggleExpand', node.id)"
-                        />
-                        <UButton
-                            size="xs"
-                            color="neutral"
-                            variant="ghost"
-                            icon="i-lucide-scan-search"
-                            class="rounded-lg"
-                            @click="emit('memberClick', node.id)"
-                        />
-                    </div>
-                </div>
-
-                <div class="flex flex-wrap gap-0.5 sm:gap-1">
-                    <UBadge color="neutral" variant="subtle" size="xs" class="rounded-full">
-                        {{ packageLabel }}
-                    </UBadge>
-                    <UBadge color="primary" variant="subtle" size="xs" class="rounded-full">
-                        {{ levelLabel }}
-                    </UBadge>
-                    <UBadge color="success" variant="subtle" size="xs" class="rounded-full">
-                        L {{ node.total_left }}
-                    </UBadge>
-                    <UBadge color="info" variant="subtle" size="xs" class="rounded-full">
-                        R {{ node.total_right }}
-                    </UBadge>
-                </div>
+        <div class="relative space-y-1 text-center sm:space-y-1.5">
+            <div class="absolute right-0 top-0 flex items-center gap-0.5">
+                <UButton v-if="hasChildNode" size="xs" color="neutral" variant="ghost"
+                    :icon="isCollapsed ? 'i-lucide-plus' : 'i-lucide-minus'" class="rounded-md"
+                    @click="emit('toggleExpand', node.id)" />
+                <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-scan-search" class="rounded-md"
+                    @click="emit('memberClick', node.id)" />
             </div>
-        </UCard>
 
-        <div
-            v-if="showChildren"
-            class="mt-3 w-full sm:mt-4"
-        >
-            <div class="mx-auto h-3 w-px bg-gray-300 dark:bg-gray-700 sm:h-4" />
+            <div class="space-y-0.5 pr-10">
+                <p class="truncate text-[11px] font-semibold text-highlighted sm:text-sm">{{ node.name }}</p>
+                <p class="truncate text-[10px] leading-tight text-muted sm:text-xs">{{ node.username }}</p>
+                <p class="text-[10px] text-muted sm:text-xs">{{ levelLabel }}</p>
+            </div>
 
-            <div class="relative grid grid-cols-2 gap-1 px-0.5 sm:gap-6 sm:px-2">
-                <div class="absolute left-[29%] right-[29%] top-0 h-px bg-gray-300 dark:bg-gray-700 sm:left-[27%] sm:right-[27%]" />
+            <div class="pt-0.5">
+                <span
+                    class="inline-flex max-w-full items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium sm:text-[11px]"
+                    :class="packageBadgeClass">
+                    <span class="truncate">{{ packageLabel }}</span>
+                </span>
+            </div>
 
-                <div class="relative flex justify-center pt-3 sm:pt-4">
-                    <div class="absolute left-[58%] top-0 h-3 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[55%] sm:h-4" />
+            <div class="flex items-center justify-center gap-2.5 text-[10px] text-muted sm:text-[11px]">
+                <span class="inline-flex items-center gap-1">
+                    <span class="size-1.5 rounded-full bg-blue-500" />
+                    L: {{ node.total_left }}
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="size-1.5 rounded-full bg-emerald-500" />
+                    R: {{ node.total_right }}
+                </span>
+            </div>
+        </div>
 
-                    <NetworkTreeNode
-                        v-if="node.left"
-                        :node="node.left"
-                        :depth="depth + 1"
-                        :max-depth="maxDepth"
-                        :collapsed-ids="collapsedIds"
-                        :allow-placement="allowPlacement"
-                        @member-click="emit('memberClick', $event)"
-                        @open-placement="emit('openPlacement', $event)"
-                        @toggle-expand="emit('toggleExpand', $event)"
-                    />
+        <div v-if="showChildren" class="mt-2 w-full sm:mt-4">
+            <div class="mx-auto h-2.5 w-px bg-gray-300 dark:bg-gray-700 sm:h-4" />
 
-                    <UCard
-                        v-else-if="allowPlacement"
-                        class="w-36 rounded-xl border border-dashed border-default bg-elevated/40 sm:w-52 sm:rounded-2xl lg:w-55"
-                    >
-                        <div class="flex flex-col items-center gap-1.5 py-1.5 text-center sm:gap-2 sm:py-2">
-                            <UIcon name="i-lucide-user-round-plus" class="size-4 text-muted sm:size-5" />
-                            <p class="text-[11px] text-muted sm:text-xs">Slot kiri kosong</p>
-                            <UButton
-                                size="xs"
-                                color="primary"
-                                variant="soft"
-                                icon="i-lucide-plus"
-                                class="rounded-lg sm:rounded-xl"
-                                @click="emit('openPlacement', { uplineId: node.id, position: 'left' })"
-                            >
-                                Tempatkan
-                            </UButton>
-                        </div>
+            <div class="relative grid grid-cols-2 gap-1 px-0 sm:gap-5 sm:px-2">
+                <div
+                    class="absolute left-[30%] right-[30%] top-0 h-px bg-gray-300 dark:bg-gray-700 sm:left-[26%] sm:right-[26%]" />
+
+                <div class="relative flex justify-center pt-2.5 sm:pt-4">
+                    <div
+                        class="absolute left-[58%] top-0 h-2.5 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[55%] sm:h-4" />
+
+                    <NetworkTreeNode v-if="node.left" :node="node.left" :depth="depth + 1" :max-depth="maxDepth"
+                        :collapsed-ids="collapsedIds" :allow-placement="allowPlacement"
+                        @member-click="emit('memberClick', $event)" @open-placement="emit('openPlacement', $event)"
+                        @toggle-expand="emit('toggleExpand', $event)" />
+
+                    <UCard v-else-if="allowPlacement"
+                        class="w-[7.7rem] rounded-xl border border-dashed bg-elevated/35 sm:w-44 sm:rounded-2xl"
+                        :class="getSlotCardClass('left')" :ui="{ body: 'p-0' }">
+                        <button type="button"
+                            class="flex w-full items-center justify-center px-2 py-3 text-[11px] font-medium transition-colors sm:py-4 sm:text-sm"
+                            @click="emit('openPlacement', { uplineId: node.id, position: 'left' })">
+                            {{ getSlotLabel('left') }}
+                        </button>
                     </UCard>
                 </div>
 
-                <div class="relative flex justify-center pt-3 sm:pt-4">
-                    <div class="absolute left-[42%] top-0 h-3 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[45%] sm:h-4" />
+                <div class="relative flex justify-center pt-2.5 sm:pt-4">
+                    <div
+                        class="absolute left-[42%] top-0 h-2.5 w-px -translate-x-1/2 bg-gray-300 dark:bg-gray-700 sm:left-[45%] sm:h-4" />
 
-                    <NetworkTreeNode
-                        v-if="node.right"
-                        :node="node.right"
-                        :depth="depth + 1"
-                        :max-depth="maxDepth"
-                        :collapsed-ids="collapsedIds"
-                        :allow-placement="allowPlacement"
-                        @member-click="emit('memberClick', $event)"
-                        @open-placement="emit('openPlacement', $event)"
-                        @toggle-expand="emit('toggleExpand', $event)"
-                    />
+                    <NetworkTreeNode v-if="node.right" :node="node.right" :depth="depth + 1" :max-depth="maxDepth"
+                        :collapsed-ids="collapsedIds" :allow-placement="allowPlacement"
+                        @member-click="emit('memberClick', $event)" @open-placement="emit('openPlacement', $event)"
+                        @toggle-expand="emit('toggleExpand', $event)" />
 
-                    <UCard
-                        v-else-if="allowPlacement"
-                        class="w-36 rounded-xl border border-dashed border-default bg-elevated/40 sm:w-52 sm:rounded-2xl lg:w-55"
-                    >
-                        <div class="flex flex-col items-center gap-1.5 py-1.5 text-center sm:gap-2 sm:py-2">
-                            <UIcon name="i-lucide-user-round-plus" class="size-4 text-muted sm:size-5" />
-                            <p class="text-[11px] text-muted sm:text-xs">Slot kanan kosong</p>
-                            <UButton
-                                size="xs"
-                                color="primary"
-                                variant="soft"
-                                icon="i-lucide-plus"
-                                class="rounded-lg sm:rounded-xl"
-                                @click="emit('openPlacement', { uplineId: node.id, position: 'right' })"
-                            >
-                                Tempatkan
-                            </UButton>
-                        </div>
+                    <UCard v-else-if="allowPlacement"
+                        class="w-[7.7rem] rounded-xl border border-dashed bg-elevated/35 sm:w-44 sm:rounded-2xl"
+                        :class="getSlotCardClass('right')" :ui="{ body: 'p-0' }">
+                        <button type="button"
+                            class="flex w-full items-center justify-center px-2 py-3 text-[11px] font-medium transition-colors sm:py-4 sm:text-sm"
+                            @click="emit('openPlacement', { uplineId: node.id, position: 'right' })">
+                            {{ getSlotLabel('right') }}
+                        </button>
                     </UCard>
                 </div>
             </div>

@@ -80,15 +80,16 @@ function updatePlacementSearchQuery(value: string): void {
 </script>
 
 <template>
-    <div class="space-y-4 sm:space-y-6">
+    <div class="space-y-3 sm:space-y-4">
         <NetworkStatsCards :stats="currentStats" />
 
-        <UCard class="overflow-hidden rounded-3xl">
+        <UCard class="overflow-hidden rounded-2xl">
             <template #header>
                 <NetworkHeaderControls
                     :is-viewing-member-tree="isViewingMemberTree"
                     :selected-member-for-tree="selectedMemberForTree"
                     :max-loaded-level="maxLoadedLevel"
+                    :zoom="zoom"
                     :tree-search-query="treeSearchQuery"
                     :show-tree-search-results="showTreeSearchResults"
                     :tree-search-results="treeSearchResults"
@@ -106,7 +107,7 @@ function updatePlacementSearchQuery(value: string): void {
                 />
             </template>
 
-            <div class="space-y-4">
+            <div class="space-y-3">
                 <NetworkTreePanel
                     :current-tree="currentTree"
                     :zoom="zoom"
@@ -117,11 +118,10 @@ function updatePlacementSearchQuery(value: string): void {
                     @toggle-expand="toggleNode"
                 />
 
-                <div class="rounded-2xl border border-default bg-elevated/20 p-3">
-                    <div class="flex flex-col gap-2 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-                        <p>Klik node member untuk fokus subtree dan gunakan tombol expand/collapse untuk organization tree.</p>
-                        <p>Placement hanya menampilkan member pasif yang belum ditempatkan.</p>
-                        <p>Zoom saat ini: {{ Math.round(zoom * 100) }}%</p>
+                <div class="rounded-xl border border-default bg-elevated/20 px-3 py-2">
+                    <div class="flex flex-col gap-1 text-[11px] text-muted sm:flex-row sm:items-center sm:justify-between">
+                        <p>Klik node member untuk fokus subtree.</p>
+                        <p>Placement hanya untuk member pasif.</p>
                     </div>
                 </div>
             </div>

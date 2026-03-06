@@ -61,12 +61,20 @@ function flattenTree(node: DashboardNetworkTreeNode | null): NetworkTreeSearchRe
     ]
 }
 
-function resolveDefaultZoom(): number {
-    if (typeof window === 'undefined') {
-        return 0.9
+function collectNodeIds(node: DashboardNetworkTreeNode | null): number[] {
+    if (!node) {
+        return []
     }
 
-    return window.matchMedia('(max-width: 640px)').matches ? 0.75 : 0.9
+    return [node.id, ...collectNodeIds(node.left), ...collectNodeIds(node.right)]
+}
+
+function resolveDefaultZoom(): number {
+    if (typeof window === 'undefined') {
+        return 0.8
+    }
+
+    return window.matchMedia('(max-width: 640px)').matches ? 0.5 : 0.8
 }
 
 export function useNetworkTree(
@@ -79,8 +87,9 @@ export function useNetworkTree(
 
     const defaultZoom = resolveDefaultZoom()
     const zoom = ref(defaultZoom)
-    const minZoom = 0.65
+    const minZoom = 0.15
     const maxZoom = 1.6
+    const zoomStep = 0.08
 
     const collapsedIds = ref<number[]>([])
     const hasInitializedCollapsedState = ref(false)
@@ -184,9 +193,7 @@ export function useNetworkTree(
             return
         }
 
-        collapsedIds.value = flattenTree(currentTree.value)
-            .map((member) => member.id)
-            .filter((id) => id !== currentTree.value?.id)
+        collapsedIds.value = collectNodeIds(currentTree.value).filter((id) => id !== currentTree.value?.id)
     }
 
     watch(
@@ -203,20 +210,18 @@ export function useNetworkTree(
                 return
             }
 
-            collapsedIds.value = flattenTree(tree)
-                .map((member) => member.id)
-                .filter((id) => id !== tree.id)
+            collapsedIds.value = []
             hasInitializedCollapsedState.value = true
         },
         { immediate: true }
     )
 
     function handleZoomIn(): void {
-        zoom.value = Math.min(maxZoom, Number((zoom.value + 0.1).toFixed(2)))
+        zoom.value = Math.min(maxZoom, Number((zoom.value + zoomStep).toFixed(2)))
     }
 
     function handleZoomOut(): void {
-        zoom.value = Math.max(minZoom, Number((zoom.value - 0.1).toFixed(2)))
+        zoom.value = Math.max(minZoom, Number((zoom.value - zoomStep).toFixed(2)))
     }
 
     function handleResetZoom(): void {

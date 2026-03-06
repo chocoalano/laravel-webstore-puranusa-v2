@@ -46,29 +46,7 @@ const gridClass = computed(() => {
     return 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-5'
 })
 
-/**
- * Padding konten kartu adaptif berdasarkan jumlah item.
- */
-const cardPadding = computed(() => {
-    const n = shown.value.length
-    if (n <= 3) return 'px-7 pt-8 pb-10 sm:px-8 sm:pt-9 sm:pb-11'
-    if (n <= 6) return 'px-6 pt-7 pb-9 sm:px-7 sm:pt-8 sm:pb-10'
-    return 'px-5 pt-6 pb-8 sm:px-6 sm:pt-7 sm:pb-9'
-})
-
-const iconWrapClass = computed(() => {
-    const n = shown.value.length
-    if (n <= 3) return 'size-16 sm:size-18'
-    if (n <= 6) return 'size-14 sm:size-16'
-    return 'size-12 sm:size-14'
-})
-
-const iconClass = computed(() => {
-    const n = shown.value.length
-    if (n <= 3) return 'size-7'
-    if (n <= 6) return 'size-6'
-    return 'size-5'
-})
+const getCategoryLink = (slug: string): string => `/shop?category=${encodeURIComponent(slug)}`
 </script>
 
 <template>
@@ -118,58 +96,39 @@ const iconClass = computed(() => {
 
             <!-- Grid -->
             <div :class="gridClass">
-                <Link v-for="(cat, idx) in shown" :key="cat.id ?? cat.slug" :href="`/shop/${cat.slug}`"
-                    class="group relative flex flex-col overflow-hidden rounded-3xl border border-gray-200/50 bg-white/75 backdrop-blur-sm shadow-sm shadow-gray-100 transition-all duration-300 hover:-translate-y-1.5 hover:border-gray-200 hover:bg-white hover:shadow-2xl hover:shadow-gray-200/70 dark:border-white/8 dark:bg-white/5 dark:shadow-none dark:hover:border-white/12 dark:hover:bg-white/8 dark:hover:shadow-2xl dark:hover:shadow-black/50">
+                <Link v-for="(cat, idx) in shown" :key="cat.id ?? cat.slug"
+                    class="group relative block aspect-[4/4.8] overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 shadow-sm shadow-gray-100 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-gray-200/70 dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:border-white/15 dark:hover:shadow-black/40"
+                    :href="getCategoryLink(cat.slug)">
 
-                    <!-- Top gradient accent strip -->
-                    <div :class="['absolute top-0 inset-x-0 h-1 bg-linear-to-r', getCategoryGradient(cat.slug, idx)]">
-                    </div>
+                    <img v-if="cat.image" :src="cat.image" :alt="cat.name"
+                        class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
 
-                    <!-- Hover background tint -->
-                    <div :class="[
-                        'absolute inset-0 bg-linear-to-br opacity-0 transition-opacity duration-500 group-hover:opacity-[0.06]',
+                    <div v-else :class="[
+                        'absolute inset-0 grid place-items-center bg-linear-to-br text-white',
                         getCategoryGradient(cat.slug, idx)
-                    ]"></div>
+                    ]">
+                        <UIcon :name="getCategoryIcon(cat.slug)" class="size-10 drop-shadow-lg" />
+                    </div>
 
-                    <!-- Content -->
-                    <div class="relative flex flex-1 flex-col items-center gap-4 text-center" :class="cardPadding">
-                        <!-- Icon with glow -->
-                        <div class="relative">
-                            <!-- Glow halo -->
-                            <div :class="[
-                                'absolute -inset-3 rounded-3xl bg-linear-to-br opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-50',
-                                getCategoryGradient(cat.slug, idx)
-                            ]"></div>
-                            <!-- Icon circle -->
-                            <div :class="[
-                                'relative grid place-items-center overflow-hidden rounded-2xl bg-linear-to-br text-white shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-2xl',
-                                iconWrapClass,
-                                getCategoryGradient(cat.slug, idx)
-                            ]">
-                                <!-- Inner top shine -->
-                                <div class="absolute inset-0 bg-linear-to-b from-white/25 to-transparent"></div>
-                                <UIcon :name="getCategoryIcon(cat.slug)" :class="['relative', iconClass]" />
-                            </div>
-                        </div>
+                    <div
+                        class="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-black/10 transition-opacity duration-300 group-hover:from-black/75 group-hover:via-black/30 group-hover:to-transparent">
+                    </div>
 
-                        <!-- Text -->
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                                {{ cat.name }}
-                            </p>
-                            <div
-                                class="mt-2 inline-flex items-center gap-1 rounded-full bg-gray-100/90 px-2.5 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">
-                                <UIcon name="i-lucide-package-2" class="size-3 shrink-0" />
-                                {{ (cat.productCount ?? 0).toLocaleString('id-ID') }} produk
-                            </div>
+                    <div class="absolute inset-x-0 bottom-0 p-4">
+                        <p class="line-clamp-2 text-sm font-semibold text-white drop-shadow-md">
+                            {{ cat.name }}
+                        </p>
+                        <div
+                            class="mt-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-medium text-gray-700 backdrop-blur-sm">
+                            <UIcon name="i-lucide-package-2" class="size-3 shrink-0" />
+                            {{ (cat.productCount ?? 0).toLocaleString('id-ID') }} produk
                         </div>
                     </div>
 
-                    <!-- Hover arrow button -->
                     <div
-                        class="absolute right-3 bottom-3 flex size-7 items-center justify-center rounded-full bg-gray-100 opacity-0 transition-all duration-300 group-hover:opacity-100 dark:bg-white/10">
-                        <UIcon name="i-lucide-arrow-right"
-                            class="size-3.5 -translate-x-0.5 text-gray-500 transition-transform duration-300 group-hover:translate-x-0 dark:text-gray-300" />
+                        class="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                        Lihat
+                        <UIcon name="i-lucide-arrow-right" class="size-3.5" />
                     </div>
                 </Link>
             </div>
