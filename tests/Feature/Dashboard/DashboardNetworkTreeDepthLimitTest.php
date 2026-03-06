@@ -83,3 +83,114 @@ it('limits default dashboard binary tree payload to five levels', function (): v
         ->and($sixthLevelNode)->toBeNull()
         ->and($payload['stats']['total_downlines'])->toBe(10);
 });
+
+it('loads requested network tree root when member belongs to authenticated customer network', function (): void {
+    $root = makeBinaryTreeMember(1, 2, null, [
+        'total_left' => 12,
+        'total_right' => 0,
+        'position' => null,
+    ]);
+    $selectedRoot = makeBinaryTreeMember(2, 3, null, [
+        'position' => 'left',
+        'total_left' => 8,
+        'total_right' => 0,
+    ]);
+    $selectedChild = makeBinaryTreeMember(3, null, null, [
+        'position' => 'left',
+    ]);
+
+    $dashboardRepository = M::mock(DashboardRepositoryInterface::class);
+    $dashboardRepository->shouldReceive('isMemberInCustomerNetwork')
+        ->once()
+        ->with(1, 2)
+        ->andReturnTrue();
+    $dashboardRepository->shouldReceive('findCustomerById')
+        ->once()
+        ->with(2)
+        ->andReturn($selectedRoot);
+    $dashboardRepository->shouldReceive('getBinaryTreeMembers')
+        ->once()
+        ->with(2, 5)
+        ->andReturn(collect([
+            $selectedRoot,
+            $selectedChild,
+        ]));
+    $dashboardRepository->shouldReceive('hasBinaryChildAtPosition')
+        ->once()
+        ->with(1, 'left')
+        ->andReturnTrue();
+    $dashboardRepository->shouldReceive('hasBinaryChildAtPosition')
+        ->once()
+        ->with(1, 'right')
+        ->andReturnFalse();
+
+    $service = new DashboardService(
+        $dashboardRepository,
+        M::mock(CustomerAddressRepositoryInterface::class),
+        M::mock(MidtransService::class),
+    );
+
+    $method = new ReflectionMethod(DashboardService::class, 'loadNetworkData');
+    $method->setAccessible(true);
+
+    /** @var array{tree:?array<string,mixed>,tree_root_id:int,has_left:bool,has_right:bool} $payload */
+    $payload = $method->invoke($service, $root, 2);
+
+    expect($payload['tree_root_id'])->toBe(2)
+        ->and($payload['tree'])->not->toBeNull()
+        ->and($payload['tree']['id'])->toBe(2)
+        ->and($payload['tree']['left']['id'] ?? null)->toBe(3)
+        ->and($payload['has_left'])->toBeTrue()
+        ->and($payload['has_right'])->toBeFalse();
+});
+
+it('falls back to authenticated customer tree when requested member is outside network', function (): void {
+    $root = makeBinaryTreeMember(1, 2, null, [
+        'total_left' => 12,
+        'total_right' => 0,
+        'position' => null,
+    ]);
+    $rootChild = makeBinaryTreeMember(2, null, null, [
+        'position' => 'left',
+    ]);
+
+    $dashboardRepository = M::mock(DashboardRepositoryInterface::class);
+    $dashboardRepository->shouldReceive('isMemberInCustomerNetwork')
+        ->once()
+        ->with(1, 999)
+        ->andReturnFalse();
+    $dashboardRepository->shouldReceive('findCustomerById')
+        ->never();
+    $dashboardRepository->shouldReceive('getBinaryTreeMembers')
+        ->once()
+        ->with(1, 5)
+        ->andReturn(collect([
+            $root,
+            $rootChild,
+        ]));
+    $dashboardRepository->shouldReceive('hasBinaryChildAtPosition')
+        ->once()
+        ->with(1, 'left')
+        ->andReturnTrue();
+    $dashboardRepository->shouldReceive('hasBinaryChildAtPosition')
+        ->once()
+        ->with(1, 'right')
+        ->andReturnFalse();
+
+    $service = new DashboardService(
+        $dashboardRepository,
+        M::mock(CustomerAddressRepositoryInterface::class),
+        M::mock(MidtransService::class),
+    );
+
+    $method = new ReflectionMethod(DashboardService::class, 'loadNetworkData');
+    $method->setAccessible(true);
+
+    /** @var array{tree:?array<string,mixed>,tree_root_id:int} $payload */
+    $payload = $method->invoke($service, $root, 999);
+
+    expect($payload['tree_root_id'])->toBe(1)
+        ->and($payload['tree'])->not->toBeNull()
+        ->and($payload['tree']['id'])->toBe(1)
+        ->and($payload['tree']['left']['id'] ?? null)->toBe(2);
+});

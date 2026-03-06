@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 import type { DashboardMitraMember, DashboardNetworkTreeNode, DashboardNetworkTreeStats } from '@/types/dashboard'
 import { useNetworkPlacement } from '@/composables/useNetworkPlacement'
 import { useNetworkTree } from '@/composables/useNetworkTree'
@@ -14,12 +15,14 @@ const props = withDefaults(
         networkTreeStats?: DashboardNetworkTreeStats | null
         passiveMembers?: DashboardMitraMember[]
         currentCustomerId?: number | null
+        networkTreeRootId?: number | null
     }>(),
     {
         binaryTree: null,
         networkTreeStats: null,
         passiveMembers: () => [],
         currentCustomerId: null,
+        networkTreeRootId: null,
     }
 )
 
@@ -27,6 +30,7 @@ const binaryTree = computed(() => props.binaryTree ?? null)
 const networkTreeStats = computed(() => props.networkTreeStats ?? null)
 const passiveMembers = computed(() => props.passiveMembers ?? [])
 const currentCustomerId = computed(() => props.currentCustomerId ?? null)
+const networkTreeRootId = computed(() => props.networkTreeRootId ?? null)
 
 const {
     currentStats,
@@ -39,8 +43,6 @@ const {
     currentTree,
     zoom,
     collapsedIds,
-    backToDefaultTree,
-    focusToMember,
     toggleNode,
     expandAll,
     collapseAll,
@@ -50,7 +52,7 @@ const {
     handleTreeSearchInput,
     selectTreeSearchResult,
     handleTreeSearchBlur,
-} = useNetworkTree(binaryTree, networkTreeStats)
+} = useNetworkTree(binaryTree, networkTreeStats, currentCustomerId, networkTreeRootId)
 
 const {
     showPlacementDialog,
@@ -68,6 +70,41 @@ const {
 
 function updateTreeSearchQuery(value: string): void {
     treeSearchQuery.value = value
+}
+
+function visitNetworkTree(memberId: number | null): void {
+    const authCustomerId = currentCustomerId.value
+    const normalizedTreeRootId =
+        memberId !== null && authCustomerId !== null && memberId !== authCustomerId
+            ? memberId
+            : null
+
+    if (normalizedTreeRootId === networkTreeRootId.value) {
+        return
+    }
+
+    router.get('/dashboard', {
+        section: 'network',
+        ...(normalizedTreeRootId !== null ? { network_root_id: normalizedTreeRootId } : {}),
+    }, {
+        only: ['currentCustomerId', 'passiveMembers', 'binaryTree', 'networkTreeStats', 'networkTreeRootId'],
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    })
+}
+
+function backToDefaultTree(): void {
+    visitNetworkTree(null)
+}
+
+function focusToMember(memberId: number): void {
+    visitNetworkTree(memberId)
+}
+
+function handleSelectSearchResult(memberId: number): void {
+    selectTreeSearchResult(memberId)
+    focusToMember(memberId)
 }
 
 function updatePlacementModalOpen(value: boolean): void {
@@ -98,7 +135,7 @@ function updatePlacementSearchQuery(value: string): void {
                     @search-input="handleTreeSearchInput"
                     @search-focus="handleTreeSearchInput"
                     @search-blur="handleTreeSearchBlur"
-                    @select-search-result="selectTreeSearchResult"
+                    @select-search-result="handleSelectSearchResult"
                     @expand-all="expandAll"
                     @collapse-all="collapseAll"
                     @zoom-out="handleZoomOut"

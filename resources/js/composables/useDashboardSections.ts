@@ -38,7 +38,7 @@ const walletPropKeys = ['customer', 'stats', 'walletTransactions', 'hasPendingWi
 const bonusPropKeys = ['bonusStats', 'bonusTables']
 const lifetimePropKeys = ['lifetimeRewards']
 const mitraPropKeys = ['currentCustomerId', 'activeMembers', 'passiveMembers', 'prospectMembers', 'hasLeft', 'hasRight']
-const networkPropKeys = ['currentCustomerId', 'passiveMembers', 'binaryTree', 'networkTreeStats']
+const networkPropKeys = ['currentCustomerId', 'passiveMembers', 'binaryTree', 'networkTreeStats', 'networkTreeRootId']
 
 function isDashboardSection(value: string): value is DashboardSectionKey {
     return Object.prototype.hasOwnProperty.call(componentMap, value)
@@ -126,6 +126,7 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
                     networkTreeStats: props.value.networkTreeStats,
                     passiveMembers: props.value.passiveMembers,
                     currentCustomerId: props.value.currentCustomerId,
+                    networkTreeRootId: props.value.networkTreeRootId ?? null,
                 }
             default:
                 return {}

@@ -20,32 +20,6 @@ function normalizeSearchText(value: string): string {
     return value.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-function countNodes(node: DashboardNetworkTreeNode | null): number {
-    if (!node) {
-        return 0
-    }
-
-    return 1 + countNodes(node.left) + countNodes(node.right)
-}
-
-function findNodeById(node: DashboardNetworkTreeNode | null, nodeId: number): DashboardNetworkTreeNode | null {
-    if (!node) {
-        return null
-    }
-
-    if (node.id === nodeId) {
-        return node
-    }
-
-    const leftNode = findNodeById(node.left, nodeId)
-
-    if (leftNode) {
-        return leftNode
-    }
-
-    return findNodeById(node.right, nodeId)
-}
-
 function flattenTree(node: DashboardNetworkTreeNode | null): NetworkTreeSearchResult[] {
     if (!node) {
         return []
@@ -84,8 +58,9 @@ function resolveDefaultZoom(): number {
 export function useNetworkTree(
     binaryTree: Ref<DashboardNetworkTreeNode | null>,
     networkTreeStats: Ref<DashboardNetworkTreeStats | null>,
+    currentCustomerId: Ref<number | null>,
+    networkTreeRootId: Ref<number | null>,
 ) {
-    const activeRootId = ref<number | null>(null)
     const treeSearchQuery = ref('')
     const showTreeSearchResults = ref(false)
 
@@ -96,23 +71,19 @@ export function useNetworkTree(
     const zoomStep = 0.08
 
     const collapsedIds = ref<number[]>([])
-    const hasInitializedCollapsedState = ref(false)
 
     const rootTree = computed(() => binaryTree.value ?? null)
+    const currentTree = computed(() => rootTree.value)
+    const isViewingMemberTree = computed(() => {
+        const activeTreeRootId = networkTreeRootId.value
+        const authCustomerId = currentCustomerId.value
 
-    const currentTree = computed(() => {
-        if (!rootTree.value) {
-            return null
+        if (!activeTreeRootId || !authCustomerId) {
+            return false
         }
 
-        if (!activeRootId.value) {
-            return rootTree.value
-        }
-
-        return findNodeById(rootTree.value, activeRootId.value) ?? rootTree.value
+        return activeTreeRootId !== authCustomerId
     })
-
-    const isViewingMemberTree = computed(() => activeRootId.value !== null)
     const selectedMemberForTree = computed(() => currentTree.value)
 
     const allMemberSearchData = computed(() => flattenTree(rootTree.value))
@@ -145,9 +116,9 @@ export function useNetworkTree(
         }
 
         return {
-            totalDownlines: Math.max(0, countNodes(currentTree.value) - 1),
-            totalLeft: countNodes(currentTree.value.left),
-            totalRight: countNodes(currentTree.value.right),
+            totalDownlines: Math.max(0, Number(currentTree.value.total_left ?? 0) + Number(currentTree.value.total_right ?? 0)),
+            totalLeft: Math.max(0, Number(currentTree.value.total_left ?? 0)),
+            totalRight: Math.max(0, Number(currentTree.value.total_right ?? 0)),
         }
     })
 
@@ -169,15 +140,6 @@ export function useNetworkTree(
             })
             .slice(0, 12)
     })
-
-    function backToDefaultTree(): void {
-        activeRootId.value = null
-    }
-
-    function focusToMember(memberId: number): void {
-        activeRootId.value = memberId
-        collapsedIds.value = collapsedIds.value.filter((id) => id !== memberId)
-    }
 
     function toggleNode(memberId: number): void {
         if (collapsedIds.value.includes(memberId)) {
@@ -205,20 +167,18 @@ export function useNetworkTree(
 
     watch(
         currentTree,
-        (tree) => {
+        (tree, previousTree) => {
             if (!tree) {
                 collapsedIds.value = []
-                hasInitializedCollapsedState.value = false
 
                 return
             }
 
-            if (hasInitializedCollapsedState.value) {
+            if (previousTree && previousTree.id === tree.id) {
                 return
             }
 
             collapsedIds.value = []
-            hasInitializedCollapsedState.value = true
         },
         { immediate: true }
     )
@@ -240,9 +200,12 @@ export function useNetworkTree(
     }
 
     function selectTreeSearchResult(memberId: number): void {
+        if (memberId <= 0) {
+            return
+        }
+
         treeSearchQuery.value = ''
         showTreeSearchResults.value = false
-        focusToMember(memberId)
     }
 
     function handleTreeSearchBlur(): void {
@@ -252,7 +215,6 @@ export function useNetworkTree(
     }
 
     return {
-        activeRootId,
         treeSearchQuery,
         showTreeSearchResults,
         zoom,
@@ -265,8 +227,6 @@ export function useNetworkTree(
         maxLoadedLevel,
         currentStats,
         treeSearchResults,
-        backToDefaultTree,
-        focusToMember,
         toggleNode,
         expandAll,
         collapseAll,

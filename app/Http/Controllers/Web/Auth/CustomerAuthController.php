@@ -104,6 +104,11 @@ class CustomerAuthController extends Controller
             'date_from' => $request->query('orders_date_from'),
             'date_to' => $request->query('orders_date_to'),
         ];
+        $networkRootId = $request->integer('network_root_id');
+
+        if ($networkRootId <= 0) {
+            $networkRootId = null;
+        }
 
         return Inertia::render('Auth/Dashboard/Index', [
             'seo' => [
@@ -117,6 +122,7 @@ class CustomerAuthController extends Controller
                 max(1, (int) $request->integer('wallet_page', 1)),
                 $walletFilters,
                 $orderFilters,
+                $networkRootId,
             ),
         ]);
     }

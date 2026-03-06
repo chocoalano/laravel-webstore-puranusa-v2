@@ -55,6 +55,7 @@ class DashboardService
         int $walletPage = 1,
         array $walletFilters = [],
         array $orderFilters = [],
+        ?int $networkRootId = null,
     ): array {
         $customer = $this->dashboardRepository->findCustomerById($authenticatedCustomer->id);
 
@@ -68,7 +69,7 @@ class DashboardService
         $coreMetrics = $this->loadCoreMetrics($customer, $now);
         $addressData = $this->loadAddressData($customer);
         $mitraMembers = $this->loadMitraMembers($customer);
-        $networkData = $this->loadNetworkData($customer);
+        $networkData = $this->loadNetworkData($customer, $networkRootId);
         $orders = $this->loadOrdersData($customer, max(1, $ordersPage), $normalizedOrderFilters);
         $walletData = $this->loadWalletData($customer, max(1, $walletPage), $normalizedWalletFilters);
         $bonusData = $this->loadBonusData($customer);
@@ -90,7 +91,13 @@ class DashboardService
     /**
      * @param  array{default_address:?CustomerAddress,addresses:Collection<int, CustomerAddress>}  $addressData
      * @param  array{active:array<int, array<string, mixed>>,passive:array<int, array<string, mixed>>,prospect:array<int, array<string, mixed>>}  $mitraMembers
-     * @param  array{has_left:bool,has_right:bool,tree:?array<string, mixed>,stats:array<string, int>}  $networkData
+     * @param  array{
+     *   has_left:bool,
+     *   has_right:bool,
+     *   tree:?array<string, mixed>,
+     *   stats:array<string, int>,
+     *   tree_root_id:int
+     * }  $networkData
      * @param  array{
      *   data:array<int, array<string, mixed>>,
      *   current_page:int,
@@ -151,6 +158,7 @@ class DashboardService
             'hasRight' => $networkData['has_right'],
             'binaryTree' => $networkData['tree'],
             'networkTreeStats' => $networkData['stats'],
+            'networkTreeRootId' => $networkData['tree_root_id'],
             'orders' => $orders,
             'walletTransactions' => $walletData['transactions'],
             'hasPendingWithdrawal' => $walletData['has_pending_withdrawal'],
@@ -265,18 +273,45 @@ class DashboardService
     }
 
     /**
-     * @return array{has_left:bool,has_right:bool,tree:?array<string, mixed>,stats:array<string, int>}
+     * @return array{
+     *   has_left:bool,
+     *   has_right:bool,
+     *   tree:?array<string, mixed>,
+     *   stats:array<string, int>,
+     *   tree_root_id:int
+     * }
      */
-    private function loadNetworkData(Customer $customer): array
+    private function loadNetworkData(Customer $customer, ?int $networkRootId = null): array
     {
-        $treeData = $this->formatBinaryTreeData($customer);
+        $treeRoot = $this->resolveNetworkTreeRoot($customer, $networkRootId);
+        $treeData = $this->formatBinaryTreeData($treeRoot);
 
         return [
             'has_left' => $this->dashboardRepository->hasBinaryChildAtPosition($customer->id, 'left'),
             'has_right' => $this->dashboardRepository->hasBinaryChildAtPosition($customer->id, 'right'),
             'tree' => $treeData['tree'],
             'stats' => $treeData['stats'],
+            'tree_root_id' => (int) $treeRoot->id,
         ];
+    }
+
+    private function resolveNetworkTreeRoot(Customer $customer, ?int $networkRootId = null): Customer
+    {
+        if ($networkRootId === null || $networkRootId <= 0 || $networkRootId === (int) $customer->id) {
+            return $customer;
+        }
+
+        if (! $this->dashboardRepository->isMemberInCustomerNetwork($customer->id, $networkRootId)) {
+            return $customer;
+        }
+
+        $member = $this->dashboardRepository->findCustomerById($networkRootId);
+
+        if (! $member instanceof Customer) {
+            return $customer;
+        }
+
+        return $member;
     }
 
     /**

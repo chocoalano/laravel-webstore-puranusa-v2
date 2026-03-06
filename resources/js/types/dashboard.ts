@@ -461,6 +461,7 @@ export type DashboardPageProps = {
     prospectMembers?: DashboardMitraMember[]
     binaryTree?: DashboardNetworkTreeNode | null
     networkTreeStats?: DashboardNetworkTreeStats | null
+    networkTreeRootId?: number | null
     hasLeft?: boolean
     hasRight?: boolean
     stats?: Stats
