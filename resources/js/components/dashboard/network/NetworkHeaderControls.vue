@@ -66,13 +66,13 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
         </div>
 
         <div class="flex flex-wrap items-center gap-1.5">
-            <div class="relative">
+            <div class="relative w-full sm:w-auto">
                 <UInput
                     :model-value="treeSearchQuery"
                     icon="i-lucide-search"
                     placeholder="Cari member..."
                     size="xs"
-                    class="w-44 sm:w-52"
+                    class="w-full sm:w-52"
                     @update:model-value="handleTreeSearchModelUpdate"
                     @input="emit('searchInput')"
                     @focus="emit('searchFocus')"
@@ -81,7 +81,7 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
 
                 <div
                     v-if="showTreeSearchResults"
-                    class="absolute right-0 top-full z-20 mt-1 w-64 overflow-hidden rounded-xl border border-default bg-default shadow-lg"
+                    class="absolute left-1/2 top-full z-20 mt-1 w-64 max-w-[calc(100vw-1rem)] -translate-x-1/2 overflow-hidden rounded-xl border border-default bg-default shadow-lg sm:left-auto sm:right-0 sm:max-w-none sm:translate-x-0"
                 >
                     <div v-if="treeSearchResults.length === 0" class="p-3 text-sm text-muted">
                         Tidak ditemukan member.

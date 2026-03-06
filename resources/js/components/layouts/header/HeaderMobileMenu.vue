@@ -244,7 +244,7 @@ const mobileItems = computed<NavigationMenuItem[]>(() =>
                             size="xs" />
                     </UButton>
 
-                    <UButton v-if="isLoggedIn" to="/account" icon="i-lucide-user" color="neutral" variant="outline"
+                    <UButton v-if="isLoggedIn" to="/dashboard" icon="i-lucide-user" color="neutral" variant="outline"
                         class="h-auto flex-col justify-center gap-1 rounded-xl py-3" @click="modelOpen = false">
                         <span class="text-xs">Akun</span>
                     </UButton>
