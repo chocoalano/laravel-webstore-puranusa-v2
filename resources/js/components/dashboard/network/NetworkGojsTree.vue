@@ -523,7 +523,7 @@ watch(
         <div
             v-show="!loadError"
             ref="diagramContainer"
-            class="h-[56vh] min-h-[340px] w-full rounded-xl border border-default/70 bg-default"
+            class="h-[56vh] min-h-85 w-full rounded-xl border border-default/70 bg-default"
         />
     </div>
 </template>

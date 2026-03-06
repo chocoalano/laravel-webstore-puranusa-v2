@@ -1635,6 +1635,8 @@ class DashboardService
             'tier' => $customer->level ?? $this->memberStatusLabel((int) ($customer->status ?? 1)),
             'member_since' => $customer->created_at?->toIso8601String(),
             'wallet_balance' => (float) ($customer->ewallet_saldo ?? 0),
+            'status' => (int) ($customer->status ?? 0),
+            'has_placement' => filled($customer->position) || $customer->upline_id !== null,
         ];
     }
 

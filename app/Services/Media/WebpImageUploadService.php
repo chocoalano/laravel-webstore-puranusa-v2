@@ -12,7 +12,15 @@ class WebpImageUploadService
 {
     public function generateWebpFilename(): string
     {
-        return Str::ulid() . '.webp';
+        return Str::ulid().'.webp';
+    }
+
+    public function generateSlugWebpFilename(string $slug): string
+    {
+        $safeSlug = Str::slug($slug) ?: (string) Str::ulid();
+        $timestamp = now()->format('YmdHis');
+
+        return "{$safeSlug}-{$timestamp}.webp";
     }
 
     public function storeForFilament(BaseFileUpload $component, TemporaryUploadedFile $file, int $quality = 80): ?string

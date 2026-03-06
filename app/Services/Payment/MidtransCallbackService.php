@@ -119,6 +119,7 @@ class MidtransCallbackService
      *   order_id:int,
      *   order_no:string,
      *   customer_id:int,
+     *   customer_status:int,
      *   run_side_effects:bool,
      *   payment_status:string
      * }|null
@@ -193,6 +194,7 @@ class MidtransCallbackService
                 'order_id' => (int) $order->id,
                 'order_no' => (string) $order->order_no,
                 'customer_id' => (int) $order->customer_id,
+                'customer_status' => (int) ($order->customer->status ?? 0),
                 'run_side_effects' => $runSideEffects,
                 'payment_status' => $resolvedPaymentStatus,
             ];
@@ -290,7 +292,9 @@ class MidtransCallbackService
      * @param array{
      *   order_id:int,
      *   customer_id:int,
-     *   run_side_effects:bool
+     *   customer_status:int,
+     *   run_side_effects:bool,
+     *   payment_status:string
      * } $result
      */
     private function runOrderPaidSideEffects(array $result): void
@@ -299,13 +303,18 @@ class MidtransCallbackService
             return;
         }
 
-        try {
-            $this->callbackRepository->callBonusEngine((int) $result['order_id']);
-        } catch (\Throwable $exception) {
-            Log::error('Failed to run bonus engine after Midtrans callback.', [
-                'order_id' => $result['order_id'],
-                'error' => $exception->getMessage(),
-            ]);
+        $customerStatus = (int) ($result['customer_status'] ?? 0);
+        $paymentStatus = strtoupper((string) ($result['payment_status'] ?? ''));
+
+        if ($customerStatus === 3 && $paymentStatus === 'PAID') {
+            try {
+                $this->callbackRepository->callBonusEngine((int) $result['order_id']);
+            } catch (\Throwable $exception) {
+                Log::error('Failed to run bonus engine after Midtrans callback.', [
+                    'order_id' => $result['order_id'],
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         $this->callbackRepository->clearCustomerCart((int) $result['customer_id']);

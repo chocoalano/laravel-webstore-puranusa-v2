@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Articles\Schemas;
 
+use App\Services\Media\WebpImageUploadService;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\DateTimePicker;
@@ -10,13 +12,14 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ArticleForm
 {
@@ -123,7 +126,7 @@ class ArticleForm
                             ->reorderable()
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => filled($state['tags'] ?? null)
-                                ? 'Konten • ' . implode(', ', array_slice((array) $state['tags'], 0, 3))
+                                ? 'Konten • '.implode(', ', array_slice((array) $state['tags'], 0, 3))
                                 : 'Konten'
                             )
                             ->schema([
@@ -178,6 +181,20 @@ class ArticleForm
                                                     ->image()
                                                     ->imageEditor()
                                                     ->directory('articles')
+                                                    ->disk('public')
+                                                    ->visibility('public')
+                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                                    ->getUploadedFileNameForStorageUsing(
+                                                        static function (TemporaryUploadedFile $file, callable $get): string {
+                                                            $slug = (string) ($get('/slug') ?? '');
+
+                                                            return app(WebpImageUploadService::class)->generateSlugWebpFilename($slug);
+                                                        }
+                                                    )
+                                                    ->saveUploadedFileUsing(
+                                                        static fn (BaseFileUpload $component, TemporaryUploadedFile $file): ?string => app(WebpImageUploadService::class)->storeForFilament($component, $file)
+                                                    )
+                                                    ->helperText('Upload gambar artikel (JPG, PNG, WebP). Otomatis dioptimasi ke .webp.')
                                                     ->required(),
 
                                                 TextInput::make('alt')

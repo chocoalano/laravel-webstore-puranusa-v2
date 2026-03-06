@@ -26,6 +26,8 @@ export type Customer = {
     tier?: string
     member_since?: string // ISO
     wallet_balance?: number
+    status?: number
+    has_placement?: boolean
 }
 
 export type Address = {

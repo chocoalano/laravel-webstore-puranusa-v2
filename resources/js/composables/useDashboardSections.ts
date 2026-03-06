@@ -39,6 +39,7 @@ const bonusPropKeys = ['bonusStats', 'bonusTables']
 const lifetimePropKeys = ['lifetimeRewards']
 const mitraPropKeys = ['currentCustomerId', 'activeMembers', 'passiveMembers', 'prospectMembers', 'hasLeft', 'hasRight']
 const networkPropKeys = ['currentCustomerId', 'passiveMembers', 'binaryTree', 'networkTreeStats', 'networkTreeRootId']
+const mitraNetworkSections = new Set<DashboardSectionKey>(['zenner', 'mitra', 'network', 'bonus', 'lifetime'])
 
 function isDashboardSection(value: string): value is DashboardSectionKey {
     return Object.prototype.hasOwnProperty.call(componentMap, value)
@@ -56,7 +57,23 @@ function resolveInitialSection(url: string): DashboardSectionKey {
 }
 
 export function useDashboardSections(props: ComputedRef<DashboardPageProps>, initialUrl: string) {
-    const active = ref<DashboardSectionKey>(resolveInitialSection(initialUrl))
+    const canAccessMitraNetwork = computed<boolean>(() => {
+        const status = Number(props.value.customer?.status ?? 0)
+        const hasPlacement = props.value.customer?.has_placement === true
+
+        return status === 3 && hasPlacement
+    })
+
+    function isSectionAllowed(section: DashboardSectionKey): boolean {
+        if (!canAccessMitraNetwork.value && mitraNetworkSections.has(section)) {
+            return false
+        }
+
+        return true
+    }
+
+    const initialSection = resolveInitialSection(initialUrl)
+    const active = ref<DashboardSectionKey>(isSectionAllowed(initialSection) ? initialSection : 'dashboard')
 
     const currentComponent = computed(() => componentMap[active.value] ?? componentMap.dashboard)
 
@@ -147,21 +164,31 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
         }
     })
 
-    const asideLinks = computed<DashboardAsideLink[]>(() => [
-        { label: 'Akun', type: 'label' },
-        { label: 'Info Pengguna', icon: 'i-lucide-user', value: 'dashboard' },
-        { label: 'Form Pengguna', icon: 'i-lucide-form', value: 'form_account' },
-        { label: 'Order', icon: 'i-lucide-package-search', value: 'orders' },
-        { label: 'Promo', icon: 'i-lucide-ticket', value: 'promo' },
-        { label: 'Wallet', icon: 'i-lucide-wallet', value: 'wallet' },
-        { label: 'Alamat', icon: 'i-lucide-map-pin', value: 'addresses' },
-        { label: 'Mitra & Network', type: 'label' },
-        { label: 'Zenner', icon: 'i-lucide-sparkles', value: 'zenner' },
-        { label: 'Mitra', icon: 'i-lucide-handshake', value: 'mitra' },
-        { label: 'Network', icon: 'i-lucide-network', value: 'network' },
-        { label: 'Bonus', icon: 'i-lucide-coins', value: 'bonus' },
-        { label: 'Lifetime', icon: 'i-lucide-trophy', value: 'lifetime' },
-    ])
+    const asideLinks = computed<DashboardAsideLink[]>(() => {
+        const accountLinks: DashboardAsideLink[] = [
+            { label: 'Akun', type: 'label' },
+            { label: 'Info Pengguna', icon: 'i-lucide-user', value: 'dashboard' },
+            { label: 'Form Pengguna', icon: 'i-lucide-form', value: 'form_account' },
+            { label: 'Order', icon: 'i-lucide-package-search', value: 'orders' },
+            { label: 'Promo', icon: 'i-lucide-ticket', value: 'promo' },
+            { label: 'Wallet', icon: 'i-lucide-wallet', value: 'wallet' },
+            { label: 'Alamat', icon: 'i-lucide-map-pin', value: 'addresses' },
+        ]
+
+        if (!canAccessMitraNetwork.value) {
+            return accountLinks
+        }
+
+        return [
+            ...accountLinks,
+            { label: 'Mitra & Network', type: 'label' },
+            { label: 'Zenner', icon: 'i-lucide-sparkles', value: 'zenner' },
+            { label: 'Mitra', icon: 'i-lucide-handshake', value: 'mitra' },
+            { label: 'Network', icon: 'i-lucide-network', value: 'network' },
+            { label: 'Bonus', icon: 'i-lucide-coins', value: 'bonus' },
+            { label: 'Lifetime', icon: 'i-lucide-trophy', value: 'lifetime' },
+        ]
+    })
 
     function getSectionOnlyProps(section: DashboardSectionKey): string[] {
         switch (section) {
@@ -442,13 +469,25 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
         visitSection(current)
     })
 
-    function setActive(section: DashboardSectionKey): void {
-        if (section === active.value) {
-            visitSection(section)
+    watch(canAccessMitraNetwork, (allowed) => {
+        if (allowed) {
             return
         }
 
-        active.value = section
+        if (mitraNetworkSections.has(active.value)) {
+            active.value = 'dashboard'
+        }
+    })
+
+    function setActive(section: DashboardSectionKey): void {
+        const targetSection = isSectionAllowed(section) ? section : 'dashboard'
+
+        if (targetSection === active.value) {
+            visitSection(targetSection)
+            return
+        }
+
+        active.value = targetSection
     }
 
     return {
