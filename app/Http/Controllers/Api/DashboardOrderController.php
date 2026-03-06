@@ -9,6 +9,7 @@ use App\Http\Requests\Dashboard\CreateMidtransPayNowRequest;
 use App\Http\Requests\Dashboard\DownloadOrderInvoiceRequest;
 use App\Http\Requests\Dashboard\ListOrderRequest;
 use App\Http\Requests\Dashboard\ShowOrderRequest;
+use App\Http\Requests\Dashboard\SubmitOrderItemReviewRequest;
 use App\Models\Order;
 use App\Services\Dashboard\DashboardService;
 use App\Services\Orders\OrderInvoicePdfService;
@@ -36,7 +37,7 @@ class DashboardOrderController extends Controller
      *     @OA\Parameter(name="page", in="query", required=false, @OA\Schema(type="integer", minimum=1, example=1)),
      *     @OA\Parameter(name="per_page", in="query", required=false, @OA\Schema(type="integer", minimum=1, maximum=100, example=10)),
      *     @OA\Parameter(name="q", in="query", required=false, @OA\Schema(type="string", nullable=true, example="ORD-202603")),
-     *     @OA\Parameter(name="status", in="query", required=false, @OA\Schema(type="string", nullable=true, enum={"all","pending","paid","processing","shipped","delivered","cancelled","refunded"}, example="all")),
+     *     @OA\Parameter(name="status", in="query", required=false, @OA\Schema(type="string", nullable=true, enum={"all","unpaid","pending","paid","processing","shipped","delivered","cancelled","refunded"}, example="all")),
      *     @OA\Parameter(name="sort", in="query", required=false, @OA\Schema(type="string", nullable=true, enum={"newest","oldest","highest","lowest"}, example="newest")),
      *     @OA\Parameter(name="date_from", in="query", required=false, @OA\Schema(type="string", format="date", nullable=true, example="2026-03-01")),
      *     @OA\Parameter(name="date_to", in="query", required=false, @OA\Schema(type="string", format="date", nullable=true, example="2026-03-31")),
@@ -162,6 +163,41 @@ class DashboardOrderController extends Controller
         } catch (ValidationException $exception) {
             $firstError = collect($exception->errors())->flatten()->first();
             $message = is_string($firstError) ? $firstError : 'Gagal memuat detail order.';
+
+            return response()->json([
+                'message' => $message,
+                'errors' => $exception->errors(),
+            ], 422);
+        }
+    }
+
+    public function submitReview(
+        SubmitOrderItemReviewRequest $request,
+        Order $order
+    ): JsonResponse {
+        $customer = $this->resolveSanctumCustomer($request);
+
+        if (! $customer) {
+            return response()->json(['message' => 'Tidak terautentikasi.'], 401);
+        }
+
+        try {
+            $result = $this->dashboardService->submitOrderItemReview(
+                $customer,
+                (int) $order->id,
+                $request->payload(),
+            );
+
+            return response()->json([
+                'message' => $result['message'],
+                'data' => [
+                    'order' => $result['order'],
+                    'review' => $result['review'],
+                ],
+            ]);
+        } catch (ValidationException $exception) {
+            $firstError = collect($exception->errors())->flatten()->first();
+            $message = is_string($firstError) ? $firstError : 'Gagal mengirim review produk.';
 
             return response()->json([
                 'message' => $message,

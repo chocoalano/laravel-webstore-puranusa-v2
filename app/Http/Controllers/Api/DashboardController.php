@@ -31,6 +31,9 @@ class DashboardController extends Controller
      *     security={{"sanctum":{}}},
      *
      *     @OA\Parameter(name="orders_page", in="query", required=false, @OA\Schema(type="integer", minimum=1)),
+     *     @OA\Parameter(name="orders_q", in="query", required=false, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="orders_status", in="query", required=false, @OA\Schema(type="string", enum={"all","unpaid","pending","paid","processing","shipped","delivered","cancelled","refunded"})),
+     *     @OA\Parameter(name="orders_sort", in="query", required=false, @OA\Schema(type="string", enum={"newest","oldest","highest","lowest"})),
      *     @OA\Parameter(name="wallet_page", in="query", required=false, @OA\Schema(type="integer", minimum=1)),
      *     @OA\Parameter(name="wallet_search", in="query", required=false, @OA\Schema(type="string")),
      *     @OA\Parameter(name="wallet_type", in="query", required=false, @OA\Schema(type="string")),
@@ -74,12 +77,20 @@ class DashboardController extends Controller
             'type' => $request->query('wallet_type'),
             'status' => $request->query('wallet_status'),
         ];
+        $orderFilters = [
+            'q' => $request->query('orders_q'),
+            'status' => $request->query('orders_status'),
+            'sort' => $request->query('orders_sort'),
+            'date_from' => $request->query('orders_date_from'),
+            'date_to' => $request->query('orders_date_to'),
+        ];
 
         $data = $this->dashboardService->getPageData(
             $customer,
             max(1, (int) $request->integer('orders_page', 1)),
             max(1, (int) $request->integer('wallet_page', 1)),
-            $walletFilters
+            $walletFilters,
+            $orderFilters,
         );
 
         return response()->json([

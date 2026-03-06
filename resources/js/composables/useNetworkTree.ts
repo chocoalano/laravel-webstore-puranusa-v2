@@ -16,6 +16,10 @@ export type NetworkTreeStatsSummary = {
     totalRight: number
 }
 
+function normalizeSearchText(value: string): string {
+    return value.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
 function countNodes(node: DashboardNetworkTreeNode | null): number {
     if (!node) {
         return 0
@@ -148,17 +152,20 @@ export function useNetworkTree(
     })
 
     const treeSearchResults = computed<NetworkTreeSearchResult[]>(() => {
-        const query = treeSearchQuery.value.trim().toLowerCase()
+        const rawQuery = normalizeSearchText(treeSearchQuery.value)
+        const usernameQuery = rawQuery.replace(/^@+/, '')
 
-        if (query.length < 2) {
+        if (usernameQuery.length < 2) {
             return []
         }
 
         return allMemberSearchData.value
             .filter((member) => {
-                const haystack = `${member.name} ${member.username} ${member.email} ${member.package_name}`.toLowerCase()
+                const haystack = normalizeSearchText(
+                    `${member.name} ${member.username} @${member.username} ${member.email} ${member.package_name}`
+                )
 
-                return haystack.includes(query)
+                return haystack.includes(rawQuery) || haystack.includes(usernameQuery)
             })
             .slice(0, 12)
     })

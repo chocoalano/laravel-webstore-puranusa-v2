@@ -38,6 +38,6 @@ defineEmits<{
             <DashboardLifetimeCard :stats="stats" />
         </div>
 
-        <DashboardSecurityZone :security-summary="securitySummary" @navigate="$emit('navigate', $event)" />
+        <DashboardSecurityZone :security-summary="securitySummary" />
     </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { vMaska } from 'maska/vue'
 import { useDashboardAccountForm } from '@/composables/useDashboardAccountForm'
 import type { Address, Customer } from '@/types/dashboard'
 
@@ -194,6 +195,7 @@ const {
                 >
                     <UInput
                         v-model="form.npwp_number"
+                        v-maska="'##.###.###.#-###.###'"
                         placeholder="00.000.000.0-000.000"
                         icon="i-lucide-file-badge"
                         class="w-full"

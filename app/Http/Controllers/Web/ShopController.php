@@ -26,7 +26,7 @@ class ShopController extends Controller
     public function show(Request $request, string $slug, ProductService $productService)
     {
         try {
-            $data = $productService->getProductShowData($slug);
+            $data = $productService->getProductShowData($slug, false);
         } catch (ModelNotFoundException) {
             return redirect()->route('shop.index')
                 ->with('error', 'Produk tidak ditemukan.');
@@ -46,7 +46,17 @@ class ShopController extends Controller
                 ->with('error', 'Produk tidak ditemukan.');
         }
 
-        $data['isInWishlist'] = $this->checkIsInWishlist($request, $productId);
+        $numericProductId = is_numeric($productId) ? (int) $productId : null;
+
+        if ($numericProductId === null) {
+            return redirect()->route('shop.index')
+                ->with('error', 'Produk tidak ditemukan.');
+        }
+
+        $data['isInWishlist'] = $this->checkIsInWishlist($request, $numericProductId);
+        $data['reviews'] = Inertia::scroll(
+            fn () => $productService->getApprovedReviewsForInfiniteScroll($numericProductId, 8)
+        );
 
         return Inertia::render('Shop/Show', $data);
     }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { DashboardOrder } from '@/types/dashboard'
+import type { DashboardOrder, DashboardOrderItemPreview } from '@/types/dashboard'
 
 const props = withDefaults(
     defineProps<{
@@ -20,6 +20,8 @@ const props = withDefaults(
         canPayNow: (order: DashboardOrder) => boolean
         canDownloadInvoice: (order: DashboardOrder) => boolean
         downloadInvoice: (order: DashboardOrder) => void
+        canReviewItem: (order: DashboardOrder, item: DashboardOrderItemPreview) => boolean
+        openReviewModal: (order: DashboardOrder, item: DashboardOrderItemPreview) => void
     }>(),
     {
         loading: false,
@@ -180,6 +182,17 @@ onBeforeUnmount(() => {
                                 <UIcon name="i-lucide-scan-line" class="mr-1 size-3.5" />
                                 {{ order.tracking_number }}
                             </UBadge>
+
+                            <UBadge
+                                v-if="(order.pending_review_count ?? 0) > 0"
+                                color="warning"
+                                variant="soft"
+                                size="sm"
+                                class="rounded-2xl"
+                            >
+                                <UIcon name="i-lucide-star" class="mr-1 size-3.5" />
+                                {{ order.pending_review_count }} belum diulas
+                            </UBadge>
                         </div>
 
                         <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
@@ -210,6 +223,18 @@ onBeforeUnmount(() => {
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             <UButton size="xs" color="primary" variant="soft" class="rounded-2xl" icon="i-lucide-eye" @click="emit('open-detail', order)">
                                 Detail
+                            </UButton>
+
+                            <UButton
+                                v-if="order.has_pending_review"
+                                size="xs"
+                                color="warning"
+                                variant="soft"
+                                class="rounded-2xl"
+                                icon="i-lucide-star"
+                                @click="emit('open-detail', order)"
+                            >
+                                Ulas Produk
                             </UButton>
 
                             <UButton
@@ -296,6 +321,18 @@ onBeforeUnmount(() => {
                                         <span class="font-semibold tabular-nums text-highlighted/80">{{ props.formatCurrency(item.price) }}</span>
                                     </p>
                                 </div>
+
+                                <UButton
+                                    v-if="props.canReviewItem(order, item)"
+                                    size="xs"
+                                    color="warning"
+                                    variant="soft"
+                                    class="rounded-xl"
+                                    icon="i-lucide-star"
+                                    @click="props.openReviewModal(order, item)"
+                                >
+                                    Ulas
+                                </UButton>
                             </div>
                         </UCard>
                     </div>

@@ -72,6 +72,9 @@ Route::middleware('auth:customer')->group(function () {
     Route::post('/dashboard/orders/{order}/pay-now', [DashboardOrderController::class, 'createMidtransPayNowToken'])
         ->whereNumber('order')
         ->name('dashboard.orders.pay-now');
+    Route::post('/dashboard/orders/{order}/review', [DashboardOrderController::class, 'submitOrderItemReview'])
+        ->whereNumber('order')
+        ->name('dashboard.orders.review');
     Route::get('/dashboard/orders/{order}/invoice', [DashboardOrderController::class, 'downloadInvoice'])
         ->whereNumber('order')
         ->name('dashboard.orders.invoice');

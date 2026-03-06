@@ -14,7 +14,6 @@ const componentMap: Record<DashboardSectionKey, ReturnType<typeof defineAsyncCom
     bonus: defineAsyncComponent(() => import('@/Pages/Auth/Dashboard/partials/Bonus.vue')),
     lifetime: defineAsyncComponent(() => import('@/Pages/Auth/Dashboard/partials/Lifetime.vue')),
     addresses: defineAsyncComponent(() => import('@/Pages/Auth/Dashboard/partials/Addresses.vue')),
-    delete: defineAsyncComponent(() => import('@/Pages/Auth/Dashboard/partials/DeleteAccount.vue')),
 }
 
 const dashboardPropKeys = [
@@ -161,8 +160,6 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
         { label: 'Network', icon: 'i-lucide-network', value: 'network' },
         { label: 'Bonus', icon: 'i-lucide-coins', value: 'bonus' },
         { label: 'Lifetime', icon: 'i-lucide-trophy', value: 'lifetime' },
-        { label: 'Keamanan', type: 'label' },
-        { label: 'Delete Account', icon: 'i-lucide-user-x', value: 'delete', color: 'error' },
     ])
 
     function getSectionOnlyProps(section: DashboardSectionKey): string[] {
@@ -198,10 +195,27 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
         const query: Record<string, string | number> = { section }
 
         if (section === 'orders') {
-            const page = Number(props.value.orders?.current_page ?? 1)
+            const ordersPayload = props.value.orders
+            const page = Number(ordersPayload?.current_page ?? 1)
+            const filters = ordersPayload?.filters
+            const search = String(filters?.q ?? '').trim()
+            const status = String(filters?.status ?? 'all').trim().toLowerCase()
+            const sort = String(filters?.sort ?? 'newest').trim().toLowerCase()
 
             if (page > 1) {
                 query.orders_page = page
+            }
+
+            if (search !== '') {
+                query.orders_q = search
+            }
+
+            if (status !== '' && status !== 'all') {
+                query.orders_status = status
+            }
+
+            if (sort !== '' && sort !== 'newest') {
+                query.orders_sort = sort
             }
 
             return query

@@ -18,6 +18,7 @@ use App\Models\CustomerNetwork;
 use App\Models\CustomerNpwp;
 use App\Models\CustomerWalletTransaction;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Promotion;
 use App\Models\Reward;
@@ -142,7 +143,78 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
                 });
             })
             ->when($status !== '' && $status !== 'all', function (Builder $query) use ($status): void {
-                $query->whereRaw('LOWER(status) = ?', [$status]);
+                $paidPaymentStatuses = ['paid', 'settlement', 'capture', 'completed', 'success', 'succeeded'];
+                $pendingPaymentStatuses = ['pending', 'challenge'];
+                $failedPaymentStatuses = ['failed', 'deny', 'expire', 'expired', 'cancel', 'cancelled', 'canceled', 'failure'];
+                $normalizedStatusMap = [
+                    'pending' => ['pending', 'unpaid', 'waiting_payment', 'awaiting_payment', 'challenge'],
+                    'paid' => ['paid'],
+                    'processing' => ['processing', 'processed'],
+                    'shipped' => ['shipped', 'ready_to_ship'],
+                    'delivered' => ['delivered'],
+                    'cancelled' => ['cancelled', 'canceled', 'cancel'],
+                    'refunded' => ['refunded', 'refund'],
+                ];
+
+                $targetStatuses = $normalizedStatusMap[$status] ?? [];
+
+                if ($status === 'pending') {
+                    $query->where(function (Builder $inner) use ($targetStatuses, $pendingPaymentStatuses, $failedPaymentStatuses): void {
+                        $inner->whereIn(DB::raw('LOWER(orders.status)'), $targetStatuses)
+                            ->orWhereHas('payments', function (Builder $paymentQuery) use ($pendingPaymentStatuses, $failedPaymentStatuses): void {
+                                $paymentQuery->whereIn(DB::raw('LOWER(payments.status)'), [...$pendingPaymentStatuses, ...$failedPaymentStatuses]);
+                            });
+                    })
+                        ->whereNotIn(DB::raw('LOWER(orders.status)'), ['cancelled', 'canceled', 'cancel', 'refunded', 'refund'])
+                        ->whereDoesntHave('payments', function (Builder $paymentQuery) use ($paidPaymentStatuses): void {
+                            $paymentQuery->whereIn(DB::raw('LOWER(payments.status)'), $paidPaymentStatuses);
+                        });
+
+                    return;
+                }
+
+                if ($status === 'delivered') {
+                    $query->where(function (Builder $inner) use ($targetStatuses): void {
+                        $inner->whereIn(DB::raw('LOWER(orders.status)'), $targetStatuses)
+                            ->orWhereHas('shipments', function (Builder $shipmentQuery): void {
+                                $shipmentQuery->whereRaw('LOWER(shipments.status) = ?', ['delivered']);
+                            });
+                    });
+
+                    return;
+                }
+
+                if ($status === 'paid') {
+                    $query->where(function (Builder $inner) use ($targetStatuses, $paidPaymentStatuses): void {
+                        $inner->whereIn(DB::raw('LOWER(orders.status)'), $targetStatuses)
+                            ->orWhereNotNull('paid_at')
+                            ->orWhereHas('payments', function (Builder $paymentQuery) use ($paidPaymentStatuses): void {
+                                $paymentQuery->whereIn(DB::raw('LOWER(payments.status)'), $paidPaymentStatuses);
+                            });
+                    });
+
+                    return;
+                }
+
+                if ($status === 'unpaid') {
+                    $query->whereNotIn(DB::raw('LOWER(orders.status)'), ['cancelled', 'canceled', 'cancel', 'refunded', 'refund'])
+                        ->where(function (Builder $inner) use ($normalizedStatusMap, $pendingPaymentStatuses, $failedPaymentStatuses): void {
+                            $inner->whereIn(DB::raw('LOWER(orders.status)'), $normalizedStatusMap['pending'])
+                                ->orWhereDoesntHave('payments')
+                                ->orWhereHas('payments', function (Builder $paymentQuery) use ($pendingPaymentStatuses, $failedPaymentStatuses): void {
+                                    $paymentQuery->whereIn(DB::raw('LOWER(payments.status)'), [...$pendingPaymentStatuses, ...$failedPaymentStatuses]);
+                                });
+                        })
+                        ->whereDoesntHave('payments', function (Builder $paymentQuery) use ($paidPaymentStatuses): void {
+                            $paymentQuery->whereIn(DB::raw('LOWER(payments.status)'), $paidPaymentStatuses);
+                        });
+
+                    return;
+                }
+
+                if ($targetStatuses !== []) {
+                    $query->whereIn(DB::raw('LOWER(orders.status)'), $targetStatuses);
+                }
             })
             ->when($dateFrom !== '', function (Builder $query) use ($dateFrom): void {
                 $query->whereDate('created_at', '>=', $dateFrom);
@@ -175,6 +247,20 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
             ->where('customer_id', $customerId)
             ->whereKey($orderId)
             ->first();
+    }
+
+    public function countPendingReviewItems(int $customerId): int
+    {
+        return OrderItem::query()
+            ->whereHas('order', function (Builder $query) use ($customerId): void {
+                $query->where('customer_id', $customerId)
+                    ->whereRaw('LOWER(status) = ?', ['delivered']);
+            })
+            ->whereNotNull('product_id')
+            ->whereDoesntHave('review', function (Builder $query) use ($customerId): void {
+                $query->where('customer_id', $customerId);
+            })
+            ->count();
     }
 
     public function updatePaymentFromGateway(Payment $payment, string $status, array $gatewayPayload): void
@@ -1019,6 +1105,7 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
             'customer:id,name,email',
             'shippingAddress:id,recipient_name,recipient_phone,address_line1,address_line2,city_label,province_label,district,postal_code,country',
             'items:id,order_id,product_id,name,sku,qty,unit_price,row_total,meta_json',
+            'items.review:id,customer_id,order_item_id,rating,title,comment,is_approved,created_at',
             'items.product:id,name',
             'items.product.primaryMedia:id,product_id,url,is_primary,sort_order',
             'items.product.media:id,product_id,url,sort_order',

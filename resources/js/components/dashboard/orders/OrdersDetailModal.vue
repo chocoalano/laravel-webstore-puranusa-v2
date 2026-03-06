@@ -19,6 +19,8 @@ const props = withDefaults(
         canPayNow: (order: DashboardOrder) => boolean
         canDownloadInvoice: (order: DashboardOrder) => boolean
         downloadInvoice: (order: DashboardOrder) => void
+        canReviewItem: (order: DashboardOrder, item: DashboardOrderItemPreview) => boolean
+        openReviewModal: (order: DashboardOrder, item: DashboardOrderItemPreview) => void
     }>(),
     {
         selectedOrder: null,
@@ -206,9 +208,34 @@ function closeModal(): void {
                                 </p>
                             </div>
 
-                            <p class="shrink-0 text-sm font-bold tabular-nums text-highlighted">
-                                {{ formatCurrency(item.row_total ?? item.price * item.qty) }}
-                            </p>
+                            <div class="shrink-0 flex flex-col items-end gap-1">
+                                <p class="text-sm font-bold tabular-nums text-highlighted">
+                                    {{ formatCurrency(item.row_total ?? item.price * item.qty) }}
+                                </p>
+
+                                <UBadge
+                                    v-if="item.is_reviewed"
+                                    :color="item.review_is_approved ? 'success' : 'neutral'"
+                                    variant="soft"
+                                    size="sm"
+                                    class="rounded-xl"
+                                >
+                                    <UIcon :name="item.review_is_approved ? 'i-lucide-check-circle-2' : 'i-lucide-hourglass'" class="mr-1 size-3.5" />
+                                    {{ item.review_is_approved ? 'Sudah diulas' : 'Menunggu approval' }}
+                                </UBadge>
+
+                                <UButton
+                                    v-if="canReviewItem(selectedOrder, item)"
+                                    size="xs"
+                                    color="warning"
+                                    variant="soft"
+                                    class="rounded-xl"
+                                    icon="i-lucide-star"
+                                    @click="openReviewModal(selectedOrder, item)"
+                                >
+                                    Ulas produk
+                                </UButton>
+                            </div>
                         </div>
                     </div>
 

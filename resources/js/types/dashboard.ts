@@ -289,6 +289,12 @@ export type DashboardOrderItemPreview = {
     price: number
     row_total?: number
     image?: string | null
+    can_review?: boolean
+    is_reviewed?: boolean
+    review_id?: number | null
+    review_rating?: number | null
+    review_is_approved?: boolean | null
+    review_created_at?: string | null
 }
 
 export type DashboardOrderShippingAddress = {
@@ -320,12 +326,22 @@ export type DashboardOrder = {
     items_count: number
     items?: DashboardOrderItemPreview[]
     items_preview?: DashboardOrderItemPreview[]
+    pending_review_count?: number
+    has_pending_review?: boolean
     tracking_number?: string | null
     notes?: string | null
     paid_at?: string | null
     shipping_address?: DashboardOrderShippingAddress | null
     customer?: { name: string; email?: string | null }
     to?: string | null
+}
+
+export type DashboardOrdersFilters = {
+    q?: string | null
+    status?: 'all' | 'unpaid' | 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded'
+    sort?: 'newest' | 'oldest' | 'highest' | 'lowest'
+    date_from?: string | null
+    date_to?: string | null
 }
 
 export type DashboardOrdersPagination = {
@@ -335,6 +351,9 @@ export type DashboardOrdersPagination = {
     has_more: boolean
     per_page: number
     total: number
+    filters?: DashboardOrdersFilters
+    pending_review_count?: number
+    has_pending_review?: boolean
 }
 
 export type DashboardMidtransConfig = {
@@ -462,7 +481,6 @@ export type DashboardSectionKey =
     | 'bonus'
     | 'lifetime'
     | 'addresses'
-    | 'delete'
 
 export type DashboardAsideLabelLink = {
     label: string

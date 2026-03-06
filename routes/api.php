@@ -127,6 +127,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/{order}/pay-now', [DashboardOrderController::class, 'createMidtransPayNowToken'])
             ->whereNumber('order')
             ->name('pay-now');
+        Route::post('/{order}/review', [DashboardOrderController::class, 'submitReview'])
+            ->whereNumber('order')
+            ->name('review');
         Route::get('/{order}/invoice', [DashboardOrderController::class, 'downloadInvoice'])
             ->whereNumber('order')
             ->name('invoice');

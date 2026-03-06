@@ -70,7 +70,7 @@ function handleTreeSearchModelUpdate(value: string | number | null | undefined):
                 <UInput
                     :model-value="treeSearchQuery"
                     icon="i-lucide-search"
-                    placeholder="Cari member..."
+                    placeholder="Cari member berdasakan username/nama..."
                     size="xs"
                     class="w-full sm:w-52"
                     @update:model-value="handleTreeSearchModelUpdate"

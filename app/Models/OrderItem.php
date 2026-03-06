@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Model OrderItem (Item Pesanan).
@@ -95,8 +96,8 @@ class OrderItem extends BaseModel
     /**
      * Review produk dari order item ini.
      */
-    public function review(): BelongsTo
+    public function review(): HasOne
     {
-        return $this->belongsTo(ProductReview::class, 'id', 'order_item_id');
+        return $this->hasOne(ProductReview::class, 'order_item_id', 'id');
     }
 }

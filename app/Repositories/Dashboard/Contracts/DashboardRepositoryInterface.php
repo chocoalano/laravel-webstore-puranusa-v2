@@ -73,6 +73,8 @@ interface DashboardRepositoryInterface
 
     public function findOrderForCustomer(int $customerId, int $orderId): ?Order;
 
+    public function countPendingReviewItems(int $customerId): int;
+
     /**
      * @param  array<string, mixed>  $gatewayPayload
      */

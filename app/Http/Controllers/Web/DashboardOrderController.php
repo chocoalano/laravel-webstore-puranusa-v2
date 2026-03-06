@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\CheckOrderPaymentStatusRequest;
 use App\Http\Requests\Dashboard\CreateMidtransPayNowRequest;
 use App\Http\Requests\Dashboard\DownloadOrderInvoiceRequest;
+use App\Http\Requests\Dashboard\SubmitOrderItemReviewRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Services\Dashboard\DashboardService;
@@ -74,6 +75,43 @@ class DashboardOrderController extends Controller
             return response()->json($result);
         } catch (ValidationException $exception) {
             return $this->validationFailure($request, $exception, 'Gagal membuat token pembayaran Midtrans.');
+        }
+    }
+
+    public function submitOrderItemReview(
+        SubmitOrderItemReviewRequest $request,
+        Order $order
+    ): JsonResponse|RedirectResponse {
+        /** @var Customer $customer */
+        $customer = $request->user('customer');
+
+        try {
+            $result = $this->dashboardService->submitOrderItemReview(
+                $customer,
+                (int) $order->id,
+                $request->payload(),
+            );
+
+            if ($this->isInertiaRequest($request)) {
+                return back()->with('orders', [
+                    'action' => 'review_submitted',
+                    'message' => $result['message'],
+                    'payload' => [
+                        'order' => $result['order'],
+                        'review' => $result['review'],
+                    ],
+                ]);
+            }
+
+            return response()->json([
+                'message' => $result['message'],
+                'data' => [
+                    'order' => $result['order'],
+                    'review' => $result['review'],
+                ],
+            ]);
+        } catch (ValidationException $exception) {
+            return $this->validationFailure($request, $exception, 'Gagal mengirim review produk.');
         }
     }
 

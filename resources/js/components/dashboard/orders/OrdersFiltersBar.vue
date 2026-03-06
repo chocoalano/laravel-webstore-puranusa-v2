@@ -7,7 +7,7 @@ const props = defineProps<{
     shownCount: number
     totalCount: number
     q: string
-    status: DashboardOrder['status'] | 'all'
+    status: DashboardOrder['status'] | 'unpaid' | 'all'
     sort: SortValue
     statusItems: Array<{ label: string; value: string }>
     sortItems: Array<{ label: string; value: SortValue }>
@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: 'update:q', value: string): void
-    (e: 'update:status', value: DashboardOrder['status'] | 'all'): void
+    (e: 'update:status', value: DashboardOrder['status'] | 'unpaid' | 'all'): void
     (e: 'update:sort', value: SortValue): void
     (e: 'reset'): void
 }>()
@@ -24,12 +24,78 @@ function onSearchUpdate(value: string | number): void {
     emit('update:q', String(value ?? ''))
 }
 
-function onStatusUpdate(value: DashboardOrder['status'] | 'all'): void {
-    emit('update:status', value)
+function normalizeSelectValue(value: unknown): string {
+    if (Array.isArray(value)) {
+        return normalizeSelectValue(value[0] ?? '')
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+        return String(value)
+    }
+
+    if (value && typeof value === 'object') {
+        const payload = value as Record<string, unknown>
+
+        if (payload.value !== undefined) {
+            return String(payload.value ?? '')
+        }
+
+        if (payload.id !== undefined) {
+            return String(payload.id ?? '')
+        }
+
+        if (payload.code !== undefined) {
+            return String(payload.code ?? '')
+        }
+
+        if (payload.key !== undefined) {
+            return String(payload.key ?? '')
+        }
+
+        if (typeof payload.label === 'string') {
+            return payload.label
+        }
+    }
+
+    return ''
 }
 
-function onSortUpdate(value: SortValue): void {
-    emit('update:sort', value)
+function onStatusUpdate(value: unknown): void {
+    const normalized = normalizeSelectValue(value).trim().toLowerCase()
+    const allowed: Array<DashboardOrder['status'] | 'unpaid' | 'all'> = ['all', 'unpaid', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+    const labels: Record<string, DashboardOrder['status'] | 'unpaid' | 'all'> = {
+        'semua status': 'all',
+        'belum bayar': 'unpaid',
+        'menunggu pembayaran': 'unpaid',
+        menunggu: 'pending',
+        dibayar: 'paid',
+        diproses: 'processing',
+        dikirim: 'shipped',
+        selesai: 'delivered',
+        dibatalkan: 'cancelled',
+        refund: 'refunded',
+    }
+    const normalizedStatus = allowed.includes(normalized as DashboardOrder['status'] | 'unpaid' | 'all')
+        ? (normalized as DashboardOrder['status'] | 'unpaid' | 'all')
+        : labels[normalized] ?? props.status
+
+    emit('update:status', normalizedStatus)
+}
+
+function onSortUpdate(value: unknown): void {
+    const normalized = normalizeSelectValue(value).trim().toLowerCase()
+    const allowed: SortValue[] = ['newest', 'oldest', 'highest', 'lowest']
+    const labels: Record<string, SortValue> = {
+        terbaru: 'newest',
+        terlama: 'oldest',
+        'total tertinggi': 'highest',
+        'total terendah': 'lowest',
+    }
+    const normalizedSort = allowed.includes(normalized as SortValue)
+        ? (normalized as SortValue)
+        : labels[normalized] ?? props.sort
+
+    emit('update:sort', normalizedSort)
 }
 </script>
 

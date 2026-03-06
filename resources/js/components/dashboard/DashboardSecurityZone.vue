@@ -7,10 +7,6 @@ const { formatDate } = useDashboard()
 defineProps<{
     securitySummary?: SecuritySummary
 }>()
-
-defineEmits<{
-    navigate: [section: string]
-}>()
 </script>
 
 <template>
@@ -58,24 +54,5 @@ defineEmits<{
             </ul>
         </div>
 
-        <UCard class="rounded-2xl border border-rose-200 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/30">
-            <div class="flex items-start gap-3">
-                <div class="grid size-10 place-items-center rounded-xl bg-rose-100 dark:bg-rose-950/50">
-                    <UIcon name="i-lucide-user-x" class="size-5 text-rose-600 dark:text-rose-300" />
-                </div>
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold text-rose-800 dark:text-rose-200">Delete Account</p>
-                    <p class="mt-1 text-xs text-rose-700 dark:text-rose-300">
-                        Aksi ini permanen. Pastikan kamu sudah backup data penting.
-                    </p>
-                    <div class="mt-3">
-                        <UButton color="error" variant="solid" size="sm" class="rounded-xl"
-                            @click="$emit('navigate', 'delete')">
-                            Hapus Akun
-                        </UButton>
-                    </div>
-                </div>
-            </div>
-        </UCard>
     </UCard>
 </template>

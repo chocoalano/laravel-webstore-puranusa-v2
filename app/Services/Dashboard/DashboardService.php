@@ -17,6 +17,7 @@ use App\Models\CustomerNpwp;
 use App\Models\CustomerWalletTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\ProductReview;
 use App\Models\Promotion;
 use App\Models\Reward;
 use App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface;
@@ -53,6 +54,7 @@ class DashboardService
         int $ordersPage = 1,
         int $walletPage = 1,
         array $walletFilters = [],
+        array $orderFilters = [],
     ): array {
         $customer = $this->dashboardRepository->findCustomerById($authenticatedCustomer->id);
 
@@ -62,11 +64,12 @@ class DashboardService
 
         $now = now();
         $normalizedWalletFilters = $this->normalizeWalletFilters($walletFilters);
+        $normalizedOrderFilters = $this->normalizeOrdersFilters($orderFilters);
         $coreMetrics = $this->loadCoreMetrics($customer, $now);
         $addressData = $this->loadAddressData($customer);
         $mitraMembers = $this->loadMitraMembers($customer);
         $networkData = $this->loadNetworkData($customer);
-        $orders = $this->loadOrdersData($customer, max(1, $ordersPage));
+        $orders = $this->loadOrdersData($customer, max(1, $ordersPage), $normalizedOrderFilters);
         $walletData = $this->loadWalletData($customer, max(1, $walletPage), $normalizedWalletFilters);
         $bonusData = $this->loadBonusData($customer);
         $contentData = $this->loadContentData($now);
@@ -88,7 +91,23 @@ class DashboardService
      * @param  array{default_address:?CustomerAddress,addresses:Collection<int, CustomerAddress>}  $addressData
      * @param  array{active:array<int, array<string, mixed>>,passive:array<int, array<string, mixed>>,prospect:array<int, array<string, mixed>>}  $mitraMembers
      * @param  array{has_left:bool,has_right:bool,tree:?array<string, mixed>,stats:array<string, int>}  $networkData
-     * @param  array{data:array<int, array<string, mixed>>,current_page:int,next_page:int|null,has_more:bool,per_page:int,total:int}  $orders
+     * @param  array{
+     *   data:array<int, array<string, mixed>>,
+     *   current_page:int,
+     *   next_page:int|null,
+     *   has_more:bool,
+     *   per_page:int,
+     *   total:int,
+     *   filters:array{
+     *     q:string|null,
+     *     status:string,
+     *     sort:string,
+     *     date_from:string|null,
+     *     date_to:string|null
+     *   },
+     *   pending_review_count:int,
+     *   has_pending_review:bool
+     * }  $orders
      * @param  array{transactions:array<string, mixed>,has_pending_withdrawal:bool}  $walletData
      * @param  array{bonus_stats:array<string, mixed>,bonus_tables:array<string, array<int, array<string, mixed>>>,lifetime_rewards:array<string, mixed>}  $bonusData
      * @param  array{promos:array<int, array<string, mixed>>,zenner_categories:array<int, array<string, mixed>>,zenner_contents:array<int, array<string, mixed>>}  $contentData
@@ -267,14 +286,24 @@ class DashboardService
      *   next_page:int|null,
      *   has_more:bool,
      *   per_page:int,
-     *   total:int
+     *   total:int,
+     *   filters:array{
+     *     q:string|null,
+     *     status:string,
+     *     sort:string,
+     *     date_from:string|null,
+     *     date_to:string|null
+     *   },
+     *   pending_review_count:int,
+     *   has_pending_review:bool
      * }
      */
-    private function loadOrdersData(Customer $customer, int $page): array
+    private function loadOrdersData(Customer $customer, int $page, array $filters = []): array
     {
-        $ordersPagination = $this->dashboardRepository->getPaginatedOrders($customer->id, 10, $page);
+        $ordersPagination = $this->dashboardRepository->getPaginatedOrders($customer->id, 10, $page, $filters);
+        $pendingReviewCount = $this->dashboardRepository->countPendingReviewItems($customer->id);
 
-        return $this->formatOrders($ordersPagination);
+        return $this->formatOrders($ordersPagination, $pendingReviewCount, $filters);
     }
 
     /**
@@ -405,6 +434,9 @@ class DashboardService
                 'has_more' => false,
                 'per_page' => 10,
                 'total' => 0,
+                'filters' => $this->normalizeOrdersFilters([]),
+                'pending_review_count' => 0,
+                'has_pending_review' => false,
             ],
             'walletTransactions' => [
                 'data' => [],
@@ -1014,7 +1046,16 @@ class DashboardService
      *   next_page:int|null,
      *   has_more:bool,
      *   per_page:int,
-     *   total:int
+     *   total:int,
+     *   filters:array{
+     *     q:string|null,
+     *     status:string,
+     *     sort:string,
+     *     date_from:string|null,
+     *     date_to:string|null
+     *   },
+     *   pending_review_count:int,
+     *   has_pending_review:bool
      * }
      */
     public function getOrdersPagination(
@@ -1038,8 +1079,9 @@ class DashboardService
             max(1, $page),
             $normalizedFilters,
         );
+        $pendingReviewCount = $this->dashboardRepository->countPendingReviewItems($customer->id);
 
-        return $this->formatOrders($ordersPagination);
+        return $this->formatOrders($ordersPagination, $pendingReviewCount, $normalizedFilters);
     }
 
     /**
@@ -1056,6 +1098,103 @@ class DashboardService
         }
 
         return $this->formatOrder($order);
+    }
+
+    /**
+     * @param  array{
+     *   order_item_id:int,
+     *   rating:int,
+     *   title:?string,
+     *   comment:string
+     * }  $payload
+     * @return array{
+     *   order:array<string,mixed>,
+     *   review:array<string,mixed>,
+     *   message:string
+     * }
+     */
+    public function submitOrderItemReview(Customer $authenticatedCustomer, int $orderId, array $payload): array
+    {
+        $order = $this->dashboardRepository->findOrderForCustomer($authenticatedCustomer->id, $orderId);
+
+        if (! $order) {
+            throw ValidationException::withMessages([
+                'order' => 'Order tidak ditemukan.',
+            ]);
+        }
+
+        $latestShipment = $order->shipments
+            ->sortByDesc(fn ($shipment): int => $shipment->created_at?->getTimestamp() ?? 0)
+            ->first();
+        $isDeliveredOrder = $this->normalizeOrderStatus((string) ($order->status ?? 'pending')) === 'delivered'
+            || strtolower(trim((string) ($latestShipment?->status ?? ''))) === 'delivered';
+
+        if (! $isDeliveredOrder) {
+            throw ValidationException::withMessages([
+                'order' => 'Review hanya dapat dikirim untuk pesanan yang sudah diterima.',
+            ]);
+        }
+
+        $orderItemId = (int) ($payload['order_item_id'] ?? 0);
+        $rating = (int) ($payload['rating'] ?? 0);
+        $title = isset($payload['title']) ? trim((string) $payload['title']) : null;
+        $comment = trim((string) ($payload['comment'] ?? ''));
+
+        /** @var OrderItem|null $orderItem */
+        $orderItem = $order->items
+            ->first(fn (OrderItem $item): bool => (int) $item->id === $orderItemId);
+
+        if (! $orderItem) {
+            throw ValidationException::withMessages([
+                'order_item_id' => 'Item order tidak ditemukan pada pesanan ini.',
+            ]);
+        }
+
+        if ((int) ($orderItem->product_id ?? 0) <= 0) {
+            throw ValidationException::withMessages([
+                'order_item_id' => 'Produk pada item order tidak valid untuk direview.',
+            ]);
+        }
+
+        $existingReview = ProductReview::query()
+            ->where('customer_id', (int) $authenticatedCustomer->id)
+            ->where('order_item_id', $orderItemId)
+            ->first();
+
+        if ($existingReview !== null) {
+            throw ValidationException::withMessages([
+                'order_item_id' => 'Produk pada item order ini sudah pernah Anda review.',
+            ]);
+        }
+
+        $createdReview = DB::transaction(function () use ($authenticatedCustomer, $orderItem, $rating, $title, $comment): ProductReview {
+            return ProductReview::query()->create([
+                'customer_id' => (int) $authenticatedCustomer->id,
+                'product_id' => (int) $orderItem->product_id,
+                'order_item_id' => (int) $orderItem->id,
+                'rating' => $rating,
+                'title' => $title !== '' ? $title : null,
+                'comment' => $comment,
+                'is_verified_purchase' => true,
+                'is_approved' => false,
+            ]);
+        });
+
+        $refreshedOrder = $this->dashboardRepository->findOrderForCustomer($authenticatedCustomer->id, $orderId);
+
+        return [
+            'order' => $this->formatOrder($refreshedOrder ?? $order),
+            'review' => [
+                'id' => (int) $createdReview->id,
+                'order_item_id' => (int) ($createdReview->order_item_id ?? 0),
+                'rating' => (int) ($createdReview->rating ?? 0),
+                'title' => $createdReview->title,
+                'comment' => $createdReview->comment,
+                'is_approved' => (bool) ($createdReview->is_approved ?? false),
+                'created_at' => $createdReview->created_at?->toIso8601String(),
+            ],
+            'message' => 'Ulasan berhasil dikirim. Menunggu persetujuan admin.',
+        ];
     }
 
     /**
@@ -2246,7 +2385,11 @@ class DashboardService
         $status = strtolower(trim((string) ($filters['status'] ?? 'all')));
         $sort = strtolower(trim((string) ($filters['sort'] ?? 'newest')));
 
-        if (! in_array($status, ['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'], true)) {
+        if (in_array($status, ['belum bayar', 'waiting_payment', 'awaiting_payment'], true)) {
+            $status = 'unpaid';
+        }
+
+        if (! in_array($status, ['all', 'unpaid', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'], true)) {
             $status = 'all';
         }
 
@@ -2853,10 +2996,19 @@ class DashboardService
      *   next_page:int|null,
      *   has_more:bool,
      *   per_page:int,
-     *   total:int
+     *   total:int,
+     *   filters:array{
+     *     q:string|null,
+     *     status:string,
+     *     sort:string,
+     *     date_from:string|null,
+     *     date_to:string|null
+     *   },
+     *   pending_review_count:int,
+     *   has_pending_review:bool
      * }
      */
-    private function formatOrders(LengthAwarePaginator $paginator): array
+    private function formatOrders(LengthAwarePaginator $paginator, int $pendingReviewCount = 0, array $filters = []): array
     {
         $orders = collect($paginator->items())
             ->filter(fn (mixed $item): bool => $item instanceof Order)
@@ -2871,6 +3023,9 @@ class DashboardService
             'has_more' => $paginator->hasMorePages(),
             'per_page' => $paginator->perPage(),
             'total' => $paginator->total(),
+            'filters' => $this->normalizeOrdersFilters($filters),
+            'pending_review_count' => max(0, $pendingReviewCount),
+            'has_pending_review' => $pendingReviewCount > 0,
         ];
     }
 
@@ -2887,9 +3042,19 @@ class DashboardService
             ->sortByDesc(fn ($shipment): int => $shipment->created_at?->getTimestamp() ?? 0)
             ->first();
 
+        $normalizedStatus = $this->normalizeOrderStatus((string) ($order->status ?? 'pending'));
+        $isDeliveredOrder = $normalizedStatus === 'delivered'
+            || strtolower(trim((string) ($latestShipment?->status ?? ''))) === 'delivered';
+        $orderCustomerId = (int) ($order->customer_id ?? 0);
+
         $items = $order->items
-            ->map(function (OrderItem $item): array {
+            ->map(function (OrderItem $item) use ($isDeliveredOrder, $orderCustomerId): array {
                 $productImage = $this->resolveOrderItemProductImagePath($item);
+                $review = $item->review;
+                $hasOwnedReview = $review !== null && (int) ($review->customer_id ?? 0) === $orderCustomerId;
+                $canReview = $isDeliveredOrder
+                    && (int) ($item->product_id ?? 0) > 0
+                    && ! $hasOwnedReview;
 
                 return [
                     'id' => $item->id,
@@ -2900,16 +3065,25 @@ class DashboardService
                     'price' => (float) ($item->unit_price ?? 0),
                     'row_total' => (float) ($item->row_total ?? 0),
                     'image' => $this->resolveProductImageUrl($productImage),
+                    'can_review' => $canReview,
+                    'is_reviewed' => $hasOwnedReview,
+                    'review_id' => $hasOwnedReview ? (int) $review->id : null,
+                    'review_rating' => $hasOwnedReview ? (int) ($review->rating ?? 0) : null,
+                    'review_is_approved' => $hasOwnedReview ? (bool) ($review->is_approved ?? false) : null,
+                    'review_created_at' => $hasOwnedReview ? $review->created_at?->toIso8601String() : null,
                 ];
             })
             ->values()
             ->all();
+        $pendingReviewCount = collect($items)
+            ->filter(fn (array $item): bool => (bool) ($item['can_review'] ?? false))
+            ->count();
 
         return [
             'id' => $order->id,
             'code' => (string) ($order->order_no ?? $order->id),
             'created_at' => $order->placed_at?->toIso8601String() ?? $order->created_at?->toIso8601String() ?? '-',
-            'status' => $this->normalizeOrderStatus((string) ($order->status ?? 'pending')),
+            'status' => $normalizedStatus,
             'payment_status' => $this->normalizePaymentStatus((string) ($latestPayment?->status ?? '')),
             'payment_method' => $latestPayment?->method?->name ?? $latestPayment?->method?->code,
             'payment_method_code' => $latestPayment?->method?->code,
@@ -2922,6 +3096,8 @@ class DashboardService
             'items_count' => (int) ($order->items_count ?? $order->items->count()),
             'items' => $items,
             'items_preview' => collect($items)->take(3)->values()->all(),
+            'pending_review_count' => $pendingReviewCount,
+            'has_pending_review' => $pendingReviewCount > 0,
             'tracking_number' => $latestShipment?->tracking_no,
             'notes' => $order->notes,
             'paid_at' => $order->paid_at?->toIso8601String(),
@@ -3133,7 +3309,7 @@ class DashboardService
         }
 
         return match ($normalized) {
-            'paid', 'settlement', 'capture' => 'paid',
+            'paid', 'settlement', 'capture', 'completed', 'success', 'succeeded' => 'paid',
             'refunded', 'refund' => 'refunded',
             'failed', 'deny', 'expire', 'cancel', 'cancelled', 'canceled' => 'failed',
             default => 'unpaid',

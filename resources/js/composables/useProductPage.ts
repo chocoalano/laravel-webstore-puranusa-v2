@@ -70,7 +70,10 @@ export const PRODUCT_PAGE_KEY = Symbol('productPage') as InjectionKey<ProductPag
 export type ShowPageProps = {
     slug: string
     product?: ProductData | null
-    reviews?: Review[]
+    reviews?: {
+        data: Review[]
+        [key: string]: unknown
+    } | null
     recommendations?: Recommendation[]
     isInWishlist?: boolean
 }
@@ -107,12 +110,6 @@ function makeFallbackProduct(slug: string): ProductData {
     }
 }
 
-const FALLBACK_REVIEWS: Review[] = [
-    { id: 1, name: 'Rani', rating: 5, title: 'Kualitasnya kerasa premium', body: 'Packing rapi, kualitas sesuai ekspektasi. Repeat order.', date: '2026-02-10', verified: true },
-    { id: 2, name: 'Dimas', rating: 4, title: 'Bagus, pengiriman cepat', body: 'Sesuai deskripsi, semoga stok varian favorit cepat tersedia lagi.', date: '2026-02-03', verified: true },
-    { id: 3, name: 'Sinta', rating: 5, title: 'Worth it', body: 'Harga sepadan, kualitas oke, dan admin responsif.', date: '2026-01-28' },
-]
-
 const FALLBACK_RECOMMENDATIONS: Recommendation[] = [
     { id: 1, slug: 'produk-1', name: 'Produk Rekomendasi 1', price: 129000, image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=1200&auto=format&fit=crop', rating: 4.7, reviewsCount: 81, badge: 'Diskon' },
     { id: 2, slug: 'produk-2', name: 'Produk Rekomendasi 2', price: 219000, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&auto=format&fit=crop', rating: 4.8, reviewsCount: 112 },
@@ -131,9 +128,7 @@ export function useProductPage(props: ShowPageProps): ProductPageContext {
     // ── Data resolution ────────────────────────────────────────────────────────
     const product = computed<ProductData>(() => props.product ?? makeFallbackProduct(props.slug))
 
-    const reviews = computed<Review[]>(() =>
-        props.reviews?.length ? props.reviews : FALLBACK_REVIEWS,
-    )
+    const reviews = computed<Review[]>(() => props.reviews?.data ?? [])
 
     const recommendations = computed<Recommendation[]>(() =>
         props.recommendations?.length ? props.recommendations : FALLBACK_RECOMMENDATIONS,

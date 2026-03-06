@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { InfiniteScroll } from '@inertiajs/vue3'
 import type { ProductSpec, Review } from '@/composables/useProductDetail'
 import { starsArray } from '@/composables/useProductDetail'
 
@@ -6,7 +7,10 @@ defineProps<{
     description?: string
     highlights?: string[]
     specs?: ProductSpec[]
-    reviews: Review[]
+    reviews?: {
+        data: Review[]
+        [key: string]: unknown
+    } | null
     avgRating: number
     reviewCount: number
 }>()
@@ -97,41 +101,53 @@ defineProps<{
 
                 <USeparator class="my-5" />
 
-                <div class="space-y-4">
-                    <UCard v-for="r in reviews" :key="r.id" class="rounded-2xl" :ui="{ body: 'p-4' }">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <div class="text-sm font-bold text-gray-900 dark:text-white">{{ r.name }}</div>
-                                    <UBadge v-if="r.verified" color="success" variant="soft" size="xs">
-                                        Terverifikasi
-                                    </UBadge>
+                <InfiniteScroll data="reviews" :buffer="320" as="div">
+                    <div v-if="!(reviews?.data?.length)" class="rounded-2xl border border-default bg-default p-4 text-sm text-muted">
+                        Belum ada ulasan yang disetujui untuk produk ini.
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <UCard v-for="r in reviews?.data ?? []" :key="r.id" class="rounded-2xl" :ui="{ body: 'p-4' }">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm font-bold text-gray-900 dark:text-white">{{ r.name }}</div>
+                                        <UBadge v-if="r.verified" color="success" variant="soft" size="xs">
+                                            Terverifikasi
+                                        </UBadge>
+                                    </div>
+
+                                    <div class="mt-1 flex items-center gap-1">
+                                        <UIcon
+                                            v-for="i in 5"
+                                            :key="i"
+                                            name="i-lucide-star"
+                                            class="size-4"
+                                            :class="i <= r.rating ? 'text-amber-400' : 'text-gray-300 dark:text-gray-700'"
+                                        />
+                                        <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">{{ r.date }}</span>
+                                    </div>
+
+                                    <div v-if="r.title" class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                        {{ r.title }}
+                                    </div>
+
+                                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                        {{ r.body }}
+                                    </p>
                                 </div>
 
-                                <div class="mt-1 flex items-center gap-1">
-                                    <UIcon
-                                        v-for="i in 5"
-                                        :key="i"
-                                        name="i-lucide-star"
-                                        class="size-4"
-                                        :class="i <= r.rating ? 'text-amber-400' : 'text-gray-300 dark:text-gray-700'"
-                                    />
-                                    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">{{ r.date }}</span>
-                                </div>
-
-                                <div v-if="r.title" class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                                    {{ r.title }}
-                                </div>
-
-                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                    {{ r.body }}
-                                </p>
+                                <UButton icon="i-lucide-more-vertical" color="neutral" variant="ghost" size="xs" />
                             </div>
+                        </UCard>
+                    </div>
 
-                            <UButton icon="i-lucide-more-vertical" color="neutral" variant="ghost" size="xs" />
+                    <template #loading="{ loadingNext }">
+                        <div v-if="loadingNext" class="mt-4 flex items-center justify-center text-xs text-muted">
+                            Memuat ulasan berikutnya...
                         </div>
-                    </UCard>
-                </div>
+                    </template>
+                </InfiniteScroll>
             </UCard>
         </template>
     </UTabs>

@@ -20,7 +20,6 @@ const props = defineProps<ShowPageProps>()
  */
 const {
     product,
-    reviews,
     recommendations,
     galleryItems,
     activeImage,
@@ -58,7 +57,7 @@ const {
                         :description="product.description"
                         :highlights="product.highlights"
                         :specs="product.specs"
-                        :reviews="reviews"
+                        :reviews="props.reviews"
                         :avg-rating="avgRating"
                         :review-count="reviewCount"
                     />

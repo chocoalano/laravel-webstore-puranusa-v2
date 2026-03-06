@@ -24,7 +24,7 @@ class ListOrderRequest extends FormRequest
             'status' => [
                 'nullable',
                 'string',
-                Rule::in(['all', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
+                Rule::in(['all', 'unpaid', 'pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
             ],
             'sort' => ['nullable', 'string', Rule::in(['newest', 'oldest', 'highest', 'lowest'])],
             'date_from' => ['nullable', 'date'],

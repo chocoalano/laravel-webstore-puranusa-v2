@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\DashboardOrderController;
+use App\Http\Requests\Dashboard\SubmitOrderItemReviewRequest;
 use App\Models\Customer;
+use App\Models\Order;
 use App\Services\Dashboard\DashboardService;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
@@ -8,7 +11,8 @@ use Mockery\MockInterface;
 
 it('registers dashboard order api routes', function (): void {
     expect(route('api.dashboard.orders.index', [], false))->toBe('/api/dashboard/orders')
-        ->and(route('api.dashboard.orders.show', ['order' => 1201], false))->toBe('/api/dashboard/orders/1201');
+        ->and(route('api.dashboard.orders.show', ['order' => 1201], false))->toBe('/api/dashboard/orders/1201')
+        ->and(route('api.dashboard.orders.review', ['order' => 1201], false))->toBe('/api/dashboard/orders/1201/review');
 });
 
 it('requires sanctum authentication for dashboard order list endpoint', function (): void {
@@ -28,7 +32,7 @@ it('returns dashboard order list payload for authenticated customer', function (
         'page' => 2,
         'per_page' => 25,
         'q' => 'ORD-2026',
-        'status' => 'pending',
+        'status' => 'unpaid',
         'sort' => 'highest',
         'date_from' => '2026-03-01',
         'date_to' => '2026-03-31',
@@ -64,7 +68,7 @@ it('returns dashboard order list payload for authenticated customer', function (
                     && $page === 2
                     && $perPage === 25
                     && ($filters['q'] ?? null) === 'ORD-2026'
-                    && ($filters['status'] ?? null) === 'pending'
+                    && ($filters['status'] ?? null) === 'unpaid'
                     && ($filters['sort'] ?? null) === 'highest'
                     && ($filters['date_from'] ?? null) === '2026-03-01'
                     && ($filters['date_to'] ?? null) === '2026-03-31';
@@ -193,6 +197,88 @@ it('rejects customer id injection on dashboard order detail endpoint', function 
     ]))
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['customer_id']);
+});
+
+it('returns unauthorized when api review submission is called without sanctum customer', function (): void {
+    $order = new Order([
+        'customer_id' => 2208,
+    ]);
+    $order->setAttribute('id', 3201);
+    $order->exists = true;
+
+    $request = SubmitOrderItemReviewRequest::create('/api/dashboard/orders/3201/review', 'POST', [
+        'order_item_id' => 9001,
+        'rating' => 5,
+        'comment' => 'Produk bagus',
+    ]);
+    $request->setUserResolver(static fn (?string $guard = null): ?Customer => null);
+
+    $controller = new DashboardOrderController(\Mockery::mock(DashboardService::class));
+    $response = $controller->submitReview($request, $order);
+
+    expect($response->getStatusCode())->toBe(401)
+        ->and($response->getData(true))
+        ->toMatchArray([
+            'message' => 'Tidak terautentikasi.',
+        ]);
+});
+
+it('returns review submission payload for authenticated customer', function (): void {
+    $customer = makeDashboardOrderCustomer(2209);
+    $order = new Order([
+        'customer_id' => 2209,
+    ]);
+    $order->setAttribute('id', 3202);
+    $order->exists = true;
+
+    $this->mock(DashboardService::class, function (MockInterface $mock) use ($customer): void {
+        $mock->shouldReceive('submitOrderItemReview')
+            ->once()
+            ->withArgs(function (Customer $authenticatedCustomer, int $orderId, array $payload) use ($customer): bool {
+                return (int) $authenticatedCustomer->id === (int) $customer->id
+                    && $orderId === 3202
+                    && (int) ($payload['order_item_id'] ?? 0) === 9002
+                    && (int) ($payload['rating'] ?? 0) === 5
+                    && ($payload['title'] ?? null) === 'Sangat puas'
+                    && ($payload['comment'] ?? null) === 'Produk sesuai deskripsi.';
+            })
+            ->andReturn([
+                'message' => 'Ulasan berhasil dikirim. Menunggu persetujuan admin.',
+                'order' => [
+                    'id' => 3202,
+                    'code' => 'ORD-3202',
+                    'status' => 'delivered',
+                    'pending_review_count' => 0,
+                    'has_pending_review' => false,
+                ],
+                'review' => [
+                    'id' => 7801,
+                    'order_item_id' => 9002,
+                    'rating' => 5,
+                    'title' => 'Sangat puas',
+                    'comment' => 'Produk sesuai deskripsi.',
+                    'is_approved' => false,
+                ],
+            ]);
+    });
+
+    $request = SubmitOrderItemReviewRequest::create('/api/dashboard/orders/3202/review', 'POST', [
+        'order_item_id' => 9002,
+        'rating' => 5,
+        'title' => 'Sangat puas',
+        'comment' => 'Produk sesuai deskripsi.',
+    ]);
+    $request->setUserResolver(static fn (?string $guard = null): ?Customer => $guard === 'sanctum' ? $customer : null);
+
+    $controller = app(DashboardOrderController::class);
+    $response = $controller->submitReview($request, $order);
+    $payload = $response->getData(true);
+
+    expect($response->getStatusCode())->toBe(200)
+        ->and($payload['message'] ?? null)->toBe('Ulasan berhasil dikirim. Menunggu persetujuan admin.')
+        ->and($payload['data']['order']['id'] ?? null)->toBe(3202)
+        ->and($payload['data']['review']['order_item_id'] ?? null)->toBe(9002)
+        ->and($payload['data']['review']['is_approved'] ?? null)->toBeFalse();
 });
 
 function makeDashboardOrderCustomer(int $id): Customer

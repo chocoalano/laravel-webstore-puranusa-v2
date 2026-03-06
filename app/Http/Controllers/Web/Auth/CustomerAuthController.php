@@ -27,9 +27,9 @@ class CustomerAuthController extends Controller
     {
         return Inertia::render('Auth/Login', [
             'seo' => [
-                'title'       => 'Masuk ke Akun Member',
-                'description' => 'Masuk ke akun member ' . config('app.name') . '. Nikmati harga eksklusif, pantau e-wallet, dan kelola jaringan afiliasi Anda kapan saja.',
-                'canonical'   => route('login'),
+                'title' => 'Masuk ke Akun Member',
+                'description' => 'Masuk ke akun member '.config('app.name').'. Nikmati harga eksklusif, pantau e-wallet, dan kelola jaringan afiliasi Anda kapan saja.',
+                'canonical' => route('login'),
             ],
         ]);
     }
@@ -58,12 +58,13 @@ class CustomerAuthController extends Controller
             // Simpan referral code di session untuk digunakan saat registrasi
             $request->session()->put('referral_code', $referralCode);
         }
+
         return Inertia::render('Auth/Register', [
             'referralCode' => $request->session()->get('referral_code'),
-            'seo'          => [
-                'title'       => 'Daftar Jadi Member',
-                'description' => 'Bergabunglah sebagai member ' . config('app.name') . ' dan nikmati harga eksklusif, bonus afiliasi, serta akses ke ribuan produk unggulan. Gratis daftar sekarang!',
-                'canonical'   => route('register'),
+            'seo' => [
+                'title' => 'Daftar Jadi Member',
+                'description' => 'Bergabunglah sebagai member '.config('app.name').' dan nikmati harga eksklusif, bonus afiliasi, serta akses ke ribuan produk unggulan. Gratis daftar sekarang!',
+                'canonical' => route('register'),
             ],
         ]);
     }
@@ -96,18 +97,26 @@ class CustomerAuthController extends Controller
             'type' => $request->query('wallet_type'),
             'status' => $request->query('wallet_status'),
         ];
+        $orderFilters = [
+            'q' => $request->query('orders_q'),
+            'status' => $request->query('orders_status'),
+            'sort' => $request->query('orders_sort'),
+            'date_from' => $request->query('orders_date_from'),
+            'date_to' => $request->query('orders_date_to'),
+        ];
 
         return Inertia::render('Auth/Dashboard/Index', [
             'seo' => [
-                'title'       => 'Dashboard Member',
-                'description' => 'Kelola akun member Anda di ' . config('app.name') . '. Pantau e-wallet, akses riwayat pesanan, dan nikmati penawaran eksklusif hanya untuk member.',
-                'canonical'   => route('dashboard'),
+                'title' => 'Dashboard Member',
+                'description' => 'Kelola akun member Anda di '.config('app.name').'. Pantau e-wallet, akses riwayat pesanan, dan nikmati penawaran eksklusif hanya untuk member.',
+                'canonical' => route('dashboard'),
             ],
             ...$this->dashboardService->getPageData(
                 $customer,
                 max(1, (int) $request->integer('orders_page', 1)),
                 max(1, (int) $request->integer('wallet_page', 1)),
                 $walletFilters,
+                $orderFilters,
             ),
         ]);
     }

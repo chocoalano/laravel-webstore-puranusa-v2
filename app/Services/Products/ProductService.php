@@ -2,16 +2,19 @@
 
 namespace App\Services\Products;
 
+use App\Models\ProductReview;
 use App\Repositories\Products\Contracts\ProductRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProductService
 {
     public function __construct(
         protected ProductRepositoryInterface $productRepository
-    ) {
-    }
+    ) {}
 
-    public function getShopData(array $filters = [])
+    /** @return array<string, mixed> */
+    public function getShopData(array $filters = []): array
     {
         return [
             'products' => $this->productRepository->getPaginated($filters),
@@ -22,10 +25,22 @@ class ProductService
         ];
     }
 
-    public function getProductShowData(string $slug)
+    /**
+     * @return array{
+     *   product: array<string, mixed>,
+     *   reviews: array<int, array<string, mixed>>,
+     *   recommendations: array<int, array<string, mixed>>
+     * }
+     *
+     * @throws ModelNotFoundException
+     */
+    public function getProductShowData(string $slug, bool $includeReviews = true): array
     {
         $product = $this->productRepository->getBySlugWithDetails($slug);
         $recommendations = $this->productRepository->getRecommendations($product);
+        $reviews = $includeReviews
+            ? $this->getApprovedReviewsForInfiniteScroll((int) $product->id, 10)->items()
+            : [];
 
         // Format product for Show.vue
         $formattedProduct = [
@@ -42,12 +57,12 @@ class ProductService
             'highlights' => [],
             'specs' => [
                 ['label' => 'Merek', 'value' => $product->brand ?? '-'],
-                ['label' => 'Berat', 'value' => $product->weight_gram ? $product->weight_gram . 'g' : '-'],
-                ['label' => 'Garansi', 'value' => $product->warranty_months ? $product->warranty_months . ' Bulan' : 'Tidak ada'],
-                ['label' => 'Dimensi', 'value' => $product->length_mm && $product->width_mm && $product->height_mm ? "{$product->length_mm}x{$product->width_mm}x{$product->height_mm} mm" : '-']
+                ['label' => 'Berat', 'value' => $product->weight_gram ? $product->weight_gram.'g' : '-'],
+                ['label' => 'Garansi', 'value' => $product->warranty_months ? $product->warranty_months.' Bulan' : 'Tidak ada'],
+                ['label' => 'Dimensi', 'value' => $product->length_mm && $product->width_mm && $product->height_mm ? "{$product->length_mm}x{$product->width_mm}x{$product->height_mm} mm" : '-'],
             ],
-            'media' => $product->media->map(fn($m) => [
-                'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/' . $m->url),
+            'media' => $product->media->map(fn ($m) => [
+                'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/'.$m->url),
                 'alt' => $m->alt_text ?? $product->name,
             ])->toArray(),
             'variants' => [
@@ -60,43 +75,53 @@ class ProductService
                     'inStock' => $product->stock > 0,
                     'stock' => $product->stock,
                     'options' => [],
-                    'media' => $product->primaryMedia->map(fn($m) => [
-                        'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/' . $m->url),
+                    'media' => $product->primaryMedia->map(fn ($m) => [
+                        'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/'.$m->url),
                         'alt' => $m->alt_text ?? $product->name,
-                    ])->toArray()
-                ]
-            ]
+                    ])->toArray(),
+                ],
+            ],
         ];
 
-        // Format reviews
-        $formattedReviews = $product->reviews->map(fn($r) => [
-            'id' => $r->id,
-            'name' => $r->customer->name ?? 'User',
-            'rating' => $r->rating,
-            'title' => $r->title,
-            'body' => $r->comment,
-            'date' => $r->created_at->format('Y-m-d'),
-            'verified' => true // assuming verified for now
-        ])->toArray();
-
         // Format recommendations
-        $formattedRecommendations = $recommendations->map(fn($r) => [
+        $formattedRecommendations = $recommendations->map(fn ($r) => [
             'id' => $r->id,
             'slug' => $r->slug,
             'name' => $r->name,
             'price' => $r->base_price,
             'image' => $r->primaryMedia->first()
-                ? (str_starts_with($r->primaryMedia->first()->url, 'http') ? $r->primaryMedia->first()->url : asset('storage/' . $r->primaryMedia->first()->url))
+                ? (str_starts_with($r->primaryMedia->first()->url, 'http') ? $r->primaryMedia->first()->url : asset('storage/'.$r->primaryMedia->first()->url))
                 : null,
             'rating' => $r->avg_rating ?? 0,
             'reviewsCount' => $r->reviews_count ?? 0,
-            'badge' => null
+            'badge' => null,
         ])->toArray();
 
         return [
             'product' => $formattedProduct,
-            'reviews' => $formattedReviews,
+            'reviews' => $reviews,
             'recommendations' => $formattedRecommendations,
+        ];
+    }
+
+    public function getApprovedReviewsForInfiniteScroll(int $productId, int $perPage = 8): LengthAwarePaginator
+    {
+        return $this->productRepository
+            ->getApprovedReviewsPaginated($productId, $perPage)
+            ->through(fn (ProductReview $review): array => $this->formatReview($review));
+    }
+
+    /** @return array{id:int,name:string,rating:int,title:?string,body:string,date:string,verified:bool} */
+    private function formatReview(ProductReview $review): array
+    {
+        return [
+            'id' => (int) $review->id,
+            'name' => trim((string) ($review->customer?->name ?? 'User')),
+            'rating' => (int) $review->rating,
+            'title' => $review->title,
+            'body' => trim((string) ($review->comment ?? '')),
+            'date' => $review->created_at?->toDateString() ?? '',
+            'verified' => (bool) ($review->is_verified_purchase ?? false),
         ];
     }
 }
