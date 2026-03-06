@@ -92,6 +92,10 @@ interface DashboardRepositoryInterface
 
     public function markOrderAsPaid(Order $order): void;
 
+    public function markOrderBonusGenerated(Order $order): bool;
+
+    public function callBonusEngine(int $orderId): void;
+
     public function getLatestOrderTimestamp(int $customerId): ?CarbonInterface;
 
     public function countActiveNetworkMembers(int $customerId): int;

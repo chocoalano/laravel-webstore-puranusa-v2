@@ -13,7 +13,7 @@ class MidtransCallbackService
     ) {}
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{status:string,message:string,http_code:int}
      */
     public function handle(array $payload): array
@@ -114,7 +114,7 @@ class MidtransCallbackService
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{
      *   order_id:int,
      *   order_no:string,
@@ -160,7 +160,10 @@ class MidtransCallbackService
             if ($resolvedPaymentStatus === 'paid') {
                 $this->callbackRepository->updateOrderFromPaymentCallback($order, 'processing', true);
 
-                if (! (bool) ($order->bonus_generated ?? false)) {
+                if (
+                    $currentPaymentStatus !== 'paid'
+                    && $this->callbackRepository->markOrderBonusGenerated($order)
+                ) {
                     foreach ($order->items as $item) {
                         $productId = (int) ($item->product_id ?? 0);
                         $quantity = max(0, (int) ($item->qty ?? 0));
@@ -174,7 +177,6 @@ class MidtransCallbackService
                         (int) $order->customer_id,
                         (float) ($order->grand_total ?? 0)
                     );
-                    $this->callbackRepository->markOrderBonusGenerated($order);
                     $runSideEffects = true;
                 }
             } elseif ($resolvedPaymentStatus === 'refunded') {
@@ -198,7 +200,7 @@ class MidtransCallbackService
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{
      *   wallet_transaction_id:int,
      *   transaction_ref:string,
@@ -345,7 +347,7 @@ class MidtransCallbackService
             return false;
         }
 
-        $localSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+        $localSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
 
         return hash_equals($localSignature, $signatureKey);
     }

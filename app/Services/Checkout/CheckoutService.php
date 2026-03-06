@@ -360,27 +360,9 @@ class CheckoutService
         float $shippingAmount = 0.0,
         string $orderType = 'planA',
     ): Order {
-        $normalizedOrderType = in_array($orderType, ['planA', 'planB'], true) ? $orderType : 'planA';
-
-        $grandTotal = (float) $cart->subtotal_amount
-            + $shippingAmount
-            + (float) $cart->tax_amount
-            - (float) $cart->discount_amount;
-
-        $order = Order::create([
-            'order_no' => 'ORD-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
-            'customer_id' => $customer->id,
-            'currency' => $cart->currency,
-            'status' => $status,
-            'type' => $normalizedOrderType,
-            'subtotal_amount' => $cart->subtotal_amount,
-            'discount_amount' => $cart->discount_amount,
-            'shipping_amount' => $shippingAmount,
-            'tax_amount' => $cart->tax_amount,
-            'grand_total' => $grandTotal,
-            'shipping_address_id' => $shippingAddressId,
-            'placed_at' => now(),
-        ]);
+        $order = Order::create(
+            $this->buildOrderPayload($customer, $cart, $shippingAddressId, $status, $shippingAmount, $orderType)
+        );
 
         foreach ($cart->items as $item) {
             OrderItem::create([
@@ -399,6 +381,73 @@ class CheckoutService
         }
 
         return $order;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildOrderPayload(
+        Customer $customer,
+        Cart $cart,
+        int $shippingAddressId,
+        string $status,
+        float $shippingAmount = 0.0,
+        string $orderType = 'planA',
+    ): array {
+        $normalizedOrderType = in_array($orderType, ['planA', 'planB'], true) ? $orderType : 'planA';
+        $bonusAmounts = $this->calculateCartBonusAmounts($cart);
+
+        $grandTotal = (float) $cart->subtotal_amount
+            + $shippingAmount
+            + (float) $cart->tax_amount
+            - (float) $cart->discount_amount;
+
+        return [
+            'order_no' => 'ORD-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
+            'customer_id' => $customer->id,
+            'currency' => $cart->currency,
+            'status' => $status,
+            'type' => $normalizedOrderType,
+            'subtotal_amount' => $cart->subtotal_amount,
+            'discount_amount' => $cart->discount_amount,
+            'shipping_amount' => $shippingAmount,
+            'tax_amount' => $cart->tax_amount,
+            'grand_total' => $grandTotal,
+            'bv_amount' => $bonusAmounts['bv'],
+            'sponsor_amount' => $bonusAmounts['sponsor'],
+            'match_amount' => $bonusAmounts['match'],
+            'pairing_amount' => $bonusAmounts['pairing'],
+            'cashback_amount' => $bonusAmounts['cashback'],
+            'shipping_address_id' => $shippingAddressId,
+            'placed_at' => now(),
+        ];
+    }
+
+    /**
+     * @return array{bv: float, sponsor: float, match: float, pairing: float, cashback: float}
+     */
+    protected function calculateCartBonusAmounts(Cart $cart): array
+    {
+        $totals = [
+            'bv' => 0.0,
+            'sponsor' => 0.0,
+            'match' => 0.0,
+            'pairing' => 0.0,
+            'cashback' => 0.0,
+        ];
+
+        foreach ($cart->items as $item) {
+            $product = $item->product;
+            $quantity = (int) $item->qty;
+
+            $totals['bv'] += ((float) ($product?->bv ?? 0)) * $quantity;
+            $totals['sponsor'] += ((float) ($product?->b_sponsor ?? 0)) * $quantity;
+            $totals['match'] += ((float) ($product?->b_matching ?? 0)) * $quantity;
+            $totals['pairing'] += ((float) ($product?->b_pairing ?? 0)) * $quantity;
+            $totals['cashback'] += ((float) ($product?->b_cashback ?? 0)) * $quantity;
+        }
+
+        return $totals;
     }
 
     private function syncOrderRetailAndStockistAmounts(Order $order): void

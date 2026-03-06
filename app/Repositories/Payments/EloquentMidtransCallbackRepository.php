@@ -123,15 +123,26 @@ class EloquentMidtransCallbackRepository implements MidtransCallbackRepositoryIn
         $order->update($attributes);
     }
 
-    public function markOrderBonusGenerated(Order $order): void
+    public function markOrderBonusGenerated(Order $order): bool
     {
-        if ((bool) $order->bonus_generated) {
-            return;
+        if ((bool) ($order->bonus_generated ?? false)) {
+            return false;
         }
 
-        $order->update([
-            'bonus_generated' => true,
-        ]);
+        $updatedRows = Order::query()
+            ->whereKey((int) $order->id)
+            ->where('bonus_generated', false)
+            ->update([
+                'bonus_generated' => true,
+            ]);
+
+        if ($updatedRows > 0) {
+            $order->setAttribute('bonus_generated', true);
+
+            return true;
+        }
+
+        return false;
     }
 
     public function decrementProductStock(int $productId, int $quantity): void
@@ -145,7 +156,7 @@ class EloquentMidtransCallbackRepository implements MidtransCallbackRepositoryIn
         Product::query()
             ->whereKey($productId)
             ->update([
-                'stock' => DB::raw('GREATEST(stock - ' . $safeQuantity . ', 0)'),
+                'stock' => DB::raw('GREATEST(stock - '.$safeQuantity.', 0)'),
             ]);
     }
 
@@ -206,4 +217,3 @@ class EloquentMidtransCallbackRepository implements MidtransCallbackRepositoryIn
         DB::statement('CALL sp_bonus_engine_run(?)', [$orderId]);
     }
 }
-

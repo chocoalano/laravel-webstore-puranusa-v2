@@ -29,6 +29,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use PDO;
 use stdClass;
 
 class EloquentDashboardRepository implements DashboardRepositoryInterface
@@ -318,6 +319,33 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
         if ($attributes !== []) {
             $order->update($attributes);
         }
+    }
+
+    public function markOrderBonusGenerated(Order $order): bool
+    {
+        if ((bool) ($order->bonus_generated ?? false)) {
+            return false;
+        }
+
+        $updatedRows = Order::query()
+            ->whereKey((int) $order->id)
+            ->where('bonus_generated', false)
+            ->update([
+                'bonus_generated' => true,
+            ]);
+
+        if ($updatedRows > 0) {
+            $order->setAttribute('bonus_generated', true);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function callBonusEngine(int $orderId): void
+    {
+        DB::statement('CALL sp_bonus_engine_run(?)', [$orderId]);
     }
 
     public function getLatestOrderTimestamp(int $customerId): ?CarbonInterface
@@ -1064,10 +1092,38 @@ class EloquentDashboardRepository implements DashboardRepositoryInterface
 
     public function callRegistrationProcedure(int $memberId): ?stdClass
     {
-        $result = DB::select('CALL sp_registration(?)', [$memberId]);
-        $row = $result[0] ?? null;
+        $statement = DB::connection()->getPdo()->prepare('CALL sp_registration(?)');
 
-        return $row instanceof stdClass ? $row : null;
+        if ($statement === false) {
+            return null;
+        }
+
+        if (! $statement->execute([$memberId])) {
+            return null;
+        }
+
+        $resolvedResult = null;
+
+        try {
+            do {
+                $rows = $statement->fetchAll(PDO::FETCH_OBJ);
+
+                foreach ($rows as $row) {
+                    if (
+                        $row instanceof stdClass
+                        && property_exists($row, 'success')
+                        && property_exists($row, 'code')
+                        && property_exists($row, 'message')
+                    ) {
+                        $resolvedResult = $row;
+                    }
+                }
+            } while ($statement->nextRowset());
+        } finally {
+            $statement->closeCursor();
+        }
+
+        return $resolvedResult;
     }
 
     /**

@@ -68,8 +68,10 @@ function formatDate(value: string | null | undefined): string {
 <template>
     <UModal
         v-model:open="modalOpen"
+        :portal="true"
         title="Tempatkan Member ke Binary Tree"
         :description="selectedPosition ? `Posisi terpilih: ${selectedPosition === 'left' ? 'Kiri' : 'Kanan'}` : ''"
+        :ui="{ overlay: 'fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm', content: 'fixed z-[9999] w-full max-w-2xl' }"
     >
         <template #body>
             <UAlert

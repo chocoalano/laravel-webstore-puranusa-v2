@@ -16,25 +16,25 @@ interface MidtransCallbackRepositoryInterface
     public function findCustomerByIdForUpdate(int $customerId): ?Customer;
 
     /**
-     * @param array<string, mixed> $gatewayPayload
+     * @param  array<string, mixed>  $gatewayPayload
      */
     public function updatePaymentFromGateway(Payment $payment, string $status, array $gatewayPayload): void;
 
     /**
-     * @param array<string, mixed> $rawPayload
+     * @param  array<string, mixed>  $rawPayload
      */
     public function createPaymentTransaction(Payment $payment, string $status, float $amount, array $rawPayload): void;
 
     public function updateOrderFromPaymentCallback(Order $order, string $status, bool $markPaidAt = false): void;
 
-    public function markOrderBonusGenerated(Order $order): void;
+    public function markOrderBonusGenerated(Order $order): bool;
 
     public function decrementProductStock(int $productId, int $quantity): void;
 
     public function incrementCustomerOmzet(int $customerId, float $amount): void;
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     public function updateWalletTransaction(CustomerWalletTransaction $transaction, array $attributes): void;
 
@@ -44,4 +44,3 @@ interface MidtransCallbackRepositoryInterface
 
     public function callBonusEngine(int $orderId): void;
 }
-

@@ -29,6 +29,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -1316,7 +1317,9 @@ class DashboardService
                     ]);
                 }
 
-                $isSuccess = (int) ($spResult->success ?? 0) === 1;
+                $successFlag = (int) ($spResult->success ?? 0);
+                $resultCode = (int) ($spResult->code ?? 0);
+                $isSuccess = $successFlag === 1 && $resultCode === 200;
 
                 if (! $isSuccess) {
                     $code = (string) ($spResult->code ?? 'UNKNOWN');
@@ -1335,8 +1338,25 @@ class DashboardService
 
             return $result;
         } catch (ValidationException $exception) {
+            Log::warning('Placement failed with validation error.', [
+                'authenticated_customer_id' => (int) $authenticatedCustomer->id,
+                'member_id' => $memberId,
+                'upline_id' => $uplineId,
+                'position' => $position,
+                'errors' => $exception->errors(),
+            ]);
+
             throw $exception;
         } catch (\Throwable $exception) {
+            Log::error('Placement failed with unexpected error.', [
+                'authenticated_customer_id' => (int) $authenticatedCustomer->id,
+                'member_id' => $memberId,
+                'upline_id' => $uplineId,
+                'position' => $position,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
             report($exception);
 
             throw ValidationException::withMessages([
@@ -1422,6 +1442,7 @@ class DashboardService
         }
 
         $mappedStatus = $this->mapMidtransPaymentStatus($transactionStatus, $fraudStatus);
+        $previousPaymentStatus = $this->normalizePaymentStatus((string) ($latestPayment->status ?? ''));
 
         $this->dashboardRepository->updatePaymentFromGateway($latestPayment, $mappedStatus, $gatewayPayload);
         $this->dashboardRepository->createPaymentTransaction(
@@ -1433,6 +1454,7 @@ class DashboardService
 
         if ($mappedStatus === 'paid') {
             $this->dashboardRepository->markOrderAsPaid($order);
+            $this->runBonusEngineAfterPaymentSettlement($order, $previousPaymentStatus);
         }
 
         $refreshedOrder = $this->dashboardRepository->findOrderForCustomer($authenticatedCustomer->id, $orderId);
@@ -1447,6 +1469,19 @@ class DashboardService
             'order' => $this->formatOrder($refreshedOrder),
             'message' => 'Status pembayaran berhasil diperbarui dari Midtrans.',
         ];
+    }
+
+    private function runBonusEngineAfterPaymentSettlement(Order $order, ?string $previousPaymentStatus): void
+    {
+        if ($previousPaymentStatus === 'paid' || (bool) ($order->bonus_generated ?? false)) {
+            return;
+        }
+
+        if (! $this->dashboardRepository->markOrderBonusGenerated($order)) {
+            return;
+        }
+
+        $this->dashboardRepository->callBonusEngine((int) $order->id);
     }
 
     /**
