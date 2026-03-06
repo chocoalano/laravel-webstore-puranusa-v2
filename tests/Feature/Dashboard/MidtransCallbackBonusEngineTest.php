@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -15,8 +16,16 @@ function makeMidtransCallbackSignature(string $orderId, string $statusCode, stri
 /**
  * @return array{order:Order,payment:Payment,payload:array<string,mixed>}
  */
-function makeMidtransCallbackFixture(string $currentPaymentStatus = 'unpaid'): array
+function makeMidtransCallbackFixture(string $currentPaymentStatus = 'unpaid', int $customerStatus = 3): array
 {
+    $customer = new Customer;
+    $customer->forceFill([
+        'id' => 1001,
+        'status' => $customerStatus,
+        'omzet' => 0,
+    ]);
+    $customer->exists = true;
+
     $order = new Order;
     $order->forceFill([
         'id' => 7001,
@@ -27,6 +36,7 @@ function makeMidtransCallbackFixture(string $currentPaymentStatus = 'unpaid'): a
         'bonus_generated' => false,
     ]);
     $order->exists = true;
+    $order->setRelation('customer', $customer);
 
     $orderItem = new OrderItem;
     $orderItem->forceFill([
@@ -122,6 +132,56 @@ it('runs bonus engine from webhook when payment transitions from unpaid to paid'
     expect($result['status'])->toBe('success')
         ->and($result['http_code'])->toBe(200)
         ->and($result['message'])->toBe('Order callback processed.');
+});
+
+it('does not run bonus engine from webhook when customer status is not 3', function (): void {
+    $fixture = makeMidtransCallbackFixture('unpaid', 1);
+    /** @var Order $order */
+    $order = $fixture['order'];
+    /** @var Payment $payment */
+    $payment = $fixture['payment'];
+    /** @var array<string,mixed> $payload */
+    $payload = $fixture['payload'];
+
+    $repository = M::mock(MidtransCallbackRepositoryInterface::class);
+    $repository->shouldReceive('findPaymentByOrderReference')
+        ->once()
+        ->with('ORD-TEST-7001', true)
+        ->andReturn($payment);
+    $repository->shouldReceive('updatePaymentFromGateway')
+        ->once()
+        ->with($payment, 'paid', M::type('array'));
+    $repository->shouldReceive('createPaymentTransaction')
+        ->once()
+        ->withArgs(function (Payment $targetPayment, string $status, float $amount, array $rawPayload) use ($payment): bool {
+            return $targetPayment === $payment
+                && $status === 'paid'
+                && $amount === 150000.0
+                && ($rawPayload['transaction_status'] ?? null) === 'settlement';
+        });
+    $repository->shouldReceive('updateOrderFromPaymentCallback')
+        ->once()
+        ->with($order, 'processing', true);
+    $repository->shouldReceive('markOrderBonusGenerated')
+        ->once()
+        ->with($order)
+        ->andReturnTrue();
+    $repository->shouldReceive('decrementProductStock')
+        ->once()
+        ->with(9001, 2);
+    $repository->shouldReceive('incrementCustomerOmzet')
+        ->once()
+        ->with(1001, 150000.0);
+    $repository->shouldReceive('callBonusEngine')->never();
+    $repository->shouldReceive('clearCustomerCart')
+        ->once()
+        ->with(1001);
+
+    $service = new MidtransCallbackService($repository);
+    $result = $service->handle($payload);
+
+    expect($result['status'])->toBe('success')
+        ->and($result['http_code'])->toBe(200);
 });
 
 it('does not run bonus engine from webhook when payment status is already paid', function (): void {

@@ -194,7 +194,7 @@ class MidtransCallbackService
                 'order_id' => (int) $order->id,
                 'order_no' => (string) $order->order_no,
                 'customer_id' => (int) $order->customer_id,
-                'customer_status' => (int) ($order->customer->status ?? 0),
+                'customer_status' => (int) ($order->customer?->status ?? 0),
                 'run_side_effects' => $runSideEffects,
                 'payment_status' => $resolvedPaymentStatus,
             ];
