@@ -1262,8 +1262,15 @@ class DashboardService
         }
 
         try {
-            /** @var array{name:string,position:'left'|'right'} $result */
-            $result = DB::transaction(function () use ($memberId, $uplineId, $position, $authenticatedCustomer): array {
+            /**
+             * Jalankan update Eloquent dalam transaksi terpisah dari SP.
+             * sp_registration melakukan COMMIT internal sehingga harus dipanggil
+             * di luar DB::transaction() untuk menghindari PDOException "There is no active transaction"
+             * ketika Laravel mencoba rollback setelah SP selesai.
+             *
+             * @var array{name:string,member_id:int,position:'left'|'right'} $placementData
+             */
+            $placementData = DB::transaction(function () use ($memberId, $uplineId, $position, $authenticatedCustomer): array {
                 $upline = $this->dashboardRepository->findCustomerByIdForUpdate($uplineId);
 
                 if (! $upline) {
@@ -1309,34 +1316,39 @@ class DashboardService
                 $this->dashboardRepository->updateMemberPlacement($member, $upline->id, $position);
                 $this->dashboardRepository->updateUplineFoot($upline, $position, $member->id);
 
-                $spResult = $this->dashboardRepository->callRegistrationProcedure($member->id);
-
-                if (! $spResult) {
-                    throw ValidationException::withMessages([
-                        'error' => 'Stored procedure tidak mengembalikan output.',
-                    ]);
-                }
-
-                $successFlag = (int) ($spResult->success ?? 0);
-                $resultCode = (int) ($spResult->code ?? 0);
-                $isSuccess = $successFlag === 1 && $resultCode === 200;
-
-                if (! $isSuccess) {
-                    $code = (string) ($spResult->code ?? 'UNKNOWN');
-                    $message = (string) ($spResult->message ?? 'Terjadi kesalahan pada proses placement.');
-
-                    throw ValidationException::withMessages([
-                        'error' => "{$code} - {$message}",
-                    ]);
-                }
-
                 return [
                     'name' => (string) $member->name,
+                    'member_id' => (int) $member->id,
                     'position' => $position,
                 ];
             });
 
-            return $result;
+            // Panggil SP di luar transaksi karena sp_registration melakukan COMMIT internal.
+            $spResult = $this->dashboardRepository->callRegistrationProcedure($placementData['member_id']);
+
+            if (! $spResult) {
+                throw ValidationException::withMessages([
+                    'error' => 'Stored procedure tidak mengembalikan output.',
+                ]);
+            }
+
+            $successFlag = (int) ($spResult->success ?? 0);
+            $resultCode = (int) ($spResult->code ?? 0);
+            $isSuccess = $successFlag === 1 && $resultCode === 200;
+
+            if (! $isSuccess) {
+                $code = (string) ($spResult->code ?? 'UNKNOWN');
+                $message = (string) ($spResult->message ?? 'Terjadi kesalahan pada proses placement.');
+
+                throw ValidationException::withMessages([
+                    'error' => "{$code} - {$message}",
+                ]);
+            }
+
+            return [
+                'name' => $placementData['name'],
+                'position' => $placementData['position'],
+            ];
         } catch (ValidationException $exception) {
             Log::warning('Placement failed with validation error.', [
                 'authenticated_customer_id' => (int) $authenticatedCustomer->id,

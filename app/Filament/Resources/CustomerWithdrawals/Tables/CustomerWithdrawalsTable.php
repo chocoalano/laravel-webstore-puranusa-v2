@@ -34,11 +34,16 @@ class CustomerWithdrawalsTable
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->where('type', 'withdrawal')
                 ->with([
-                    'customer:id,name,ref_code,bank_name,bank_account',
+                    'customer:id,name,username,ref_code,bank_name,bank_account',
                 ]))
             ->columns([
+                TextColumn::make('customer.username')
+                    ->label('Username Customer')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('customer.name')
-                    ->label('Customer')
+                    ->label('Nama Customer')
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),

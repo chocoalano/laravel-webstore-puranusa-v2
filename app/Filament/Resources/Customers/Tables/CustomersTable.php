@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -236,10 +237,12 @@ class CustomersTable
                 ->formatStateUsing(fn (mixed $state): string => 'Rp '.number_format((float) $state, 0, ',', '.')),
             'sponsor_name' => fn (): Column => TextColumn::make('sponsor.name')
                 ->label('Sponsor')
+                ->description(fn ($record): ?string => filled($record->sponsor?->username) ? '@'.$record->sponsor->username : null)
                 ->searchable()
                 ->placeholder('-'),
             'upline_name' => fn (): Column => TextColumn::make('upline.name')
                 ->label('Upline')
+                ->description(fn ($record): ?string => filled($record->upline?->username) ? '@'.$record->upline->username : null)
                 ->searchable()
                 ->placeholder('-'),
             'position' => fn (): Column => TextColumn::make('position')
@@ -418,6 +421,7 @@ class CustomersTable
             ActionGroup::make([
                 ViewAction::make(),
                 EditAction::make(),
+                DeleteAction::make(),
             ]),
         ];
     }

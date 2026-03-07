@@ -26,10 +26,15 @@ class CustomerBonusCashbacksTable
             ->recordTitleAttribute('CustomerBonusCashback')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
+                'member:id,name,username,ref_code,email',
                 'order:id',
             ]))
             ->columns([
+                TextColumn::make('member.username')
+                    ->label('Member username Penerima')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('member.name')
                     ->label('Member Penerima')
                     ->placeholder('-')
@@ -38,7 +43,7 @@ class CustomerBonusCashbacksTable
 
                 TextColumn::make('order.id')
                     ->label('Order')
-                    ->formatStateUsing(fn (mixed $state): string => '#' . $state)
+                    ->formatStateUsing(fn (mixed $state): string => '#'.$state)
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
@@ -122,11 +127,11 @@ class CustomerBonusCashbacksTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Cashback ≥ Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Cashback ≥ Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Cashback ≤ Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Cashback ≤ Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -176,11 +181,11 @@ class CustomerBonusCashbacksTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

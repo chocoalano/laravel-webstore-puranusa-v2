@@ -61,7 +61,6 @@ class CustomerForm
 
                                         TextInput::make('nik')
                                             ->label('Nomor NIK')
-                                            ->numeric()
                                             ->required()
                                             ->length(16)
                                             ->helperText('16 digit Nomor Induk Kependudukan sesuai KTP.'),
@@ -256,12 +255,6 @@ class CustomerForm
                                                 'Director' => 'Director',
                                             ])
                                             ->helperText('Status jenjang karier member berdasarkan omzet/prestasi.'),
-
-                                        Select::make('status')
-                                            ->label('Status Aktivasi')
-                                            ->options(self::statusFieldOptions())
-                                            ->required()
-                                            ->helperText('Menentukan apakah akun ini dapat menerima bonus atau tidak.'),
                                     ]),
                             ]),
 
@@ -282,7 +275,6 @@ class CustomerForm
 
                                         TextInput::make('bank_account')
                                             ->label('Nomor Rekening')
-                                            ->numeric()
                                             ->helperText('Pastikan nomor rekening sesuai dengan nama pemilik akun.'),
                                     ]),
 

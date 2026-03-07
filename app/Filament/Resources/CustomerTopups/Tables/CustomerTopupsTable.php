@@ -26,11 +26,16 @@ class CustomerTopupsTable
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->where('type', 'topup')
                 ->with([
-                    'customer:id,name,ref_code',
+                    'customer:id,name,username,ref_code',
                 ]))
             ->columns([
+                TextColumn::make('customer.username')
+                    ->label('Username Customer')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('customer.name')
-                    ->label('Customer')
+                    ->label('Nama Customer')
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
@@ -132,11 +137,11 @@ class CustomerTopupsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≥ Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Nominal ≥ Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≤ Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Nominal ≤ Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -181,11 +186,11 @@ class CustomerTopupsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

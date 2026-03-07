@@ -61,7 +61,7 @@ class WishlistsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with('customer:id,name')
+                ->with('customer:id,name,username')
                 ->withCount('items')
                 ->withMax('items', 'created_at') // alias: items_max_created_at
             )
@@ -77,6 +77,7 @@ class WishlistsTable
                 TextColumn::make('customer.name')
                     ->label('Customer')
                     ->placeholder('-')
+                    ->description(fn ($record): ?string => filled($record->customer?->username) ? '@'.$record->customer->username : null)
                     ->searchable()
                     ->sortable(),
 
@@ -169,11 +170,12 @@ class WishlistsTable
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when(
                             filled($data['q'] ?? null),
-                            fn (Builder $q) => $q->where('name', 'like', '%' . trim((string) $data['q']) . '%')
+                            fn (Builder $q) => $q->where('name', 'like', '%'.trim((string) $data['q']).'%')
                         )
                     )
                     ->indicateUsing(function (array $data): array {
                         $q = trim((string) ($data['q'] ?? ''));
+
                         return $q !== ''
                             ? [Indicator::make("Nama: {$q}")->removeField('q')]
                             : [];
@@ -216,10 +218,10 @@ class WishlistsTable
                         $indicators = [];
 
                         if (($data['min'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Min item: ' . $data['min'])->removeField('min');
+                            $indicators[] = Indicator::make('Min item: '.$data['min'])->removeField('min');
                         }
                         if (($data['max'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Max item: ' . $data['max'])->removeField('max');
+                            $indicators[] = Indicator::make('Max item: '.$data['max'])->removeField('max');
                         }
 
                         return $indicators;
@@ -241,13 +243,14 @@ class WishlistsTable
 
                                 $items->where(function (Builder $w) use ($keyword) {
                                     $w->where('product_name', 'like', "%{$keyword}%")
-                                      ->orWhere('product_sku', 'like', "%{$keyword}%");
+                                        ->orWhere('product_sku', 'like', "%{$keyword}%");
                                 });
                             })
                         )
                     )
                     ->indicateUsing(function (array $data): array {
                         $q = trim((string) ($data['q'] ?? ''));
+
                         return $q !== ''
                             ? [Indicator::make("Produk: {$q}")->removeField('q')]
                             : [];
@@ -269,10 +272,10 @@ class WishlistsTable
                         $indicators = [];
 
                         if (filled($data['from'] ?? null)) {
-                            $indicators[] = Indicator::make('Dibuat ≥ ' . $data['from'])->removeField('from');
+                            $indicators[] = Indicator::make('Dibuat ≥ '.$data['from'])->removeField('from');
                         }
                         if (filled($data['until'] ?? null)) {
-                            $indicators[] = Indicator::make('Dibuat ≤ ' . $data['until'])->removeField('until');
+                            $indicators[] = Indicator::make('Dibuat ≤ '.$data['until'])->removeField('until');
                         }
 
                         return $indicators;
@@ -293,10 +296,10 @@ class WishlistsTable
                         $indicators = [];
 
                         if (filled($data['from'] ?? null)) {
-                            $indicators[] = Indicator::make('Diperbarui ≥ ' . $data['from'])->removeField('from');
+                            $indicators[] = Indicator::make('Diperbarui ≥ '.$data['from'])->removeField('from');
                         }
                         if (filled($data['until'] ?? null)) {
-                            $indicators[] = Indicator::make('Diperbarui ≤ ' . $data['until'])->removeField('until');
+                            $indicators[] = Indicator::make('Diperbarui ≤ '.$data['until'])->removeField('until');
                         }
 
                         return $indicators;

@@ -26,9 +26,14 @@ class CustomerBonusLifetimeCashRewardsTable
             ->recordTitleAttribute('CustomerBonusLifetimeCashReward')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
+                'member:id,name,username,ref_code,email',
             ]))
             ->columns([
+                TextColumn::make('member.username')
+                    ->label('Member username Penerima')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('member.name')
                     ->label('Member Penerima')
                     ->placeholder('-')
@@ -135,11 +140,11 @@ class CustomerBonusLifetimeCashRewardsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Target dari Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Target dari Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Target sampai Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Target sampai Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -171,11 +176,11 @@ class CustomerBonusLifetimeCashRewardsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Diterima dari Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Diterima dari Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Diterima sampai Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Diterima sampai Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -205,11 +210,11 @@ class CustomerBonusLifetimeCashRewardsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('BV dari ' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('BV dari '.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('BV sampai ' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('BV sampai '.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -262,11 +267,11 @@ class CustomerBonusLifetimeCashRewardsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

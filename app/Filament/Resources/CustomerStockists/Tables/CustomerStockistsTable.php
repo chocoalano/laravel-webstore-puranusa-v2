@@ -82,6 +82,7 @@ class CustomerStockistsTable
     {
         return $table
             ->columns([
+                TextColumn::make('username')->label('Username')->searchable(),
                 TextColumn::make('name')->label('Nama')->searchable(),
                 TextColumn::make('email')->label('Email')->searchable(),
                 TextColumn::make('phone')->label('Telepon')->searchable(),

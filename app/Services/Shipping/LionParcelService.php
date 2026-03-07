@@ -4,6 +4,7 @@ namespace App\Services\Shipping;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class LionParcelService
 {
@@ -17,9 +18,9 @@ class LionParcelService
 
     public function __construct()
     {
-        $this->baseUrl   = config('services.lion_parcel.base_url');
-        $this->auth      = config('services.lion_parcel.auth');
-        $this->origin    = config('services.lion_parcel.origin');
+        $this->baseUrl = config('services.lion_parcel.base_url');
+        $this->auth = config('services.lion_parcel.auth');
+        $this->origin = config('services.lion_parcel.origin');
         $this->commodity = config('services.lion_parcel.commodity');
     }
 
@@ -37,23 +38,32 @@ class LionParcelService
     ): array {
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Basic ' . $this->auth,
-            ])->get($this->baseUrl . '/v3/tariff', [
-                'origin'      => $this->origin,
+                'Authorization' => 'Basic '.$this->auth,
+            ])->get($this->baseUrl.'/v3/tariff', [
+                'origin' => $this->origin,
                 'destination' => $destinationDistrictLion,
-                'weight'      => $weightKg,
-                'commodity'   => $this->commodity,
-                'length'      => $lengthCm,
-                'width'       => $widthCm,
-                'height'      => $heightCm,
+                'weight' => $weightKg,
+                'commodity' => $this->commodity,
+                'length' => $lengthCm,
+                'width' => $widthCm,
+                'height' => $heightCm,
             ]);
 
             if (! $response->successful()) {
+                $body = $response->json() ?? [];
+                $errorEn = strtolower((string) ($body['message']['en'] ?? $body['message'] ?? ''));
+
                 Log::warning('Lion Parcel API error', [
-                    'status'      => $response->status(),
+                    'status' => $response->status(),
                     'destination' => $destinationDistrictLion,
-                    'body'        => $response->body(),
+                    'body' => $response->body(),
                 ]);
+
+                if (str_contains($errorEn, 'failed to get district')) {
+                    throw ValidationException::withMessages([
+                        'district' => "Kecamatan \"{$destinationDistrictLion}\" belum terdaftar di layanan Lion Parcel. Silakan pilih kecamatan lain atau hubungi admin.",
+                    ]);
+                }
 
                 return [];
             }
@@ -61,12 +71,14 @@ class LionParcelService
             return collect($response->json('result', []))
                 ->filter(fn (array $r) => ($r['status'] ?? '') === 'ACTIVE' && ! ($r['is_embargo'] ?? false))
                 ->map(fn (array $r) => [
-                    'product'      => $r['product'],
+                    'product' => $r['product'],
                     'total_tariff' => (int) $r['total_tariff'],
                     'estimasi_sla' => $r['estimasi_sla'],
                 ])
                 ->values()
                 ->toArray();
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Lion Parcel API exception', ['message' => $e->getMessage()]);
 
@@ -77,7 +89,7 @@ class LionParcelService
     /**
      * Buat booking pengiriman Lion Parcel.
      *
-     * @param array<string, mixed> $sttPayload
+     * @param  array<string, mixed>  $sttPayload
      * @return array{
      *   success: bool,
      *   status: int|null,
@@ -90,9 +102,9 @@ class LionParcelService
     {
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Basic ' . $this->auth,
+                'Authorization' => 'Basic '.$this->auth,
                 'Accept' => 'application/json',
-            ])->post($this->baseUrl . '/client/booking', [
+            ])->post($this->baseUrl.'/client/booking', [
                 'stt' => $sttPayload,
             ]);
 

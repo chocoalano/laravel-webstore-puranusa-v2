@@ -26,11 +26,16 @@ class CustomerBonusRetailsTable
         return $table
             ->recordTitleAttribute('CustomerBonusRetail')
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn(Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
-                'fromMember:id,name,ref_code,email',
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'member:id,name,username,ref_code,email',
+                'fromMember:id,name,username,ref_code,email',
             ]))
             ->columns([
+                TextColumn::make('member.username')
+                    ->label('Member username Penerima')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('member.name')
                     ->label('Member Penerima')
                     ->placeholder('-')
@@ -40,6 +45,7 @@ class CustomerBonusRetailsTable
                 TextColumn::make('fromMember.name')
                     ->label('Sumber Bonus')
                     ->placeholder('-')
+                    ->description(fn ($record): ?string => filled($record->fromMember?->username) ? '@'.$record->fromMember->username : null)
                     ->searchable()
                     ->sortable(),
 
@@ -67,8 +73,8 @@ class CustomerBonusRetailsTable
                     ->label('Status Bonus')
                     ->badge()
                     ->sortable()
-                    ->formatStateUsing(fn(mixed $state): string => self::statusOptions()[(int) $state] ?? '-')
-                    ->color(fn(mixed $state): string => (int) $state === 1 ? 'success' : 'warning'),
+                    ->formatStateUsing(fn (mixed $state): string => self::statusOptions()[(int) $state] ?? '-')
+                    ->color(fn (mixed $state): string => (int) $state === 1 ? 'success' : 'warning'),
 
                 TextColumn::make('description')
                     ->label('Keterangan')
@@ -126,19 +132,19 @@ class CustomerBonusRetailsTable
                     ])
                     ->columns(2)
                     ->query(
-                        fn(Builder $query, array $data): Builder => $query
-                            ->when(filled($data['min'] ?? null), fn(Builder $builder): Builder => $builder->where('amount', '>=', $data['min']))
-                            ->when(filled($data['max'] ?? null), fn(Builder $builder): Builder => $builder->where('amount', '<=', $data['max']))
+                        fn (Builder $query, array $data): Builder => $query
+                            ->when(filled($data['min'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '>=', $data['min']))
+                            ->when(filled($data['max'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '<=', $data['max']))
                     )
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus dari Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Bonus dari Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus sampai Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Bonus sampai Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -147,7 +153,7 @@ class CustomerBonusRetailsTable
                 self::betweenDateFilter('created_between', 'Periode Dibuat', 'created_at'),
             ], layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(12)
-            ->filtersFormSchema(fn(array $filters): array => [
+            ->filtersFormSchema(fn (array $filters): array => [
                 $filters['member_id']->columnSpan(3),
                 $filters['from_member_id']->columnSpan(3),
                 $filters['status']->columnSpan(2),
@@ -182,19 +188,19 @@ class CustomerBonusRetailsTable
             ])
             ->columns(2)
             ->query(
-                fn(Builder $query, array $data): Builder => $query
-                    ->when(filled($data['from'] ?? null), fn(Builder $builder): Builder => $builder->where($column, '>=', $data['from']))
-                    ->when(filled($data['until'] ?? null), fn(Builder $builder): Builder => $builder->where($column, '<=', $data['until']))
+                fn (Builder $query, array $data): Builder => $query
+                    ->when(filled($data['from'] ?? null), fn (Builder $builder): Builder => $builder->where($column, '>=', $data['from']))
+                    ->when(filled($data['until'] ?? null), fn (Builder $builder): Builder => $builder->where($column, '<=', $data['until']))
             )
             ->indicateUsing(function (array $data) use ($label): array {
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

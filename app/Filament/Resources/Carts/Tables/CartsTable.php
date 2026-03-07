@@ -63,6 +63,7 @@ class CartsTable
                 $currency = $row->currency ?: '—';
                 $total = (float) ($row->total ?? 0);
                 $formatted = number_format($total, 0, ',', '.');
+
                 return "{$currency} {$formatted}";
             })
             ->implode(' | ');
@@ -92,7 +93,7 @@ class CartsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with('customer:id,name')
+                ->with('customer:id,name,username')
                 ->withCount('items')
                 ->withSum('items', 'qty')
             )
@@ -108,6 +109,7 @@ class CartsTable
                 TextColumn::make('customer.name')
                     ->label('Customer')
                     ->placeholder('Guest')
+                    ->description(fn ($record): ?string => filled($record->customer?->username) ? '@'.$record->customer->username : null)
                     ->searchable()
                     ->sortable(),
 
@@ -181,10 +183,12 @@ class CartsTable
                     ->badge()
                     ->formatStateUsing(static function ($state): string {
                         $count = is_array($state) ? count($state) : 0;
+
                         return $count > 0 ? "{$count} promo" : '—';
                     })
                     ->color(static function ($state): string {
                         $count = is_array($state) ? count($state) : 0;
+
                         return $count > 0 ? 'success' : 'gray';
                     })
                     ->toggleable(),
@@ -240,11 +244,12 @@ class CartsTable
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when(
                             filled($data['q'] ?? null),
-                            fn (Builder $q) => $q->where('session_id', 'like', '%' . trim((string) $data['q']) . '%')
+                            fn (Builder $q) => $q->where('session_id', 'like', '%'.trim((string) $data['q']).'%')
                         )
                     )
                     ->indicateUsing(function (array $data): array {
                         $q = trim((string) ($data['q'] ?? ''));
+
                         return $q !== ''
                             ? [Indicator::make("Session: {$q}")->removeField('q')]
                             : [];
@@ -281,10 +286,10 @@ class CartsTable
                         $indicators = [];
 
                         if (($data['min'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Min Items: ' . $data['min'])->removeField('min');
+                            $indicators[] = Indicator::make('Min Items: '.$data['min'])->removeField('min');
                         }
                         if (($data['max'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Max Items: ' . $data['max'])->removeField('max');
+                            $indicators[] = Indicator::make('Max Items: '.$data['max'])->removeField('max');
                         }
 
                         return $indicators;
@@ -320,6 +325,7 @@ class CartsTable
                     )
                     ->indicateUsing(function (array $data): array {
                         $code = trim((string) ($data['code'] ?? ''));
+
                         return $code !== ''
                             ? [Indicator::make("Promo: {$code}")->removeField('code')]
                             : [];

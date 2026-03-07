@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -74,6 +75,25 @@ class Customer extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $guard = 'customer';
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $customer): void {
+            if (
+                blank($customer->ref_code)
+                && Schema::hasColumn($customer->getTable(), 'ref_code')
+            ) {
+                $customer->ref_code = self::generateUniqueRefCode();
+            }
+
+            if (
+                blank($customer->ewallet_id)
+                && Schema::hasColumn($customer->getTable(), 'ewallet_id')
+            ) {
+                $customer->ewallet_id = self::generateUniqueEwalletId();
+            }
+        });
+    }
 
     /** @var list<string> */
     protected $fillable = [
@@ -154,6 +174,24 @@ class Customer extends Authenticatable
             'is_stockist' => 'boolean',
             'network_generated' => 'boolean',
         ];
+    }
+
+    private static function generateUniqueRefCode(): string
+    {
+        do {
+            $refCode = Str::upper(Str::random(8));
+        } while (self::query()->where('ref_code', $refCode)->exists());
+
+        return $refCode;
+    }
+
+    private static function generateUniqueEwalletId(): string
+    {
+        do {
+            $ewalletId = 'EW-'.now()->format('Ymd').'-'.Str::upper(Str::random(5));
+        } while (self::query()->where('ewallet_id', $ewalletId)->exists());
+
+        return $ewalletId;
     }
 
     // ──────────────────────────────────────────────

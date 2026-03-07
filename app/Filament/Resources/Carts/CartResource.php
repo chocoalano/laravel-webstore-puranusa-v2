@@ -24,11 +24,18 @@ class CartResource extends Resource
     protected static ?string $model = Cart::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
     protected static ?string $modelLabel = 'Keranjang Belanja';
-    protected static ?string $recordTitleAttribute = 'Keranjang Belanja';
+
+    protected static ?string $recordTitleAttribute = 'id';
+
+    protected static bool $isGloballySearchable = false;
+
     protected static ?string $navigationLabel = 'Keranjang Belanja';
+
     protected static ?string $pluralModelLabel = 'Keranjang Belanja';
-    protected static string | UnitEnum | null $navigationGroup = 'Toko';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Toko';
 
     public static function form(Schema $schema): Schema
     {

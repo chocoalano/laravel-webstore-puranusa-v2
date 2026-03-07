@@ -31,6 +31,13 @@ export default defineConfig({
             },
         }),
     ],
+    ssr: {
+        // @nuxt/ui menggunakan '#imports' (Nuxt subpath) yang hanya dikenali bundler.
+        // Dengan noExternal, Vite mem-bundle @nuxt/ui ke output SSR sehingga
+        // plugin @nuxt/ui/vite dapat me-resolve '#imports' → 'vue' saat build,
+        // menghindari ERR_PACKAGE_IMPORT_NOT_DEFINED di Node.js runtime.
+        noExternal: ['@nuxt/ui'],
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

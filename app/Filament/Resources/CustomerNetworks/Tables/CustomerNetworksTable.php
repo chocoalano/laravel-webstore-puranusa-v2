@@ -26,10 +26,15 @@ class CustomerNetworksTable
             ->recordTitleAttribute('id')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
-                'upline:id,name,ref_code,email',
+                'member:id,name,username,ref_code,email',
+                'upline:id,name,username,ref_code,email',
             ]))
             ->columns([
+                TextColumn::make('member.username')
+                    ->label('Member username Penerima')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('member.name')
                     ->label('Member')
                     ->placeholder('-')
@@ -45,6 +50,7 @@ class CustomerNetworksTable
                 TextColumn::make('upline.name')
                     ->label('Upline')
                     ->placeholder('-')
+                    ->description(fn ($record): ?string => filled($record->upline?->username) ? '@'.$record->upline->username : null)
                     ->searchable()
                     ->sortable(),
 
@@ -150,11 +156,11 @@ class CustomerNetworksTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Level dari ' . $data['min'])->removeField('min');
+                            $indicators[] = Indicator::make('Level dari '.$data['min'])->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Level sampai ' . $data['max'])->removeField('max');
+                            $indicators[] = Indicator::make('Level sampai '.$data['max'])->removeField('max');
                         }
 
                         return $indicators;
@@ -207,11 +213,11 @@ class CustomerNetworksTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\CustomerEwallets\Tables;
 
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
@@ -24,6 +23,10 @@ class CustomerEwalletsTable
             ->recordTitleAttribute('name')
             ->defaultSort('ewallet_saldo', 'desc')
             ->columns([
+                TextColumn::make('username')
+                    ->label('Username Customer')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('name')
                     ->label('Nama Customer')
                     ->searchable()
@@ -143,11 +146,11 @@ class CustomerEwalletsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Saldo ≥ Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Saldo ≥ Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Saldo ≤ Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Saldo ≤ Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -193,11 +196,11 @@ class CustomerEwalletsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

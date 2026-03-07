@@ -26,10 +26,15 @@ class CustomerBonusPairingsTable
             ->recordTitleAttribute('CustomerBonusPairing')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
-                'sourceMember:id,name,ref_code,email',
+                'member:id,name,username,ref_code,email',
+                'sourceMember:id,name,username,ref_code,email',
             ]))
             ->columns([
+                TextColumn::make('member.username')
+                    ->label('Member username Penerima')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('member.name')
                     ->label('Member Penerima')
                     ->placeholder('-')
@@ -39,6 +44,7 @@ class CustomerBonusPairingsTable
                 TextColumn::make('sourceMember.name')
                     ->label('Sumber Pairing')
                     ->placeholder('-')
+                    ->description(fn ($record): ?string => filled($record->sourceMember?->username) ? '@'.$record->sourceMember->username : null)
                     ->searchable()
                     ->sortable(),
 
@@ -143,11 +149,11 @@ class CustomerBonusPairingsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Pair dari ' . $data['min'])->removeField('min');
+                            $indicators[] = Indicator::make('Pair dari '.$data['min'])->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Pair sampai ' . $data['max'])->removeField('max');
+                            $indicators[] = Indicator::make('Pair sampai '.$data['max'])->removeField('max');
                         }
 
                         return $indicators;
@@ -178,11 +184,11 @@ class CustomerBonusPairingsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus dari Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Bonus dari Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus sampai Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Bonus sampai Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -236,11 +242,11 @@ class CustomerBonusPairingsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

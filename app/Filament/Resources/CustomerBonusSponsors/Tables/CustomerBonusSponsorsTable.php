@@ -24,244 +24,281 @@ class CustomerBonusSponsorsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
-            ->recordTitleAttribute('CustomerBonusSponsor')
-            ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'member:id,name,ref_code,email',
-                'fromMember:id,name,ref_code,email',
-            ]))
-            ->columns([
-                TextColumn::make('member.name')
-                    ->label('Member Penerima')
-                    ->placeholder('-')
-                    ->searchable()
-                    ->sortable(),
+        $table->recordTitleAttribute('CustomerBonusSponsor');
+        $table->defaultSort('created_at', 'desc');
+        $table->modifyQueryUsing(fn (Builder $query): Builder => self::modifyQuery($query));
+        $table->columns(self::columns());
+        $table->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible);
+        $table->filtersFormColumns(12);
+        $table->filtersFormSchema(fn (array $filters): array => self::filtersFormSchema($filters));
+        $table->recordActions(self::recordActions());
+        $table->toolbarActions(self::toolbarActions());
 
-                TextColumn::make('member.ref_code')
-                    ->label('Ref Penerima')
-                    ->placeholder('-')
-                    ->toggleable()
-                    ->searchable(),
+        return $table;
+    }
 
-                TextColumn::make('fromMember.name')
-                    ->label('Sumber Bonus')
-                    ->placeholder('-')
-                    ->searchable()
-                    ->sortable(),
+    private static function modifyQuery(Builder $query): Builder
+    {
+        return $query->with([
+            'member:id,name,username,ref_code,email',
+            'fromMember:id,name,username,ref_code,email',
+        ]);
+    }
 
-                TextColumn::make('fromMember.ref_code')
-                    ->label('Ref Sumber')
-                    ->placeholder('-')
-                    ->toggleable()
-                    ->searchable(),
+    private static function columns(): array
+    {
+        return [
+            TextColumn::make('member.username')
+                ->label('Member username Penerima')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable(),
+            TextColumn::make('member.name')
+                ->label('Member Penerima')
+                ->placeholder('-')
+                ->searchable()
+                ->sortable(),
 
-                TextColumn::make('amount')
-                    ->label('Nominal Bonus')
-                    ->money('IDR')
-                    ->sortable()
-                    ->summarize(
-                        Sum::make()
-                            ->label('Total Bonus')
-                            ->money('IDR')
-                    ),
+            TextColumn::make('member.ref_code')
+                ->label('Ref Penerima')
+                ->placeholder('-')
+                ->toggleable()
+                ->searchable(),
 
-                TextColumn::make('index_value')
-                    ->label('Nilai Index')
-                    ->numeric(decimalPlaces: 2)
-                    ->sortable()
-                    ->summarize(
-                        Average::make()
-                            ->label('Rata-rata Index')
-                            ->numeric(decimalPlaces: 2)
-                    ),
+            TextColumn::make('fromMember.name')
+                ->label('Sumber Bonus')
+                ->placeholder('-')
+                ->description(fn ($record): ?string => filled($record->fromMember?->username) ? '@'.$record->fromMember->username : null)
+                ->searchable()
+                ->sortable(),
 
-                TextColumn::make('status')
-                    ->label('Status Bonus')
-                    ->badge()
-                    ->sortable()
-                    ->formatStateUsing(fn (mixed $state): string => self::statusOptions()[(int) $state] ?? '-')
-                    ->color(fn (mixed $state): string => (int) $state === 1 ? 'success' : 'warning'),
+            TextColumn::make('fromMember.ref_code')
+                ->label('Ref Sumber')
+                ->placeholder('-')
+                ->toggleable()
+                ->searchable(),
 
-                TextColumn::make('description')
-                    ->label('Keterangan')
-                    ->placeholder('-')
-                    ->limit(60)
-                    ->searchable(),
+            TextColumn::make('amount')
+                ->label('Nominal Bonus')
+                ->money('IDR')
+                ->sortable()
+                ->summarize(
+                    Sum::make()
+                        ->label('Total Bonus')
+                        ->money('IDR')
+                ),
 
-                TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime()
-                    ->sortable(),
+            TextColumn::make('index_value')
+                ->label('Nilai Index')
+                ->numeric(decimalPlaces: 2)
+                ->sortable()
+                ->summarize(
+                    Average::make()
+                        ->label('Rata-rata Index')
+                        ->numeric(decimalPlaces: 2)
+                ),
 
-                TextColumn::make('updated_at')
-                    ->label('Diperbarui')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                SelectFilter::make('member_id')
-                    ->label('Member Penerima')
-                    ->relationship('member', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Semua member'),
+            TextColumn::make('status')
+                ->label('Status Bonus')
+                ->badge()
+                ->sortable()
+                ->formatStateUsing(fn (mixed $state): string => self::statusOptions()[(int) $state] ?? '-')
+                ->color(fn (mixed $state): string => (int) $state === 1 ? 'success' : 'warning'),
 
-                SelectFilter::make('from_member_id')
-                    ->label('Sumber Bonus')
-                    ->relationship('fromMember', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Semua sumber'),
+            TextColumn::make('description')
+                ->label('Keterangan')
+                ->placeholder('-')
+                ->limit(60)
+                ->searchable(),
 
-                SelectFilter::make('status')
-                    ->label('Status Bonus')
-                    ->options(self::statusOptions())
-                    ->placeholder('Semua status'),
+            TextColumn::make('created_at')
+                ->label('Dibuat')
+                ->dateTime()
+                ->sortable(),
 
-                TernaryFilter::make('has_description')
-                    ->label('Ada Keterangan')
-                    ->placeholder('Semua')
-                    ->trueLabel('Ada keterangan')
-                    ->falseLabel('Tanpa keterangan')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereNotNull('description')->where('description', '!=', ''),
-                        false: fn (Builder $query): Builder => $query->where(function (Builder $builder): void {
-                            $builder->whereNull('description')
-                                ->orWhere('description', '=', '');
-                        }),
-                        blank: fn (Builder $query): Builder => $query,
-                    ),
+            TextColumn::make('updated_at')
+                ->label('Diperbarui')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
 
-                Filter::make('amount_range')
-                    ->label('Rentang Nominal Bonus')
-                    ->schema([
-                        TextInput::make('min')
-                            ->label('Minimum (Rp)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->prefix('Rp')
-                            ->placeholder('0'),
-                        TextInput::make('max')
-                            ->label('Maksimum (Rp)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->prefix('Rp')
-                            ->placeholder('∞'),
-                    ])
-                    ->columns(2)
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when(filled($data['min'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '>=', $data['min']))
-                        ->when(filled($data['max'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '<=', $data['max']))
-                    )
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
+    private static function filters(): array
+    {
+        return [
+            SelectFilter::make('member_id')
+                ->label('Member Penerima')
+                ->relationship('member', 'name')
+                ->searchable()
+                ->preload()
+                ->placeholder('Semua member'),
 
-                        if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus dari Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
-                        }
+            SelectFilter::make('from_member_id')
+                ->label('Sumber Bonus')
+                ->relationship('fromMember', 'name')
+                ->searchable()
+                ->preload()
+                ->placeholder('Semua sumber'),
 
-                        if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Bonus sampai Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
-                        }
+            SelectFilter::make('status')
+                ->label('Status Bonus')
+                ->options(self::statusOptions())
+                ->placeholder('Semua status'),
 
-                        return $indicators;
+            TernaryFilter::make('has_description')
+                ->label('Ada Keterangan')
+                ->placeholder('Semua')
+                ->trueLabel('Ada keterangan')
+                ->falseLabel('Tanpa keterangan')
+                ->queries(
+                    true: fn (Builder $query): Builder => $query->whereNotNull('description')->where('description', '!=', ''),
+                    false: fn (Builder $query): Builder => $query->where(function (Builder $builder): void {
+                        $builder->whereNull('description')
+                            ->orWhere('description', '=', '');
                     }),
+                    blank: fn (Builder $query): Builder => $query,
+                ),
 
-                Filter::make('index_range')
-                    ->label('Rentang Nilai Index')
-                    ->schema([
-                        TextInput::make('min')
-                            ->label('Min Index')
-                            ->numeric()
-                            ->minValue(0)
-                            ->placeholder('0'),
-                        TextInput::make('max')
-                            ->label('Max Index')
-                            ->numeric()
-                            ->minValue(0)
-                            ->placeholder('∞'),
-                    ])
-                    ->columns(2)
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when(filled($data['min'] ?? null), fn (Builder $builder): Builder => $builder->where('index_value', '>=', $data['min']))
-                        ->when(filled($data['max'] ?? null), fn (Builder $builder): Builder => $builder->where('index_value', '<=', $data['max']))
-                    )
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
+            Filter::make('amount_range')
+                ->label('Rentang Nominal Bonus')
+                ->schema([
+                    TextInput::make('min')
+                        ->label('Minimum (Rp)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->prefix('Rp')
+                        ->placeholder('0'),
+                    TextInput::make('max')
+                        ->label('Maksimum (Rp)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->prefix('Rp')
+                        ->placeholder('∞'),
+                ])
+                ->columns(2)
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when(filled($data['min'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '>=', $data['min']))
+                    ->when(filled($data['max'] ?? null), fn (Builder $builder): Builder => $builder->where('amount', '<=', $data['max']))
+                )
+                ->indicateUsing(function (array $data): array {
+                    $indicators = [];
 
-                        if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Index dari ' . $data['min'])->removeField('min');
-                        }
+                    if (filled($data['min'] ?? null)) {
+                        $indicators[] = Indicator::make('Bonus dari Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                    }
 
-                        if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Index sampai ' . $data['max'])->removeField('max');
-                        }
+                    if (filled($data['max'] ?? null)) {
+                        $indicators[] = Indicator::make('Bonus sampai Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                    }
 
-                        return $indicators;
-                    }),
+                    return $indicators;
+                }),
 
-                Filter::make('keyword')
-                    ->label('Kata Kunci')
-                    ->schema([
-                        TextInput::make('q')
-                            ->label('Cari Data')
-                            ->maxLength(100)
-                            ->placeholder('Nama member, ref code, atau keterangan bonus'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        $keyword = trim((string) ($data['q'] ?? ''));
+            Filter::make('index_range')
+                ->label('Rentang Nilai Index')
+                ->schema([
+                    TextInput::make('min')
+                        ->label('Min Index')
+                        ->numeric()
+                        ->minValue(0)
+                        ->placeholder('0'),
+                    TextInput::make('max')
+                        ->label('Max Index')
+                        ->numeric()
+                        ->minValue(0)
+                        ->placeholder('∞'),
+                ])
+                ->columns(2)
+                ->query(fn (Builder $query, array $data): Builder => $query
+                    ->when(filled($data['min'] ?? null), fn (Builder $builder): Builder => $builder->where('index_value', '>=', $data['min']))
+                    ->when(filled($data['max'] ?? null), fn (Builder $builder): Builder => $builder->where('index_value', '<=', $data['max']))
+                )
+                ->indicateUsing(function (array $data): array {
+                    $indicators = [];
 
-                        if ($keyword === '') {
-                            return $query;
-                        }
+                    if (filled($data['min'] ?? null)) {
+                        $indicators[] = Indicator::make('Index dari '.$data['min'])->removeField('min');
+                    }
 
-                        return $query->where(function (Builder $builder) use ($keyword): void {
-                            $builder->where('description', 'like', '%' . $keyword . '%')
-                                ->orWhereHas('member', function (Builder $member) use ($keyword): Builder {
-                                    return $member->where('name', 'like', '%' . $keyword . '%')
-                                        ->orWhere('ref_code', 'like', '%' . $keyword . '%')
-                                        ->orWhere('email', 'like', '%' . $keyword . '%');
-                                })
-                                ->orWhereHas('fromMember', function (Builder $fromMember) use ($keyword): Builder {
-                                    return $fromMember->where('name', 'like', '%' . $keyword . '%')
-                                        ->orWhere('ref_code', 'like', '%' . $keyword . '%')
-                                        ->orWhere('email', 'like', '%' . $keyword . '%');
-                                });
-                        });
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $keyword = trim((string) ($data['q'] ?? ''));
+                    if (filled($data['max'] ?? null)) {
+                        $indicators[] = Indicator::make('Index sampai '.$data['max'])->removeField('max');
+                    }
 
-                        return $keyword !== ''
-                            ? [Indicator::make("Kata kunci: {$keyword}")->removeField('q')]
-                            : [];
-                    }),
+                    return $indicators;
+                }),
 
-                self::betweenDateFilter('created_between', 'Periode Dibuat', 'created_at'),
-            ], layout: FiltersLayout::AboveContentCollapsible)
-            ->filtersFormColumns(12)
-            ->filtersFormSchema(fn (array $filters): array => [
-                $filters['member_id']->columnSpan(3),
-                $filters['from_member_id']->columnSpan(3),
-                $filters['status']->columnSpan(3),
-                $filters['has_description']->columnSpan(3),
-                $filters['amount_range']->columnSpan(4),
-                $filters['index_range']->columnSpan(4),
-                $filters['created_between']->columnSpan(4),
-                $filters['keyword']->columnSpanFull(),
-            ])
-            ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            Filter::make('keyword')
+                ->label('Kata Kunci')
+                ->schema([
+                    TextInput::make('q')
+                        ->label('Cari Data')
+                        ->maxLength(100)
+                        ->placeholder('Nama member, ref code, atau keterangan bonus'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    $keyword = trim((string) ($data['q'] ?? ''));
+
+                    if ($keyword === '') {
+                        return $query;
+                    }
+
+                    return $query->where(function (Builder $builder) use ($keyword): void {
+                        $builder->where('description', 'like', '%'.$keyword.'%')
+                            ->orWhereHas('member', function (Builder $member) use ($keyword): Builder {
+                                return $member->where('name', 'like', '%'.$keyword.'%')
+                                    ->orWhere('ref_code', 'like', '%'.$keyword.'%')
+                                    ->orWhere('email', 'like', '%'.$keyword.'%');
+                            })
+                            ->orWhereHas('fromMember', function (Builder $fromMember) use ($keyword): Builder {
+                                return $fromMember->where('name', 'like', '%'.$keyword.'%')
+                                    ->orWhere('ref_code', 'like', '%'.$keyword.'%')
+                                    ->orWhere('email', 'like', '%'.$keyword.'%');
+                            });
+                    });
+                })
+                ->indicateUsing(function (array $data): array {
+                    $keyword = trim((string) ($data['q'] ?? ''));
+
+                    return $keyword !== ''
+                        ? [Indicator::make("Kata kunci: {$keyword}")->removeField('q')]
+                        : [];
+                }),
+
+            self::betweenDateFilter('created_between', 'Periode Dibuat', 'created_at'),
+        ];
+    }
+
+    private static function filtersFormSchema(array $filters): array
+    {
+        return [
+            $filters['member_id']->columnSpan(3),
+            $filters['from_member_id']->columnSpan(3),
+            $filters['status']->columnSpan(3),
+            $filters['has_description']->columnSpan(3),
+            $filters['amount_range']->columnSpan(4),
+            $filters['index_range']->columnSpan(4),
+            $filters['created_between']->columnSpan(4),
+            $filters['keyword']->columnSpanFull(),
+        ];
+    }
+
+    private static function recordActions(): array
+    {
+        return [
+            ViewAction::make(),
+            EditAction::make(),
+            DeleteAction::make(),
+        ];
+    }
+
+    private static function toolbarActions(): array
+    {
+        return [
+            BulkActionGroup::make([
+                DeleteBulkAction::make(),
+            ]),
+        ];
     }
 
     private static function betweenDateFilter(string $name, string $label, string $column): Filter
@@ -287,11 +324,11 @@ class CustomerBonusSponsorsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

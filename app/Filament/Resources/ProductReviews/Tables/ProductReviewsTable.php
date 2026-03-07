@@ -41,7 +41,7 @@ class ProductReviewsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'customer:id,name,email',
+                'customer:id,name,username,email',
                 'product:id,name,sku',
                 'orderItem:id,order_id,name,sku,qty',
                 'orderItem.order:id,order_no',
@@ -57,6 +57,7 @@ class ProductReviewsTable
 
                 TextColumn::make('customer.name')
                     ->label('Customer')
+                    ->description(fn ($record): ?string => filled($record->customer?->username) ? '@'.$record->customer->username : null)
                     ->searchable(),
 
                 self::hiddenByDefault(
@@ -96,7 +97,7 @@ class ProductReviewsTable
 
                 TextColumn::make('rating')
                     ->badge()
-                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? $state . '/5' : '-')
+                    ->formatStateUsing(fn (mixed $state): string => filled($state) ? $state.'/5' : '-')
                     ->color(fn (?int $state): string => match (true) {
                         $state >= 4 => 'success',
                         $state === 3 => 'warning',
@@ -216,10 +217,10 @@ class ProductReviewsTable
                         }
 
                         return $query->where(function (Builder $q) use ($keyword): void {
-                            $q->where('title', 'like', '%' . $keyword . '%')
-                                ->orWhere('comment', 'like', '%' . $keyword . '%')
-                                ->orWhereHas('customer', fn (Builder $customer): Builder => $customer->where('name', 'like', '%' . $keyword . '%'))
-                                ->orWhereHas('product', fn (Builder $product): Builder => $product->where('name', 'like', '%' . $keyword . '%'));
+                            $q->where('title', 'like', '%'.$keyword.'%')
+                                ->orWhere('comment', 'like', '%'.$keyword.'%')
+                                ->orWhereHas('customer', fn (Builder $customer): Builder => $customer->where('name', 'like', '%'.$keyword.'%'))
+                                ->orWhereHas('product', fn (Builder $product): Builder => $product->where('name', 'like', '%'.$keyword.'%'));
                         });
                     })
                     ->indicateUsing(function (array $data): array {
@@ -310,11 +311,11 @@ class ProductReviewsTable
                 $indicators = [];
 
                 if (($data['min'] ?? '') !== '') {
-                    $indicators[] = Indicator::make('Rating min: ' . $data['min'])->removeField('min');
+                    $indicators[] = Indicator::make('Rating min: '.$data['min'])->removeField('min');
                 }
 
                 if (($data['max'] ?? '') !== '') {
-                    $indicators[] = Indicator::make('Rating max: ' . $data['max'])->removeField('max');
+                    $indicators[] = Indicator::make('Rating max: '.$data['max'])->removeField('max');
                 }
 
                 return $indicators;

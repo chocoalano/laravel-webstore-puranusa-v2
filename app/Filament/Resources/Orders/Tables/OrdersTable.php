@@ -211,7 +211,7 @@ class OrdersTable
     {
         return fn (Builder $query): Builder => $query
             ->with([
-                'customer:id,name',
+                'customer:id,name,username',
                 'shippingAddress:id,recipient_name,city_label',
                 'billingAddress:id,recipient_name,city_label',
             ])
@@ -290,8 +290,12 @@ class OrdersTable
                         ->numeric()
                 ),
 
+            TextColumn::make('customer.username')
+                ->label('Username Pelanggan')
+                ->searchable()
+                ->sortable(),
             TextColumn::make('customer.name')
-                ->label('Pelanggan')
+                ->label('Nama Pelanggan')
                 ->searchable()
                 ->sortable(),
 
@@ -1062,7 +1066,7 @@ class OrdersTable
     private static function shippingBookingDefaults(Order $record): array
     {
         $record->loadMissing([
-            'customer:id,name,phone',
+            'customer:id,name,username,phone',
             'shippingAddress:id,recipient_name,recipient_phone,address_line1,address_line2,district,district_lion,city_label,province_label,postal_code',
             'items:id,order_id,qty,weight_gram,length_mm,width_mm,height_mm',
         ]);

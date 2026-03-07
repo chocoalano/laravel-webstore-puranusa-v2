@@ -3,8 +3,10 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import createServer from '@inertiajs/vue3/server';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { renderToString } from 'vue/server-renderer';
-import NuxtUIPlugin from '@nuxt/ui/vue-plugin';
 
+// NuxtUIPlugin tidak di-mount di SSR karena @nuxt/ui menggunakan '#imports'
+// (Nuxt-specific subpath) yang tidak kompatibel dengan Node.js ESM standar.
+// Plugin tetap aktif di sisi client via app.ts.
 createServer((page) =>
     createInertiaApp({
         page,
@@ -14,8 +16,7 @@ createServer((page) =>
             resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
         setup({ App, props, plugin }) {
             return createSSRApp({ render: () => h(App, props) })
-                .use(plugin)
-                .use(NuxtUIPlugin);
+                .use(plugin);
         },
     }),
 );

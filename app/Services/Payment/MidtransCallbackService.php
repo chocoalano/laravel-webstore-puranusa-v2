@@ -309,6 +309,20 @@ class MidtransCallbackService
         if ($customerStatus === 3 && $paymentStatus === 'PAID') {
             try {
                 $this->callbackRepository->callBonusEngine((int) $result['order_id']);
+            } catch (\Illuminate\Database\QueryException $exception) {
+                // SQLSTATE 45000 = SP SIGNAL: order already processed (idempotency guard).
+                // Log sebagai warning karena ini kondisi yang expected pada duplicate webhook.
+                if ($exception->getCode() === '45000') {
+                    Log::warning('Bonus engine skipped: order already processed.', [
+                        'order_id' => $result['order_id'],
+                        'error' => $exception->getMessage(),
+                    ]);
+                } else {
+                    Log::error('Failed to run bonus engine after Midtrans callback.', [
+                        'order_id' => $result['order_id'],
+                        'error' => $exception->getMessage(),
+                    ]);
+                }
             } catch (\Throwable $exception) {
                 Log::error('Failed to run bonus engine after Midtrans callback.', [
                     'order_id' => $result['order_id'],
