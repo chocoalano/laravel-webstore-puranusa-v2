@@ -50,6 +50,7 @@ class CategoryForm
                                     ->image()
                                     ->imageEditor()
                                     ->directory('categories')
+                                    ->optimize('webp')
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->getUploadedFileNameForStorageUsing(static fn (): string => app(WebpImageUploadService::class)->generateWebpFilename())
                                     ->saveUploadedFileUsing(static fn (BaseFileUpload $component, TemporaryUploadedFile $file): ?string => app(WebpImageUploadService::class)->storeForFilament($component, $file))

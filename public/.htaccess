@@ -1,24 +1,31 @@
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+<IfModule mod_negotiation.c>
+    Options -MultiViews -Indexes
+</IfModule>
 
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+</IfModule>
+
+<IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Handle Authorization Header
+    # Jika app ada di subfolder, buka komentar baris ini dan sesuaikan:
+    # RewriteBase /subfolder/
+
+    # Teruskan Authorization header ke PHP/Laravel
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Handle X-XSRF-Token Header
-    RewriteCond %{HTTP:x-xsrf-token} .
-    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+    # Teruskan X-XSRF-TOKEN header ke PHP/Laravel
+    RewriteCond %{HTTP:X-XSRF-TOKEN} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-TOKEN}]
 
-    # Redirect Trailing Slashes If Not A Folder...
+    # Hapus trailing slash jika bukan direktori asli
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
+    # Semua request non-file / non-folder arahkan ke front controller Laravel
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]

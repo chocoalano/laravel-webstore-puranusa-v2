@@ -4,7 +4,6 @@ namespace App\Filament\Resources\WhatsAppBroadcasts;
 
 use App\Filament\Resources\WhatsAppBroadcasts\Schemas\WhatsAppBroadcastInfolist;
 use App\Filament\Resources\WhatsAppBroadcasts\Pages\ManageWhatsAppBroadcasts;
-use App\Filament\Resources\WhatsAppBroadcasts\RelationManagers\RecipientsRelationManager;
 use App\Filament\Resources\WhatsAppBroadcasts\Schemas\WhatsAppBroadcastForm;
 use App\Filament\Resources\WhatsAppBroadcasts\Tables\WhatsAppBroadcastTable;
 use App\Models\WhatsAppBroadcast;
@@ -49,9 +48,7 @@ class WhatsAppBroadcastResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RecipientsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

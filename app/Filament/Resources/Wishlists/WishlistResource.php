@@ -6,8 +6,6 @@ use App\Filament\Resources\Wishlists\Pages\CreateWishlist;
 use App\Filament\Resources\Wishlists\Pages\EditWishlist;
 use App\Filament\Resources\Wishlists\Pages\ListWishlists;
 use App\Filament\Resources\Wishlists\Pages\ViewWishlist;
-use App\Filament\Resources\Wishlists\RelationManagers\CustomerRelationManager;
-use App\Filament\Resources\Wishlists\RelationManagers\ItemsRelationManager;
 use App\Filament\Resources\Wishlists\Schemas\WishlistForm;
 use App\Filament\Resources\Wishlists\Schemas\WishlistInfolist;
 use App\Filament\Resources\Wishlists\Tables\WishlistsTable;
@@ -48,10 +46,7 @@ class WishlistResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            CustomerRelationManager::class,
-            ItemsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

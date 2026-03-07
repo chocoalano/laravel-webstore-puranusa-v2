@@ -136,6 +136,7 @@ class ContentForm
 
                                         FileUpload::make('thumbnail_url')
                                             ->label('Thumbnail Modul')
+                                            ->optimize('webp')
                                             ->image()
                                             ->imageEditor()
                                             ->directory('zenner-academy/module-thumbnails')
@@ -147,6 +148,7 @@ class ContentForm
                                         FileUpload::make('file')
                                             ->label('File Lampiran')
                                             ->directory('zenner-academy/attachments')
+                                            ->optimize('webp')
                                             ->acceptedFileTypes([
                                                 'application/pdf',
                                                 'image/*',

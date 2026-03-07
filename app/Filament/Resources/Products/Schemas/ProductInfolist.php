@@ -165,6 +165,190 @@ class ProductInfolist
                     ])->columnSpanFull(),
 
                 // =========================================================
+                // RELASI PENJUALAN / PROMOSI
+                // =========================================================
+                Section::make('Relasi Penjualan & Promosi')
+                    ->description('Data relasi pengganti tab RelationManager.')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('reviews_count')
+                            ->label('Total Review')
+                            ->state(fn ($record): int => $record->reviews()->count())
+                            ->numeric(),
+
+                        TextEntry::make('average_rating')
+                            ->label('Rata-rata Rating')
+                            ->state(function ($record): string {
+                                $value = $record->reviews()->avg('rating');
+
+                                return $value === null ? '-' : number_format((float) $value, 2);
+                            }),
+
+                        TextEntry::make('order_items_count')
+                            ->label('Total Item Pesanan')
+                            ->state(fn ($record): int => $record->orderItems()->count())
+                            ->numeric(),
+
+                        TextEntry::make('cart_items_count')
+                            ->label('Total Item Keranjang')
+                            ->state(fn ($record): int => $record->cartItems()->count())
+                            ->numeric(),
+
+                        TextEntry::make('promotions_count')
+                            ->label('Total Promosi Aktif/Terkait')
+                            ->state(fn ($record): int => $record->promotions()->count())
+                            ->numeric(),
+
+                        RepeatableEntry::make('promotions')
+                            ->label('Promosi Terkait')
+                            ->contained(false)
+                            ->table([
+                                TableColumn::make('Kode'),
+                                TableColumn::make('Nama'),
+                                TableColumn::make('Tipe'),
+                                TableColumn::make('Min Qty'),
+                                TableColumn::make('Diskon Nominal'),
+                                TableColumn::make('Diskon %'),
+                                TableColumn::make('Harga Bundle'),
+                            ])
+                            ->schema([
+                                TextEntry::make('code')
+                                    ->label('Kode')
+                                    ->placeholder('-'),
+                                TextEntry::make('name')
+                                    ->label('Nama')
+                                    ->placeholder('-'),
+                                TextEntry::make('type')
+                                    ->label('Tipe')
+                                    ->badge()
+                                    ->placeholder('-'),
+                                TextEntry::make('pivot.min_qty')
+                                    ->label('Min Qty')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                                TextEntry::make('pivot.discount_value')
+                                    ->label('Diskon Nominal')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                                TextEntry::make('pivot.discount_percent')
+                                    ->label('Diskon %')
+                                    ->suffix('%')
+                                    ->numeric()
+                                    ->placeholder('-'),
+                                TextEntry::make('pivot.bundle_price')
+                                    ->label('Harga Bundle')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                            ])
+                            ->columnSpanFull(),
+
+                        RepeatableEntry::make('reviews')
+                            ->label('Review Produk')
+                            ->contained(false)
+                            ->table([
+                                TableColumn::make('Customer'),
+                                TableColumn::make('Rating'),
+                                TableColumn::make('Judul'),
+                                TableColumn::make('Disetujui'),
+                                TableColumn::make('Terverifikasi'),
+                                TableColumn::make('Dibuat'),
+                            ])
+                            ->schema([
+                                TextEntry::make('customer.name')
+                                    ->label('Customer')
+                                    ->placeholder('-'),
+                                TextEntry::make('rating')
+                                    ->label('Rating')
+                                    ->numeric(),
+                                TextEntry::make('title')
+                                    ->label('Judul')
+                                    ->placeholder('-'),
+                                IconEntry::make('is_approved')
+                                    ->label('Disetujui')
+                                    ->boolean(),
+                                IconEntry::make('is_verified_purchase')
+                                    ->label('Terverifikasi')
+                                    ->boolean(),
+                                TextEntry::make('created_at')
+                                    ->label('Dibuat')
+                                    ->dateTime()
+                                    ->placeholder('-'),
+                            ])
+                            ->columnSpanFull(),
+
+                        RepeatableEntry::make('orderItems')
+                            ->label('Item Pesanan')
+                            ->contained(false)
+                            ->table([
+                                TableColumn::make('No. Order'),
+                                TableColumn::make('Nama'),
+                                TableColumn::make('SKU'),
+                                TableColumn::make('Qty'),
+                                TableColumn::make('Harga'),
+                                TableColumn::make('Total'),
+                            ])
+                            ->schema([
+                                TextEntry::make('order.order_no')
+                                    ->label('No. Order')
+                                    ->placeholder('-'),
+                                TextEntry::make('name')
+                                    ->label('Nama')
+                                    ->placeholder('-'),
+                                TextEntry::make('sku')
+                                    ->label('SKU')
+                                    ->placeholder('-'),
+                                TextEntry::make('qty')
+                                    ->label('Qty')
+                                    ->numeric(),
+                                TextEntry::make('unit_price')
+                                    ->label('Harga')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                                TextEntry::make('row_total')
+                                    ->label('Total')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                            ])
+                            ->columnSpanFull(),
+
+                        RepeatableEntry::make('cartItems')
+                            ->label('Item Keranjang')
+                            ->contained(false)
+                            ->table([
+                                TableColumn::make('Customer'),
+                                TableColumn::make('Produk Snapshot'),
+                                TableColumn::make('SKU'),
+                                TableColumn::make('Qty'),
+                                TableColumn::make('Harga'),
+                                TableColumn::make('Total'),
+                            ])
+                            ->schema([
+                                TextEntry::make('cart.customer.name')
+                                    ->label('Customer')
+                                    ->placeholder('-'),
+                                TextEntry::make('product_name')
+                                    ->label('Produk Snapshot')
+                                    ->placeholder('-'),
+                                TextEntry::make('product_sku')
+                                    ->label('SKU')
+                                    ->placeholder('-'),
+                                TextEntry::make('qty')
+                                    ->label('Qty')
+                                    ->numeric(),
+                                TextEntry::make('unit_price')
+                                    ->label('Harga')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                                TextEntry::make('row_total')
+                                    ->label('Total')
+                                    ->money('IDR')
+                                    ->placeholder('-'),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                // =========================================================
                 // DIMENSI & BERAT
                 // =========================================================
                 Section::make('Dimensi & Berat')

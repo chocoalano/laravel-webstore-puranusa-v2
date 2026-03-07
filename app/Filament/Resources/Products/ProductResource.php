@@ -6,13 +6,6 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\Pages\ViewProduct;
-use App\Filament\Resources\Products\RelationManagers\CartItemsRelationManager;
-use App\Filament\Resources\Products\RelationManagers\CategoriesRelationManager;
-use App\Filament\Resources\Products\RelationManagers\MediaRelationManager;
-use App\Filament\Resources\Products\RelationManagers\OrderItemsRelationManager;
-use App\Filament\Resources\Products\RelationManagers\PrimaryMediaRelationManager;
-use App\Filament\Resources\Products\RelationManagers\PromotionsRelationManager;
-use App\Filament\Resources\Products\RelationManagers\ReviewsRelationManager;
 use App\Filament\Resources\Products\Schemas\ProductForm;
 use App\Filament\Resources\Products\Schemas\ProductInfolist;
 use App\Filament\Resources\Products\Tables\ProductsTable;
@@ -53,15 +46,7 @@ class ProductResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            CategoriesRelationManager::class,
-            MediaRelationManager::class,
-            PrimaryMediaRelationManager::class,
-            ReviewsRelationManager::class,
-            OrderItemsRelationManager::class,
-            CartItemsRelationManager::class,
-            PromotionsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

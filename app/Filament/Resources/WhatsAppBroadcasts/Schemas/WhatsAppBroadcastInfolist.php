@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\WhatsAppBroadcasts\Schemas;
 
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -48,6 +50,55 @@ class WhatsAppBroadcastInfolist
                         TextEntry::make('failed_recipients')->label('Gagal')->numeric(),
                     ]),
                     TextEntry::make('last_error')->label('Error Terakhir')->placeholder('-')->columnSpanFull(),
+                ]),
+
+            Section::make('Daftar Penerima')
+                ->description('Relasi penerima broadcast yang sebelumnya ada di RelationManager.')
+                ->schema([
+                    TextEntry::make('recipients_count')
+                        ->label('Total Baris Penerima')
+                        ->state(fn ($record): int => $record->recipients()->count())
+                        ->numeric(),
+
+                    RepeatableEntry::make('recipients')
+                        ->label('')
+                        ->contained(false)
+                        ->table([
+                            TableColumn::make('Customer'),
+                            TableColumn::make('Phone'),
+                            TableColumn::make('Normalized'),
+                            TableColumn::make('Status'),
+                            TableColumn::make('Sent At'),
+                            TableColumn::make('Response'),
+                        ])
+                        ->schema([
+                            TextEntry::make('customer_name')
+                                ->label('Customer')
+                                ->placeholder('-'),
+                            TextEntry::make('phone')
+                                ->label('Phone')
+                                ->placeholder('-'),
+                            TextEntry::make('normalized_phone')
+                                ->label('Normalized')
+                                ->placeholder('-'),
+                            TextEntry::make('status')
+                                ->label('Status')
+                                ->badge()
+                                ->color(fn (?string $state) => match ($state) {
+                                    'queued' => 'gray',
+                                    'processing' => 'warning',
+                                    'sent' => 'success',
+                                    'failed' => 'danger',
+                                    default => 'gray',
+                                }),
+                            TextEntry::make('sent_at')
+                                ->label('Sent At')
+                                ->dateTime()
+                                ->placeholder('-'),
+                            TextEntry::make('response_message')
+                                ->label('Response')
+                                ->placeholder('-'),
+                        ]),
                 ]),
         ]);
     }

@@ -6,9 +6,6 @@ use App\Filament\Resources\ProductReviews\Pages\CreateProductReview;
 use App\Filament\Resources\ProductReviews\Pages\EditProductReview;
 use App\Filament\Resources\ProductReviews\Pages\ListProductReviews;
 use App\Filament\Resources\ProductReviews\Pages\ViewProductReview;
-use App\Filament\Resources\ProductReviews\RelationManagers\CustomerRelationManager;
-use App\Filament\Resources\ProductReviews\RelationManagers\OrderItemRelationManager;
-use App\Filament\Resources\ProductReviews\RelationManagers\ProductRelationManager;
 use App\Filament\Resources\ProductReviews\Schemas\ProductReviewForm;
 use App\Filament\Resources\ProductReviews\Schemas\ProductReviewInfolist;
 use App\Filament\Resources\ProductReviews\Tables\ProductReviewsTable;
@@ -49,11 +46,7 @@ class ProductReviewResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            CustomerRelationManager::class,
-            ProductRelationManager::class,
-            OrderItemRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

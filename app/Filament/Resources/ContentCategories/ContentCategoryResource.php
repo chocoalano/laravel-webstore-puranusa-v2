@@ -6,7 +6,6 @@ use App\Filament\Resources\ContentCategories\Pages\CreateContentCategory;
 use App\Filament\Resources\ContentCategories\Pages\EditContentCategory;
 use App\Filament\Resources\ContentCategories\Pages\ListContentCategories;
 use App\Filament\Resources\ContentCategories\Pages\ViewContentCategory;
-use App\Filament\Resources\ContentCategories\RelationManagers\ContentsRelationManager;
 use App\Filament\Resources\ContentCategories\Schemas\ContentCategoryForm;
 use App\Filament\Resources\ContentCategories\Schemas\ContentCategoryInfolist;
 use App\Filament\Resources\ContentCategories\Tables\ContentCategoriesTable;
@@ -51,9 +50,7 @@ class ContentCategoryResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            ContentsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

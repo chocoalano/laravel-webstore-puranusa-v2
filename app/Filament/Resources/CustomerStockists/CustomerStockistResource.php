@@ -6,31 +6,11 @@ use App\Filament\Resources\CustomerStockists\Pages\CreateCustomerStockist;
 use App\Filament\Resources\CustomerStockists\Pages\EditCustomerStockist;
 use App\Filament\Resources\CustomerStockists\Pages\ListCustomerStockists;
 use App\Filament\Resources\CustomerStockists\Pages\ViewCustomerStockist;
-use App\Filament\Resources\Customers\RelationManagers\AddressesRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BinaryChildrenRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusCashbacksRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusesRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusLifetimeCashRewardsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusMatchingsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusPairingsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusRetailsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusRewardsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BonusSponsorsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\BvRewardsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\DownlinesRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\NetworkMatrixesRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\NetworksRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\OrdersRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\ProductReviewsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\RewardsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\WalletTransactionsRelationManager;
-use App\Filament\Resources\Customers\RelationManagers\WishlistsRelationManager;
 use App\Filament\Resources\CustomerStockists\Schemas\CustomerStockistForm;
 use App\Filament\Resources\CustomerStockists\Schemas\CustomerStockistInfolist;
 use App\Filament\Resources\CustomerStockists\Tables\CustomerStockistsTable;
 use App\Models\Customer;
 use BackedEnum;
-use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -71,38 +51,7 @@ class CustomerStockistResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RelationGroup::make('Network & Downline', [
-                DownlinesRelationManager::class,
-                BinaryChildrenRelationManager::class,
-                NetworksRelationManager::class,
-                NetworkMatrixesRelationManager::class,
-            ]),
-
-            RelationGroup::make('E-Commerce', [
-                OrdersRelationManager::class,
-                AddressesRelationManager::class,
-                WishlistsRelationManager::class,
-                ProductReviewsRelationManager::class,
-            ]),
-
-            RelationGroup::make('Wallet & Bonus', [
-                WalletTransactionsRelationManager::class,
-                BonusesRelationManager::class,
-                BonusSponsorsRelationManager::class,
-                BonusMatchingsRelationManager::class,
-                BonusPairingsRelationManager::class,
-                BonusRetailsRelationManager::class,
-                BonusCashbacksRelationManager::class,
-                BonusRewardsRelationManager::class,
-                BonusLifetimeCashRewardsRelationManager::class,
-            ]),
-
-            RelationGroup::make('Rewards', [
-                RewardsRelationManager::class,
-                BvRewardsRelationManager::class,
-            ]),
-        ];
+        return [];
     }
 
     public static function getPages(): array

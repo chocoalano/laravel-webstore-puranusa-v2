@@ -273,6 +273,7 @@ class PageForm
 
                     FileUpload::make('image')
                         ->label('Hero Image')
+                        ->optimize('webp')
                         ->image()
                         ->imageEditor()
                         ->directory('pages')
@@ -498,6 +499,7 @@ class PageForm
 
                             FileUpload::make('avatar')
                                 ->label('Avatar')
+                                ->optimize('webp')
                                 ->image()
                                 ->directory('pages/testimonials')
                                 ->columnSpan(4),

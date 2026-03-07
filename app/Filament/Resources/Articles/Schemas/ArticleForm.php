@@ -179,6 +179,7 @@ class ArticleForm
                                                 FileUpload::make('url')
                                                     ->label('File Gambar')
                                                     ->image()
+                                                    ->optimize('webp')
                                                     ->imageEditor()
                                                     ->directory('articles')
                                                     ->disk('public')

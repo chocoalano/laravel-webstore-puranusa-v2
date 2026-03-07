@@ -6,8 +6,6 @@ use App\Filament\Resources\Carts\Pages\CreateCart;
 use App\Filament\Resources\Carts\Pages\EditCart;
 use App\Filament\Resources\Carts\Pages\ListCarts;
 use App\Filament\Resources\Carts\Pages\ViewCart;
-use App\Filament\Resources\Carts\RelationManagers\CustomerRelationManager;
-use App\Filament\Resources\Carts\RelationManagers\ItemsRelationManager;
 use App\Filament\Resources\Carts\Schemas\CartForm;
 use App\Filament\Resources\Carts\Schemas\CartInfolist;
 use App\Filament\Resources\Carts\Tables\CartsTable;
@@ -54,10 +52,7 @@ class CartResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            CustomerRelationManager::class,
-            ItemsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array

@@ -82,6 +82,7 @@ class ContentCategoryForm
 
                         FileUpload::make('thumbnail_url')
                             ->label('Thumbnail Kursus')
+                            ->optimize('webp')
                             ->image()
                             ->imageEditor()
                             ->directory('zenner-academy/thumbnails')

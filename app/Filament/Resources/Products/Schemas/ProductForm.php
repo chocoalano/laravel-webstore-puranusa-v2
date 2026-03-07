@@ -337,6 +337,7 @@ class ProductForm
                                                     ->default(0),
                                                 FileUpload::make('url')
                                                     ->label('File Media')
+                                                    ->optimize('webp')
                                                     ->disk('public')
                                                     ->directory('products/media')
                                                     ->visibility('public')

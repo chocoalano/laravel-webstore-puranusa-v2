@@ -264,8 +264,10 @@ class StoreSettings extends Page implements HasSchemas
                                             ->helperText('Disarankan PNG transparan. Maks 2MB.')
                                             ->image()
                                             ->imageEditor()
+                                            ->optimize('webp')
                                             ->disk('public')
                                             ->directory('settings/branding')
+
                                             ->visibility('public')
                                             ->maxSize(2048),
 
@@ -273,6 +275,7 @@ class StoreSettings extends Page implements HasSchemas
                                             ->label('Favicon')
                                             ->helperText('Disarankan PNG 256x256. Maks 1MB.')
                                             ->image()
+                                            ->optimize('webp')
                                             ->imageEditor()
                                             ->disk('public')
                                             ->directory('settings/branding')
@@ -524,6 +527,7 @@ class StoreSettings extends Page implements HasSchemas
                                         FileUpload::make('seo.og_image')
                                             ->label('OpenGraph Image')
                                             ->helperText('Rekomendasi 1200x630. Maks 2MB.')
+                                            ->optimize('webp')
                                             ->image()
                                             ->imageEditor()
                                             ->disk('public')

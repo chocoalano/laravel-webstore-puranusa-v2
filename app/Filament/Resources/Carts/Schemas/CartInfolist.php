@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Carts\Schemas;
 
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -57,6 +59,24 @@ class CartInfolist
                     ->description('Rincian biaya dan total keranjang.')
                     ->schema([
                         Grid::make(6)->schema([
+                            TextEntry::make('items_count')
+                                ->label('Jumlah Baris Item')
+                                ->state(fn ($record): int => $record->items()->count())
+                                ->numeric()
+                                ->columnSpan([
+                                    'default' => 6,
+                                    'md' => 3,
+                                ]),
+
+                            TextEntry::make('items_total_qty')
+                                ->label('Total Qty Produk')
+                                ->state(fn ($record): int => (int) $record->items()->sum('qty'))
+                                ->numeric()
+                                ->columnSpan([
+                                    'default' => 6,
+                                    'md' => 3,
+                                ]),
+
                             TextEntry::make('subtotal_amount')
                                 ->label('Subtotal')
                                 ->money(fn ($record) => $record->currency ?? 'IDR')
@@ -127,6 +147,50 @@ class CartInfolist
                         'default' => 6,
                         'lg' => 4,
                     ]),
+
+                Section::make('Item Keranjang')
+                    ->description('Detail produk yang saat ini ada di keranjang.')
+                    ->schema([
+                        RepeatableEntry::make('items')
+                            ->label('')
+                            ->contained(false)
+                            ->table([
+                                TableColumn::make('Produk Master'),
+                                TableColumn::make('Produk Snapshot'),
+                                TableColumn::make('SKU'),
+                                TableColumn::make('Qty'),
+                                TableColumn::make('Harga'),
+                                TableColumn::make('Total'),
+                                TableColumn::make('Update Terakhir'),
+                            ])
+                            ->schema([
+                                TextEntry::make('product.name')
+                                    ->label('Produk Master')
+                                    ->placeholder('-'),
+                                TextEntry::make('product_name')
+                                    ->label('Produk Snapshot')
+                                    ->placeholder('-'),
+                                TextEntry::make('product_sku')
+                                    ->label('SKU')
+                                    ->placeholder('-'),
+                                TextEntry::make('qty')
+                                    ->label('Qty')
+                                    ->numeric(),
+                                TextEntry::make('unit_price')
+                                    ->label('Harga')
+                                    ->money(fn ($record) => $record->currency ?? 'IDR')
+                                    ->placeholder('-'),
+                                TextEntry::make('row_total')
+                                    ->label('Total')
+                                    ->money(fn ($record) => $record->currency ?? 'IDR')
+                                    ->placeholder('-'),
+                                TextEntry::make('updated_at')
+                                    ->label('Update Terakhir')
+                                    ->dateTime()
+                                    ->placeholder('-'),
+                            ]),
+                    ])
+                    ->columnSpan(6),
 
                 // =========================
                 // Metadata (bawah full)

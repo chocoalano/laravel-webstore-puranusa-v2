@@ -142,6 +142,7 @@ class PromotionForm
                         ->schema([
                             FileUpload::make('image')
                                 ->label('Gambar Promo')
+                                ->optimize('webp')
                                 ->image()
                                 ->directory('promotions')
                                 ->columnSpanFull(),

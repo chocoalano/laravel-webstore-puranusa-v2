@@ -6,7 +6,6 @@ use App\Filament\Resources\Promotions\Pages\CreatePromotion;
 use App\Filament\Resources\Promotions\Pages\EditPromotion;
 use App\Filament\Resources\Promotions\Pages\ListPromotions;
 use App\Filament\Resources\Promotions\Pages\ViewPromotion;
-use App\Filament\Resources\Promotions\RelationManagers\ProductsRelationManager;
 use App\Filament\Resources\Promotions\Schemas\PromotionForm;
 use App\Filament\Resources\Promotions\Schemas\PromotionInfolist;
 use App\Filament\Resources\Promotions\Tables\PromotionsTable;
@@ -47,9 +46,7 @@ class PromotionResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            ProductsRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
