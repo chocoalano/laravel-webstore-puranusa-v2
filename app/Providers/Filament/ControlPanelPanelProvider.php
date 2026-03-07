@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\Products\Livewire\ProductOrderItemsTable;
 use App\Filament\Widgets\AccountWidget;
 use App\Filament\Widgets\AppInfoWidget;
 use App\Filament\Widgets\QueueListWidget;
@@ -28,6 +29,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Livewire\Livewire;
 
 class ControlPanelPanelProvider extends PanelProvider
 {
@@ -112,6 +114,9 @@ class ControlPanelPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->bootUsing(function (): void {
+                Livewire::component('filament.products.order-items-table', ProductOrderItemsTable::class);
+            })
             ->authGuard('web');
     }
 }

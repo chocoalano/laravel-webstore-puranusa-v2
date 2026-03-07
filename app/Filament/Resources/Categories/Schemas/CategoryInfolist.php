@@ -145,7 +145,7 @@ class CategoryInfolist
                             ->placeholder('-'),
                     ])
                     ->columnSpan(12),
-            ]),
+            ])->columnSpanFull(),
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Resources\Products\Livewire\ProductOrderItemsTable;
 use App\Repositories\Articles\Contracts\ArticleRepositoryInterface;
 use App\Repositories\Articles\EloquentArticleRepository;
 use App\Repositories\Auth\Contracts\CustomerAuthRepositoryInterface;
@@ -31,6 +32,7 @@ use App\Repositories\ZennerAcademy\EloquentContentRepository;
 use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -79,6 +81,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->booted(function (): void {
+            Livewire::component('filament.products.order-items-table', ProductOrderItemsTable::class);
+        });
+
         Gate::before(function ($user, string $ability) {
             if (! is_object($user) || ! method_exists($user, 'hasRole')) {
                 return null;

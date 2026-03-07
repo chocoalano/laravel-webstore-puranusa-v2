@@ -11,7 +11,6 @@ use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
 use App\Models\Order;
 use BackedEnum;
-use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -25,9 +24,12 @@ class OrderResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $navigationLabel = 'Pesanan Pelanggan';
+
     protected static ?string $modelLabel = 'Pesanan Pelanggan';
+
     protected static ?string $pluralModelLabel = 'Pesanan Pelanggan';
-    protected static string | UnitEnum | null $navigationGroup = 'Pesanan';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pesanan';
 
     public static function form(Schema $schema): Schema
     {

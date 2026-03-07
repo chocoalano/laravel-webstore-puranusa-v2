@@ -7,6 +7,7 @@ use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Livewire;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -276,39 +277,9 @@ class ProductInfolist
                             ])
                             ->columnSpanFull(),
 
-                        RepeatableEntry::make('orderItems')
-                            ->label('Item Pesanan')
-                            ->contained(false)
-                            ->table([
-                                TableColumn::make('No. Order'),
-                                TableColumn::make('Nama'),
-                                TableColumn::make('SKU'),
-                                TableColumn::make('Qty'),
-                                TableColumn::make('Harga'),
-                                TableColumn::make('Total'),
-                            ])
-                            ->schema([
-                                TextEntry::make('order.order_no')
-                                    ->label('No. Order')
-                                    ->placeholder('-'),
-                                TextEntry::make('name')
-                                    ->label('Nama')
-                                    ->placeholder('-'),
-                                TextEntry::make('sku')
-                                    ->label('SKU')
-                                    ->placeholder('-'),
-                                TextEntry::make('qty')
-                                    ->label('Qty')
-                                    ->numeric(),
-                                TextEntry::make('unit_price')
-                                    ->label('Harga')
-                                    ->money('IDR')
-                                    ->placeholder('-'),
-                                TextEntry::make('row_total')
-                                    ->label('Total')
-                                    ->money('IDR')
-                                    ->placeholder('-'),
-                            ])
+                        Livewire::make('filament.products.order-items-table')
+                            ->key('product-order-items-table')
+                            ->lazy()
                             ->columnSpanFull(),
 
                         RepeatableEntry::make('cartItems')

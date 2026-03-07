@@ -115,7 +115,7 @@ class ProductReviewInfolist
                             ->placeholder('-'),
                     ])
                     ->columnSpan(12),
-            ]),
+            ])->columnSpanFull(),
         ]);
     }
 }
