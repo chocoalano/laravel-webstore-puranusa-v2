@@ -85,6 +85,7 @@ class ContentCategoryForm
                             ->optimize('webp')
                             ->image()
                             ->imageEditor()
+                            ->disk('public')
                             ->directory('zenner-academy/thumbnails')
                             ->visibility('public')
                             ->maxSize(2048)

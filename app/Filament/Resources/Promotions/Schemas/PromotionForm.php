@@ -6,8 +6,8 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -144,7 +144,9 @@ class PromotionForm
                                 ->label('Gambar Promo')
                                 ->optimize('webp')
                                 ->image()
+                                ->disk('public')
                                 ->directory('promotions')
+                                ->visibility('public')
                                 ->columnSpanFull(),
 
                             Textarea::make('description')

@@ -139,6 +139,7 @@ class ContentForm
                                             ->optimize('webp')
                                             ->image()
                                             ->imageEditor()
+                                            ->disk('public')
                                             ->directory('zenner-academy/module-thumbnails')
                                             ->visibility('public')
                                             ->maxSize(2048)

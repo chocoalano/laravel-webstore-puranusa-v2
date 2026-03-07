@@ -28,12 +28,13 @@ class WebpImageUploadService
         $filename = $component->getUploadedFileNameForStorage($file);
         $directory = trim((string) $component->getDirectory(), '/');
         $storedPath = $directory === '' ? $filename : "{$directory}/{$filename}";
+        $visibility = $this->normalizeVisibility($component->getVisibility());
 
         $isStored = $this->storeAsWebp(
             file: $file,
             disk: $component->getDisk(),
             path: $storedPath,
-            visibility: $component->getVisibility(),
+            visibility: $visibility,
             quality: $quality,
         );
 
@@ -48,7 +49,7 @@ class WebpImageUploadService
         TemporaryUploadedFile $file,
         Filesystem $disk,
         string $path,
-        string $visibility = 'public',
+        ?string $visibility = 'public',
         int $quality = 80,
     ): bool {
         try {
@@ -98,11 +99,20 @@ class WebpImageUploadService
             return false;
         }
 
-        return (bool) $disk->put($path, $webpContent, $visibility);
+        return (bool) $disk->put($path, $webpContent, [
+            'visibility' => $this->normalizeVisibility($visibility),
+        ]);
     }
 
     protected function normalizeQuality(int $quality): int
     {
         return max(0, min(100, $quality));
+    }
+
+    protected function normalizeVisibility(?string $visibility): string
+    {
+        return in_array($visibility, ['public', 'private'], true)
+            ? $visibility
+            : 'public';
     }
 }

@@ -6,8 +6,8 @@ use App\Services\Media\WebpImageUploadService;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -49,6 +49,8 @@ class CategoryForm
                                 FileUpload::make('image')
                                     ->image()
                                     ->imageEditor()
+                                    ->disk('public')
+                                    ->visibility('public')
                                     ->directory('categories')
                                     ->optimize('webp')
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])

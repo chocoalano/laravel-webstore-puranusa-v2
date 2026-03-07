@@ -13,10 +13,10 @@ use App\Models\PaymentMethod;
 use App\Models\Setting;
 use App\Repositories\Checkout\Contracts\CheckoutRepositoryInterface;
 use App\Services\Shipping\LionParcelService;
+use App\Support\Media\PublicMediaUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -494,7 +494,7 @@ class CheckoutService
                 'price' => (float) $item->unit_price,
                 'qty' => $item->qty,
                 'row_total' => (float) $item->row_total,
-                'image' => ($url = $item->product?->primaryMedia->first()?->url) ? Storage::url($url) : null,
+                'image' => PublicMediaUrl::resolve($item->product?->primaryMedia->first()?->url),
                 'weight_gram' => $item->product?->weight_gram,
             ];
         })->toArray();

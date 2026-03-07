@@ -14,6 +14,7 @@ use App\Http\Controllers\Web\MlmPlacementController;
 use App\Http\Controllers\Web\NewsletterSubscriptionController;
 use App\Http\Controllers\Web\OrderInvoiceDownloadController;
 use App\Http\Controllers\Web\PageController;
+use App\Http\Controllers\Web\PublicMediaController;
 use App\Http\Controllers\Web\ShopController;
 use App\Http\Controllers\Web\WishlistController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -30,6 +31,9 @@ Route::middleware('auth')
     ->get('/control-panel/orders/{order}/invoice', OrderInvoiceDownloadController::class)
     ->whereNumber('order')
     ->name('control-panel.orders.invoice');
+Route::get('/media/public/{path}', PublicMediaController::class)
+    ->where('path', '.*')
+    ->name('media.public');
 
 /*
 |--------------------------------------------------------------------------

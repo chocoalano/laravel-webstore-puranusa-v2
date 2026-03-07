@@ -11,8 +11,10 @@ use App\Models\Setting;
 use App\Models\Wishlist;
 use App\Models\WishlistItem;
 use App\Repositories\Pages\Contracts\PageRepositoryInterface;
+use App\Support\Media\PublicMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -177,9 +179,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $item->product_name,
                     'sku' => $item->product_sku,
                     'price' => (float) ($product?->base_price ?? 0),
-                    'image' => $primaryMedia?->url
-                        ? asset('storage/'.$primaryMedia->url)
-                        : null,
+                    'image' => PublicMediaUrl::resolve($primaryMedia?->url),
                     'inStock' => ($product?->stock ?? 0) > 0,
                     'slug' => $product?->slug ?? '',
                 ];
@@ -236,9 +236,7 @@ class HandleInertiaRequests extends Middleware
                     'price' => (float) $item->unit_price,
                     'qty' => $item->qty,
                     'rowTotal' => (float) $item->row_total,
-                    'image' => $primaryMedia?->url
-                        ? asset('storage/'.$primaryMedia->url)
-                        : null,
+                    'image' => PublicMediaUrl::resolve($primaryMedia?->url),
                     'inStock' => ($item->product?->stock ?? 0) > 0,
                 ];
             })
@@ -370,7 +368,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function categoriesData()
     {
-        return Cache::remember('shared_categories', 3600, function () {
+        return Cache::remember('shared_categories_v3', 3600, function () {
             return Category::query()
                 ->where('is_active', true)
                 ->whereNull('parent_id')
@@ -381,9 +379,24 @@ class HandleInertiaRequests extends Middleware
                     'slug' => $cat->slug,
                     'name' => $cat->name,
                     'description' => $cat->description,
-                    'image' => $cat->image ? asset('storage/'.$cat->image) : null,
+                    'image' => $this->resolveExistingCategoryImageUrl($cat->image),
                     'productCount' => $cat->products()->count(),
                 ]);
         });
+    }
+
+    private function resolveExistingCategoryImageUrl(?string $imagePath): ?string
+    {
+        if (! filled($imagePath)) {
+            return null;
+        }
+
+        $storageRelativePath = PublicMediaUrl::extractPublicStorageRelativePath((string) $imagePath);
+
+        if ($storageRelativePath !== null && ! Storage::disk('public')->exists($storageRelativePath)) {
+            return null;
+        }
+
+        return PublicMediaUrl::resolve($imagePath);
     }
 }

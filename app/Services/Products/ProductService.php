@@ -4,6 +4,7 @@ namespace App\Services\Products;
 
 use App\Models\ProductReview;
 use App\Repositories\Products\Contracts\ProductRepositoryInterface;
+use App\Support\Media\PublicMediaUrl;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -62,7 +63,7 @@ class ProductService
                 ['label' => 'Dimensi', 'value' => $product->length_mm && $product->width_mm && $product->height_mm ? "{$product->length_mm}x{$product->width_mm}x{$product->height_mm} mm" : '-'],
             ],
             'media' => $product->media->map(fn ($m) => [
-                'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/'.$m->url),
+                'url' => PublicMediaUrl::resolve($m->url),
                 'alt' => $m->alt_text ?? $product->name,
             ])->toArray(),
             'variants' => [
@@ -76,7 +77,7 @@ class ProductService
                     'stock' => $product->stock,
                     'options' => [],
                     'media' => $product->primaryMedia->map(fn ($m) => [
-                        'url' => str_starts_with($m->url, 'http') ? $m->url : asset('storage/'.$m->url),
+                        'url' => PublicMediaUrl::resolve($m->url),
                         'alt' => $m->alt_text ?? $product->name,
                     ])->toArray(),
                 ],
@@ -90,7 +91,7 @@ class ProductService
             'name' => $r->name,
             'price' => $r->base_price,
             'image' => $r->primaryMedia->first()
-                ? (str_starts_with($r->primaryMedia->first()->url, 'http') ? $r->primaryMedia->first()->url : asset('storage/'.$r->primaryMedia->first()->url))
+                ? PublicMediaUrl::resolve($r->primaryMedia->first()->url)
                 : null,
             'rating' => $r->avg_rating ?? 0,
             'reviewsCount' => $r->reviews_count ?? 0,

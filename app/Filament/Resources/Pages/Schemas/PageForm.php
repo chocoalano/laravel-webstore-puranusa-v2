@@ -12,8 +12,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -276,7 +276,9 @@ class PageForm
                         ->optimize('webp')
                         ->image()
                         ->imageEditor()
+                        ->disk('public')
                         ->directory('pages')
+                        ->visibility('public')
                         ->helperText('Opsional. Jika memakai background image, upload di sini.')
                         ->columnSpan(12),
 
@@ -501,7 +503,9 @@ class PageForm
                                 ->label('Avatar')
                                 ->optimize('webp')
                                 ->image()
+                                ->disk('public')
                                 ->directory('pages/testimonials')
+                                ->visibility('public')
                                 ->columnSpan(4),
 
                             Textarea::make('quote')

@@ -5,6 +5,7 @@ namespace App\Services\Home;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Repositories\Home\Contracts\HomeRepositoryInterface;
+use App\Support\Media\PublicMediaUrl;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -27,12 +28,12 @@ class HomeService
     {
         return [
             'heroBanners' => fn (): array => $this->rememberArray(
-                'hero_banners',
+                'hero_banners_v2',
                 now()->addMinutes(30),
                 fn (): array => $this->getHeroBanners()
             ),
             'featuredProducts' => fn (): array => $this->rememberArray(
-                'featured_products',
+                'featured_products_v2',
                 now()->addMinutes(30),
                 fn (): array => $this->getFeaturedProducts()
             ),
@@ -55,7 +56,7 @@ class HomeService
                 'id' => (int) $promotion->id,
                 'name' => (string) $promotion->name,
                 'description' => $promotion->description,
-                'image' => $promotion->image ? asset('storage/' . $promotion->image) : null,
+                'image' => PublicMediaUrl::resolve($promotion->image),
                 'slug' => $promotion->landing_slug,
                 'type' => $promotion->type,
                 'code' => $promotion->code,
@@ -90,7 +91,7 @@ class HomeService
                     'slug' => $product->slug,
                     'name' => (string) $product->name,
                     'price' => (float) $product->base_price,
-                    'image' => $primaryMedia?->url ? asset('storage/' . $primaryMedia->url) : null,
+                    'image' => PublicMediaUrl::resolve($primaryMedia?->url),
                     'rating' => round((float) ($product->rating_avg ?? 0), 1),
                     'reviewCount' => (int) ($product->review_count ?? 0),
                     'salesCount' => (int) ($product->sales_count ?? 0),
