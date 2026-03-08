@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Tables;
 
+use App\Support\Media\PublicMediaUrl;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -28,7 +29,24 @@ class CategoriesTable
                     ->sortable(),
                 IconColumn::make('is_active')
                     ->boolean(),
-                ImageColumn::make('image'),
+                ImageColumn::make('image')
+                    ->state(function (object $record): ?string {
+                        $imageUrl = PublicMediaUrl::resolve($record->image);
+
+                        if (! filled($imageUrl)) {
+                            return null;
+                        }
+
+                        if (
+                            str_starts_with($imageUrl, 'http://')
+                            || str_starts_with($imageUrl, 'https://')
+                            || str_starts_with($imageUrl, 'data:')
+                        ) {
+                            return $imageUrl;
+                        }
+
+                        return url($imageUrl);
+                    }),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

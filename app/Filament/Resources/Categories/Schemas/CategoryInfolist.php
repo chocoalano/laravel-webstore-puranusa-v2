@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Support\Media\PublicMediaUrl;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -37,6 +38,23 @@ class CategoryInfolist
                             ->boolean(),
                         ImageEntry::make('image')
                             ->label('Gambar')
+                            ->state(function (object $record): ?string {
+                                $imageUrl = PublicMediaUrl::resolve($record->image);
+
+                                if (! filled($imageUrl)) {
+                                    return null;
+                                }
+
+                                if (
+                                    str_starts_with($imageUrl, 'http://')
+                                    || str_starts_with($imageUrl, 'https://')
+                                    || str_starts_with($imageUrl, 'data:')
+                                ) {
+                                    return $imageUrl;
+                                }
+
+                                return url($imageUrl);
+                            })
                             ->placeholder('-'),
                         TextEntry::make('description')
                             ->label('Deskripsi')

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Promotions\Tables;
 
 use App\Models\Promotion;
+use App\Support\Media\PublicMediaUrl;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -159,6 +160,23 @@ class PromotionsTable
                 self::hiddenByDefault(
                     ImageColumn::make('image')
                         ->label('Gambar')
+                        ->state(function (object $record): ?string {
+                            $imageUrl = PublicMediaUrl::resolve($record->image);
+
+                            if (! filled($imageUrl)) {
+                                return null;
+                            }
+
+                            if (
+                                str_starts_with($imageUrl, 'http://')
+                                || str_starts_with($imageUrl, 'https://')
+                                || str_starts_with($imageUrl, 'data:')
+                            ) {
+                                return $imageUrl;
+                            }
+
+                            return url($imageUrl);
+                        })
                 ),
 
                 TextColumn::make('start_at')
@@ -269,9 +287,9 @@ class PromotionsTable
                         }
 
                         return $query->where(function (Builder $q) use ($keyword): void {
-                            $q->where('code', 'like', '%' . $keyword . '%')
-                                ->orWhere('name', 'like', '%' . $keyword . '%')
-                                ->orWhere('landing_slug', 'like', '%' . $keyword . '%');
+                            $q->where('code', 'like', '%'.$keyword.'%')
+                                ->orWhere('name', 'like', '%'.$keyword.'%')
+                                ->orWhere('landing_slug', 'like', '%'.$keyword.'%');
                         });
                     })
                     ->indicateUsing(function (array $data): array {
@@ -301,11 +319,11 @@ class PromotionsTable
                         $indicators = [];
 
                         if (($data['min'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Prioritas min: ' . $data['min'])->removeField('min');
+                            $indicators[] = Indicator::make('Prioritas min: '.$data['min'])->removeField('min');
                         }
 
                         if (($data['max'] ?? '') !== '') {
-                            $indicators[] = Indicator::make('Prioritas max: ' . $data['max'])->removeField('max');
+                            $indicators[] = Indicator::make('Prioritas max: '.$data['max'])->removeField('max');
                         }
 
                         return $indicators;
@@ -453,11 +471,11 @@ class PromotionsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make('Periode promo mulai dari ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make('Periode promo mulai dari '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make('Periode promo sampai ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make('Periode promo sampai '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;
