@@ -2,6 +2,8 @@
 
 namespace App\Support\Articles;
 
+use App\Support\Media\PublicMediaUrl;
+
 class ArticleContentParser
 {
     /**
@@ -102,7 +104,7 @@ class ArticleContentParser
     }
 
     /** @return array<string, mixed>|array<int, mixed>|null */
-    private function decodeContent(mixed $rawContent): array|null
+    private function decodeContent(mixed $rawContent): ?array
     {
         if (is_string($rawContent)) {
             $decoded = json_decode($rawContent, true);
@@ -152,7 +154,7 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $rawBlock
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function extractBlockData(array $rawBlock): array
     {
@@ -174,7 +176,7 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $data
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function normalizeHeadingBlock(array $data): array
     {
@@ -191,11 +193,11 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $data
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function normalizeRichTextBlock(array $data): array
     {
-        $html = (string) ($data['text'] ?? $data['content'] ?? '');
+        $html = $this->normalizeRichTextValue($data['text'] ?? $data['content'] ?? '');
 
         return [
             'type' => 'rich_text',
@@ -204,7 +206,7 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $data
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function normalizeImageBlock(array $data): array
     {
@@ -219,7 +221,7 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $data
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function normalizeListBlock(array $data): array
     {
@@ -237,7 +239,7 @@ class ArticleContentParser
     }
 
     /** @param array<string, mixed> $data
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function normalizeQuoteBlock(array $data): array
     {
@@ -254,22 +256,52 @@ class ArticleContentParser
             return null;
         }
 
+        if (str_starts_with($rawUrl, '/media/public/')) {
+            return $rawUrl;
+        }
+
         if (
             str_starts_with($rawUrl, 'http://')
             || str_starts_with($rawUrl, 'https://')
-            || str_starts_with($rawUrl, '/storage/')
             || str_starts_with($rawUrl, 'data:')
         ) {
             return $rawUrl;
         }
 
-        $trimmedUrl = ltrim($rawUrl, '/');
-
-        if (str_starts_with($trimmedUrl, 'storage/')) {
-            return '/' . $trimmedUrl;
+        if (
+            str_starts_with($rawUrl, '/')
+            && ! str_starts_with($rawUrl, '/storage/')
+            && ! str_starts_with($rawUrl, '/public/')
+        ) {
+            return $rawUrl;
         }
 
-        return asset('storage/' . $trimmedUrl);
+        return $this->resolvePublicMediaUrl($rawUrl);
+    }
+
+    private function resolvePublicMediaUrl(string $rawUrl): ?string
+    {
+        try {
+            return PublicMediaUrl::resolve($rawUrl);
+        } catch (\Throwable) {
+            $normalizedPath = ltrim(trim($rawUrl), '/');
+
+            if ($normalizedPath === '') {
+                return null;
+            }
+
+            if (str_starts_with($normalizedPath, 'public/storage/')) {
+                $normalizedPath = substr($normalizedPath, strlen('public/storage/'));
+            } elseif (str_starts_with($normalizedPath, 'storage/')) {
+                $normalizedPath = substr($normalizedPath, strlen('storage/'));
+            } elseif (str_starts_with($normalizedPath, 'public/')) {
+                $normalizedPath = substr($normalizedPath, strlen('public/'));
+            }
+
+            return $normalizedPath !== ''
+                ? '/media/public/'.$normalizedPath
+                : null;
+        }
     }
 
     private function sanitizeHtml(string $html): string
@@ -277,5 +309,369 @@ class ArticleContentParser
         $cleaned = preg_replace('/<script\\b[^>]*>(.*?)<\\/script>/is', '', $html);
 
         return is_string($cleaned) ? trim($cleaned) : trim($html);
+    }
+
+    private function normalizeRichTextValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            return $this->renderTipTapDocumentToHtml($value);
+        }
+
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $decoded = json_decode($value, true);
+
+        if (! is_array($decoded)) {
+            return $value;
+        }
+
+        return $this->renderTipTapDocumentToHtml($decoded);
+    }
+
+    /**
+     * @param  array<string, mixed>|array<int, mixed>  $document
+     */
+    private function renderTipTapDocumentToHtml(array $document): string
+    {
+        $normalizedDocument = $this->normalizeTipTapDocument($document);
+
+        return $this->renderRichDocumentToHtml($normalizedDocument);
+    }
+
+    /**
+     * @param  array<string, mixed>|array<int, mixed>  $document
+     * @return array<string, mixed>
+     */
+    private function normalizeTipTapDocument(array $document): array
+    {
+        if (array_is_list($document)) {
+            return [
+                'type' => 'doc',
+                'content' => $this->normalizeTipTapNodeList($document),
+            ];
+        }
+
+        if (($document['type'] ?? null) === 'doc') {
+            return [
+                'type' => 'doc',
+                'content' => is_array($document['content'] ?? null)
+                    ? $this->normalizeTipTapNodeList($document['content'])
+                    : [],
+            ];
+        }
+
+        if (is_string($document['type'] ?? null)) {
+            $normalizedNode = $this->normalizeTipTapNode($document);
+
+            return [
+                'type' => 'doc',
+                'content' => $normalizedNode ? [$normalizedNode] : [],
+            ];
+        }
+
+        if (is_array($document['content'] ?? null)) {
+            return [
+                'type' => 'doc',
+                'content' => $this->normalizeTipTapNodeList($document['content']),
+            ];
+        }
+
+        return [
+            'type' => 'doc',
+            'content' => [],
+        ];
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeTipTapNodeList(array $nodes): array
+    {
+        $normalizedNodes = [];
+
+        foreach ($nodes as $node) {
+            $normalizedNode = $this->normalizeTipTapNode($node);
+
+            if ($normalizedNode !== null) {
+                $normalizedNodes[] = $normalizedNode;
+            }
+        }
+
+        return $normalizedNodes;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function normalizeTipTapNode(mixed $node): ?array
+    {
+        if (! is_array($node)) {
+            return null;
+        }
+
+        $type = trim((string) ($node['type'] ?? ''));
+
+        if ($type === '') {
+            return null;
+        }
+
+        if (isset($node['content'])) {
+            if (is_array($node['content'])) {
+                $node['content'] = $this->normalizeTipTapNodeList($node['content']);
+            } else {
+                unset($node['content']);
+            }
+        }
+
+        if ($type === 'heading') {
+            $attrs = is_array($node['attrs'] ?? null) ? $node['attrs'] : [];
+            $level = (int) ($attrs['level'] ?? 2);
+            $attrs['level'] = max(1, min(6, $level));
+            $node['attrs'] = $attrs;
+        }
+
+        $node['type'] = $type;
+
+        return $node;
+    }
+
+    /**
+     * @param  array<string, mixed>|array<int, mixed>  $document
+     */
+    private function renderRichDocumentToHtml(array $document): string
+    {
+        if (array_is_list($document)) {
+            return $this->renderRichNodes($document);
+        }
+
+        if (isset($document['type'])) {
+            return $this->renderRichNode($document);
+        }
+
+        if (is_array($document['content'] ?? null)) {
+            return $this->renderRichNodes($document['content']);
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     */
+    private function renderRichNodes(array $nodes): string
+    {
+        return collect($nodes)
+            ->map(function (mixed $node): string {
+                if (! is_array($node)) {
+                    return '';
+                }
+
+                return $this->renderRichNode($node);
+            })
+            ->implode('');
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private function renderRichNode(array $node): string
+    {
+        $type = trim((string) ($node['type'] ?? ''));
+        $children = is_array($node['content'] ?? null) ? $node['content'] : [];
+        $childrenHtml = $this->renderRichNodes($children);
+
+        if ($type === 'doc') {
+            return $childrenHtml;
+        }
+
+        if ($type === 'text') {
+            return $this->renderRichTextNode($node);
+        }
+
+        if ($type === 'horizontalRule') {
+            return '<hr>';
+        }
+
+        if ($type === 'hardBreak') {
+            return '<br>';
+        }
+
+        if ($type === 'image') {
+            $attrs = is_array($node['attrs'] ?? null) ? $node['attrs'] : [];
+            $src = $this->normalizeRichImageSource($attrs['src'] ?? null);
+
+            if (! is_string($src) || $src === '') {
+                return '';
+            }
+
+            $alt = $this->escapeHtml(trim((string) ($attrs['alt'] ?? '')));
+
+            return '<img src="'.$this->escapeHtml($src).'" alt="'.$alt.'">';
+        }
+
+        if ($type === 'heading') {
+            $attrs = is_array($node['attrs'] ?? null) ? $node['attrs'] : [];
+            $level = max(1, min(6, (int) ($attrs['level'] ?? 2)));
+
+            return $this->wrapTag('h'.$level, $childrenHtml);
+        }
+
+        if ($type === 'codeBlock') {
+            $text = $this->escapeHtml($this->extractRichTextContent($children));
+
+            return $this->wrapTag('pre', $this->wrapTag('code', $text));
+        }
+
+        return match ($type) {
+            'paragraph' => $this->wrapTag('p', $childrenHtml),
+            'bulletList' => $this->wrapTag('ul', $childrenHtml),
+            'orderedList' => $this->wrapTag('ol', $childrenHtml),
+            'listItem' => $this->wrapTag('li', $childrenHtml),
+            'blockquote' => $this->wrapTag('blockquote', $childrenHtml),
+            'table' => $this->wrapTag('table', $childrenHtml),
+            'tableRow' => $this->wrapTag('tr', $childrenHtml),
+            'tableCell' => $this->wrapTag('td', $childrenHtml),
+            'tableHeader' => $this->wrapTag('th', $childrenHtml),
+            default => $childrenHtml,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private function renderRichTextNode(array $node): string
+    {
+        $rendered = $this->escapeHtml((string) ($node['text'] ?? ''));
+        $marks = is_array($node['marks'] ?? null) ? $node['marks'] : [];
+
+        foreach ($marks as $mark) {
+            if (! is_array($mark)) {
+                continue;
+            }
+
+            $type = trim((string) ($mark['type'] ?? ''));
+            $attrs = is_array($mark['attrs'] ?? null) ? $mark['attrs'] : [];
+
+            if ($type === 'bold') {
+                $rendered = $this->wrapTag('strong', $rendered);
+
+                continue;
+            }
+
+            if ($type === 'italic') {
+                $rendered = $this->wrapTag('em', $rendered);
+
+                continue;
+            }
+
+            if ($type === 'underline') {
+                $rendered = $this->wrapTag('u', $rendered);
+
+                continue;
+            }
+
+            if ($type === 'strike') {
+                $rendered = $this->wrapTag('s', $rendered);
+
+                continue;
+            }
+
+            if ($type === 'code') {
+                $rendered = $this->wrapTag('code', $rendered);
+
+                continue;
+            }
+
+            if ($type === 'link') {
+                $href = $this->sanitizeLinkHref($attrs['href'] ?? null);
+
+                if (! is_string($href) || $href === '') {
+                    continue;
+                }
+
+                $target = trim((string) ($attrs['target'] ?? ''));
+                $targetAttr = $target !== ''
+                    ? ' target="'.$this->escapeHtml($target).'"'
+                    : '';
+
+                $rendered = '<a href="'.$this->escapeHtml($href).'"'.$targetAttr.' rel="noopener noreferrer">'.$rendered.'</a>';
+            }
+        }
+
+        return $rendered;
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     */
+    private function extractRichTextContent(array $nodes): string
+    {
+        return collect($nodes)
+            ->map(function (mixed $node): string {
+                if (! is_array($node)) {
+                    return '';
+                }
+
+                if (($node['type'] ?? '') === 'text') {
+                    return (string) ($node['text'] ?? '');
+                }
+
+                $children = is_array($node['content'] ?? null) ? $node['content'] : [];
+
+                return $this->extractRichTextContent($children);
+            })
+            ->implode('');
+    }
+
+    private function sanitizeLinkHref(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $href = trim($value);
+
+        if ($href === '' || str_starts_with(strtolower($href), 'javascript:')) {
+            return null;
+        }
+
+        return $href;
+    }
+
+    private function normalizeRichImageSource(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $source = trim($value);
+
+        if ($source === '' || str_starts_with(strtolower($source), 'javascript:')) {
+            return null;
+        }
+
+        if (
+            str_starts_with($source, 'http://')
+            || str_starts_with($source, 'https://')
+            || str_starts_with($source, '/')
+            || str_starts_with($source, 'data:image/')
+        ) {
+            return $source;
+        }
+
+        return $this->normalizeImageUrl($source);
+    }
+
+    private function wrapTag(string $tag, string $content): string
+    {
+        return '<'.$tag.'>'.$content.'</'.$tag.'>';
+    }
+
+    private function escapeHtml(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }

@@ -16,6 +16,7 @@ beforeEach(function (): void {
         $table->string('slug')->unique();
         $table->string('seo_title')->nullable();
         $table->text('seo_description')->nullable();
+        $table->string('image_banner')->nullable();
         $table->boolean('is_published')->default(false);
         $table->timestamp('published_at')->nullable();
         $table->timestamps();
@@ -38,7 +39,7 @@ function createArticleRecord(array $attributes = [], array $tags = []): Article
 {
     $article = Article::query()->create(array_merge([
         'title' => 'Artikel Test',
-        'slug' => 'artikel-test-' . uniqid(),
+        'slug' => 'artikel-test-'.uniqid(),
         'seo_title' => 'SEO Artikel Test',
         'seo_description' => 'Deskripsi artikel test.',
         'is_published' => true,
@@ -71,6 +72,7 @@ it('shows only published articles with published date in the past', function ():
     $publishedArticle = createArticleRecord([
         'title' => 'Artikel Published',
         'slug' => 'artikel-published',
+        'image_banner' => 'articles/banners/artikel-published.webp',
         'published_at' => Carbon::parse('2026-01-10 10:00:00'),
     ]);
 
@@ -99,6 +101,8 @@ it('shows only published articles with published date in the past', function ():
             ->component('Article/Index')
             ->has('articles.data', 1)
             ->where('articles.data.0.slug', $publishedArticle->slug)
+            ->where('articles.data.0.banner_image', '/media/public/articles/banners/artikel-published.webp')
+            ->where('seo.image', '/media/public/articles/banners/artikel-published.webp')
             ->where('filters.sort', 'newest')
             ->where('filters.page', 1)
             ->etc());
@@ -179,8 +183,8 @@ it('sorts article list with supported sort options', function (): void {
 it('keeps pagination metadata and page query', function (): void {
     for ($i = 1; $i <= 11; $i++) {
         createArticleRecord([
-            'title' => 'Artikel ke-' . $i,
-            'slug' => 'artikel-ke-' . $i,
+            'title' => 'Artikel ke-'.$i,
+            'slug' => 'artikel-ke-'.$i,
             'published_at' => now()->subMinutes($i),
         ]);
     }
@@ -199,13 +203,16 @@ it('shows article detail when slug is valid and published', function (): void {
     $article = createArticleRecord([
         'title' => 'Detail Artikel',
         'slug' => 'detail-artikel',
+        'image_banner' => 'articles/banners/detail-artikel.webp',
     ], ['seo']);
 
-    $this->get('/articles/' . $article->slug)
+    $this->get('/articles/'.$article->slug)
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Article/Show')
             ->where('article.slug', 'detail-artikel')
+            ->where('article.banner_image', '/media/public/articles/banners/detail-artikel.webp')
+            ->where('seo.image', '/media/public/articles/banners/detail-artikel.webp')
             ->has('article.blocks')
             ->etc());
 });
@@ -222,5 +229,5 @@ it('returns not found when article exists but is not published', function (): vo
         'published_at' => null,
     ]);
 
-    $this->get('/articles/' . $draftArticle->slug)->assertNotFound();
+    $this->get('/articles/'.$draftArticle->slug)->assertNotFound();
 });

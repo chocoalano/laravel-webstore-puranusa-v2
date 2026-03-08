@@ -74,15 +74,41 @@ export function useDashboardZenner(options: UseDashboardZennerOptions) {
             return null
         }
 
-        if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('/')) {
+        if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('/media/public/')) {
             return file
         }
 
-        if (file.startsWith('storage/')) {
-            return `/${file}`
+        if (file.startsWith('/')) {
+            if (file.startsWith('/storage/')) {
+                return `/media/public/${file.slice('/storage/'.length)}`
+            }
+
+            if (file.startsWith('/public/')) {
+                return `/media/public/${file.slice('/public/'.length)}`
+            }
+
+            return file
         }
 
-        return `/storage/${file}`
+        const normalized = file.replace(/^\/+/, '')
+
+        if (normalized.startsWith('media/public/')) {
+            return `/${normalized}`
+        }
+
+        if (normalized.startsWith('public/storage/')) {
+            return `/media/public/${normalized.slice('public/storage/'.length)}`
+        }
+
+        if (normalized.startsWith('storage/')) {
+            return `/media/public/${normalized.slice('storage/'.length)}`
+        }
+
+        if (normalized.startsWith('public/')) {
+            return `/media/public/${normalized.slice('public/'.length)}`
+        }
+
+        return `/media/public/${normalized}`
     }
 
     return {

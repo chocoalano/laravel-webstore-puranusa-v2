@@ -29,8 +29,8 @@ const props = defineProps<{
                 >
                     <div class="h-36 overflow-hidden bg-elevated">
                         <img
-                            v-if="article.cover_image"
-                            :src="article.cover_image"
+                            v-if="article.banner_image || article.cover_image"
+                            :src="article.banner_image || article.cover_image || ''"
                             :alt="article.title"
                             class="h-full w-full object-cover"
                             loading="lazy"

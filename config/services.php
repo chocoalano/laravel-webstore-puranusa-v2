@@ -36,16 +36,25 @@ return [
     ],
 
     'midtrans' => [
-        'env'        => env('MIDTRANS_ENV', 'sandbox'),
+        'env' => (function (): string {
+            $configuredEnv = strtolower(trim((string) env('MIDTRANS_ENV', '')));
+
+            if (in_array($configuredEnv, ['sandbox', 'production'], true)) {
+                return $configuredEnv;
+            }
+
+            return env('MIDTRANS_IS_PRODUCTION', false) ? 'production' : 'sandbox';
+        })(),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
         'server_key' => env('MIDTRANS_SERVER_KEY'),
         'client_key' => env('MIDTRANS_CLIENT_KEY'),
         'iris_key' => env('MIDTRANS_IRIS_KEY'),
     ],
 
     'lion_parcel' => [
-        'base_url'  => env('LION_PARCEL_BASE_URL', 'https://api-stg-middleware.thelionparcel.com'),
-        'auth'      => env('LION_PARCEL_AUTH', 'bGlvbnBhcmNlbDpsaW9ucGFyY2VsQDEyMw=='),
-        'origin'    => env('LION_PARCEL_ORIGIN', 'KALIDERES, JAKARTA BARAT'),
+        'base_url' => env('LION_PARCEL_BASE_URL', 'https://api-stg-middleware.thelionparcel.com'),
+        'auth' => env('LION_PARCEL_AUTH', 'bGlvbnBhcmNlbDpsaW9ucGFyY2VsQDEyMw=='),
+        'origin' => env('LION_PARCEL_ORIGIN', 'KALIDERES, JAKARTA BARAT'),
         'commodity' => env('LION_PARCEL_COMMODITY', 'ABR036'),
     ],
 

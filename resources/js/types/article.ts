@@ -30,6 +30,7 @@ export interface ArticleCard {
     seo_title: string | null
     seo_description: string | null
     excerpt: string
+    banner_image: string | null
     cover_image: string | null
     published_at: string | null
     published_label: string | null
@@ -99,6 +100,7 @@ export interface ArticleDetail {
     seo_title: string | null
     seo_description: string | null
     excerpt: string
+    banner_image: string | null
     cover_image: string | null
     tags: string[]
     blocks: ArticleBlock[]

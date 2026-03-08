@@ -2,6 +2,7 @@
 
 namespace App\Support\Pages;
 
+use App\Support\Media\PublicMediaUrl;
 use Illuminate\Support\Str;
 
 class PageBlockParser
@@ -93,16 +94,16 @@ class PageBlockParser
                 $data = is_array($block['data'] ?? null) ? $block['data'] : [];
 
                 return match ($type) {
-                    'hero' => trim((string) ($data['headline'] ?? '')) . ' ' . trim((string) ($data['subheadline'] ?? '')),
-                    'section_rich' => trim((string) ($data['title'] ?? '')) . ' ' . strip_tags((string) ($data['content'] ?? '')),
-                    'features' => trim((string) ($data['title'] ?? '')) . ' ' . collect((array) ($data['items'] ?? []))
+                    'hero' => trim((string) ($data['headline'] ?? '')).' '.trim((string) ($data['subheadline'] ?? '')),
+                    'section_rich' => trim((string) ($data['title'] ?? '')).' '.strip_tags((string) ($data['content'] ?? '')),
+                    'features' => trim((string) ($data['title'] ?? '')).' '.collect((array) ($data['items'] ?? []))
                         ->map(fn (mixed $item): string => is_array($item) ? trim((string) ($item['description'] ?? '')) : '')
                         ->implode(' '),
-                    'cta' => trim((string) ($data['title'] ?? '')) . ' ' . trim((string) ($data['description'] ?? '')),
-                    'faq' => trim((string) ($data['title'] ?? '')) . ' ' . collect((array) ($data['items'] ?? []))
+                    'cta' => trim((string) ($data['title'] ?? '')).' '.trim((string) ($data['description'] ?? '')),
+                    'faq' => trim((string) ($data['title'] ?? '')).' '.collect((array) ($data['items'] ?? []))
                         ->map(fn (mixed $item): string => is_array($item) ? trim((string) ($item['q'] ?? '')) : '')
                         ->implode(' '),
-                    'testimonials' => trim((string) ($data['title'] ?? '')) . ' ' . collect((array) ($data['items'] ?? []))
+                    'testimonials' => trim((string) ($data['title'] ?? '')).' '.collect((array) ($data['items'] ?? []))
                         ->map(fn (mixed $item): string => is_array($item) ? trim((string) ($item['quote'] ?? '')) : '')
                         ->implode(' '),
                     'heading' => trim((string) ($data['text'] ?? '')),
@@ -128,11 +129,11 @@ class PageBlockParser
             return Str::limit(trim((string) preg_replace('/\s+/', ' ', strip_tags($fallbackHtml))), 190);
         }
 
-        return 'Halaman informasi resmi dari ' . config('app.name') . '.';
+        return 'Halaman informasi resmi dari '.config('app.name').'.';
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeBlockData(string $type, array $data): array
@@ -157,7 +158,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeHeroBlock(array $data): array
@@ -180,7 +181,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeSectionRichBlock(array $data): array
@@ -196,7 +197,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeFeaturesBlock(array $data): array
@@ -223,7 +224,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeCtaBlock(array $data): array
@@ -241,7 +242,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeFaqBlock(array $data): array
@@ -262,7 +263,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeHeadingBlock(array $data): array
@@ -276,7 +277,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeRichTextBlock(array $data): array
@@ -287,7 +288,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeImageBlock(array $data): array
@@ -302,7 +303,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeListBlock(array $data): array
@@ -320,7 +321,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeQuoteBlock(array $data): array
@@ -332,7 +333,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeTestimonialsBlock(array $data): array
@@ -361,7 +362,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeSpacerBlock(array $data): array
@@ -374,7 +375,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $data
+     * @param  array<string,mixed>  $data
      * @return array<string,mixed>
      */
     private function normalizeCustomHtmlBlock(array $data): array
@@ -440,22 +441,27 @@ class PageBlockParser
 
     private function normalizeImageUrl(string $rawUrl): string
     {
+        if (str_starts_with($rawUrl, '/media/public/')) {
+            return $rawUrl;
+        }
+
         if (
             str_starts_with($rawUrl, 'http://')
             || str_starts_with($rawUrl, 'https://')
-            || str_starts_with($rawUrl, '/')
             || str_starts_with($rawUrl, 'data:')
         ) {
             return $rawUrl;
         }
 
-        $normalized = ltrim($rawUrl, '/');
-
-        if (str_starts_with($normalized, 'storage/')) {
-            return '/' . $normalized;
+        if (
+            str_starts_with($rawUrl, '/')
+            && ! str_starts_with($rawUrl, '/storage/')
+            && ! str_starts_with($rawUrl, '/public/')
+        ) {
+            return $rawUrl;
         }
 
-        return '/storage/' . $normalized;
+        return $this->resolvePublicMediaUrl($rawUrl) ?? $rawUrl;
     }
 
     private function decodeValue(mixed $value, int $maxDepth = 4): mixed
@@ -478,7 +484,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed>|array<int,mixed> $value
+     * @param  array<string,mixed>|array<int,mixed>  $value
      * @return array<int,mixed>
      */
     private function normalizeToList(array $value): array
@@ -522,7 +528,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed>|array<int,mixed> $document
+     * @param  array<string,mixed>|array<int,mixed>  $document
      */
     private function renderRichDocumentToHtml(array $document): string
     {
@@ -542,7 +548,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<int,mixed> $nodes
+     * @param  array<int,mixed>  $nodes
      */
     private function renderRichNodes(array $nodes): string
     {
@@ -558,7 +564,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $node
+     * @param  array<string,mixed>  $node
      */
     private function renderRichNode(array $node): string
     {
@@ -592,14 +598,14 @@ class PageBlockParser
 
             $alt = $this->escapeHtml(trim((string) ($attrs['alt'] ?? '')));
 
-            return '<img src="' . $this->escapeHtml($src) . '" alt="' . $alt . '">';
+            return '<img src="'.$this->escapeHtml($src).'" alt="'.$alt.'">';
         }
 
         if ($type === 'heading') {
             $attrs = is_array($node['attrs'] ?? null) ? $node['attrs'] : [];
             $level = max(1, min(6, (int) ($attrs['level'] ?? 2)));
 
-            return $this->wrapTag('h' . $level, $childrenHtml);
+            return $this->wrapTag('h'.$level, $childrenHtml);
         }
 
         if ($type === 'codeBlock') {
@@ -623,7 +629,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<string,mixed> $node
+     * @param  array<string,mixed>  $node
      */
     private function renderRichTextNode(array $node): string
     {
@@ -677,10 +683,10 @@ class PageBlockParser
 
                 $target = trim((string) ($attrs['target'] ?? ''));
                 $targetAttr = $target !== ''
-                    ? ' target="' . $this->escapeHtml($target) . '"'
+                    ? ' target="'.$this->escapeHtml($target).'"'
                     : '';
 
-                $rendered = '<a href="' . $this->escapeHtml($href) . '"' . $targetAttr . ' rel="noopener noreferrer">' . $rendered . '</a>';
+                $rendered = '<a href="'.$this->escapeHtml($href).'"'.$targetAttr.' rel="noopener noreferrer">'.$rendered.'</a>';
             }
         }
 
@@ -688,7 +694,7 @@ class PageBlockParser
     }
 
     /**
-     * @param array<int,mixed> $nodes
+     * @param  array<int,mixed>  $nodes
      */
     private function extractRichTextContent(array $nodes): string
     {
@@ -748,9 +754,34 @@ class PageBlockParser
         return $this->normalizeImageUrl($src);
     }
 
+    private function resolvePublicMediaUrl(string $rawUrl): ?string
+    {
+        try {
+            return PublicMediaUrl::resolve($rawUrl);
+        } catch (\Throwable) {
+            $normalizedPath = ltrim(trim($rawUrl), '/');
+
+            if ($normalizedPath === '') {
+                return null;
+            }
+
+            if (str_starts_with($normalizedPath, 'public/storage/')) {
+                $normalizedPath = substr($normalizedPath, strlen('public/storage/'));
+            } elseif (str_starts_with($normalizedPath, 'storage/')) {
+                $normalizedPath = substr($normalizedPath, strlen('storage/'));
+            } elseif (str_starts_with($normalizedPath, 'public/')) {
+                $normalizedPath = substr($normalizedPath, strlen('public/'));
+            }
+
+            return $normalizedPath !== ''
+                ? '/media/public/'.$normalizedPath
+                : null;
+        }
+    }
+
     private function wrapTag(string $tag, string $content): string
     {
-        return '<' . $tag . '>' . $content . '</' . $tag . '>';
+        return '<'.$tag.'>'.$content.'</'.$tag.'>';
     }
 
     private function escapeHtml(string $value): string

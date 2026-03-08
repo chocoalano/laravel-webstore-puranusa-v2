@@ -3,7 +3,7 @@
 use App\Support\Pages\PageBlockParser;
 
 it('normalizes all filament page builder block types', function (): void {
-    $parser = new PageBlockParser();
+    $parser = new PageBlockParser;
 
     $rawBlocks = [
         [
@@ -88,8 +88,8 @@ it('normalizes all filament page builder block types', function (): void {
         'custom_html',
     ]);
 
-    expect($normalized[0]['data']['image'])->toBeString()
-        ->and($parser->extractFirstImage($normalized))->toBeString();
+    expect($normalized[0]['data']['image'])->toBe('/media/public/pages/hero.png')
+        ->and($parser->extractFirstImage($normalized))->toBe('/media/public/pages/hero.png');
 
     $summary = $parser->extractSummary($normalized, null);
 
@@ -98,7 +98,7 @@ it('normalizes all filament page builder block types', function (): void {
 });
 
 it('normalizes uuid keyed block arrays from filament builder', function (): void {
-    $parser = new PageBlockParser();
+    $parser = new PageBlockParser;
 
     $rawBlocks = [
         'uuid-1' => [
@@ -120,7 +120,7 @@ it('normalizes uuid keyed block arrays from filament builder', function (): void
 });
 
 it('normalizes legacy heading block data from content field', function (): void {
-    $parser = new PageBlockParser();
+    $parser = new PageBlockParser;
 
     $normalized = $parser->normalizeBlocks([
         [
@@ -139,7 +139,7 @@ it('normalizes legacy heading block data from content field', function (): void 
 });
 
 it('normalizes tiptap richtext json content into html', function (): void {
-    $parser = new PageBlockParser();
+    $parser = new PageBlockParser;
 
     $tiptapDoc = [
         'type' => 'doc',

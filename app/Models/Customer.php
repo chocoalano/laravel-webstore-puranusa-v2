@@ -173,6 +173,7 @@ class Customer extends Authenticatable
             'omzet_group' => 'decimal:2',
             'is_stockist' => 'boolean',
             'network_generated' => 'boolean',
+            'status' => 'integer',
         ];
     }
 

@@ -5,8 +5,8 @@ namespace App\Services\Articles;
 use App\Models\Article;
 use App\Repositories\Articles\Contracts\ArticleRepositoryInterface;
 use App\Support\Articles\ArticleContentParser;
+use App\Support\Media\PublicMediaUrl;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ArticleService
@@ -17,7 +17,7 @@ class ArticleService
     ) {}
 
     /**
-     * @param array{search:string|null,tag:string|null,sort:'newest'|'oldest'|'az'|'za',page:int} $filters
+     * @param  array{search:string|null,tag:string|null,sort:'newest'|'oldest'|'az'|'za',page:int}  $filters
      * @return array<string, mixed>
      */
     public function getIndexPageData(array $filters): array
@@ -89,7 +89,7 @@ class ArticleService
                 'description' => $seoDescription,
                 'canonical' => route('articles.show', ['slug' => $formattedArticle['slug']]),
                 'robots' => 'index,follow',
-                'image' => $formattedArticle['cover_image'],
+                'image' => $formattedArticle['banner_image'] ?: $formattedArticle['cover_image'],
                 'structured_data' => $this->buildShowStructuredData($formattedArticle, $seoTitle, $seoDescription),
             ],
             'article' => $formattedArticle,
@@ -104,6 +104,7 @@ class ArticleService
         $plainText = $this->contentParser->extractPlainTextFromBlocks($blocks);
         $tags = $this->resolveArticleTags($article);
         $coverImage = $this->contentParser->extractFirstImageFromBlocks($blocks);
+        $bannerImage = $this->resolveBannerImage($article->image_banner);
 
         $excerpt = trim((string) ($article->seo_description ?? ''));
         if ($excerpt === '') {
@@ -117,6 +118,7 @@ class ArticleService
             'seo_title' => $article->seo_title,
             'seo_description' => $article->seo_description,
             'excerpt' => $excerpt,
+            'banner_image' => $bannerImage,
             'cover_image' => $coverImage,
             'published_at' => $article->published_at?->toIso8601String(),
             'published_label' => $article->published_at?->translatedFormat('d M Y'),
@@ -132,6 +134,7 @@ class ArticleService
         $blocks = $this->contentParser->normalizeBlocks($this->resolveArticleContentPayload($article));
         $plainText = $this->contentParser->extractPlainTextFromBlocks($blocks);
         $coverImage = $this->contentParser->extractFirstImageFromBlocks($blocks);
+        $bannerImage = $this->resolveBannerImage($article->image_banner);
         $tags = $this->resolveArticleTags($article);
 
         $excerpt = trim((string) ($article->seo_description ?? ''));
@@ -146,6 +149,7 @@ class ArticleService
             'seo_title' => $article->seo_title,
             'seo_description' => $article->seo_description,
             'excerpt' => $excerpt,
+            'banner_image' => $bannerImage,
             'cover_image' => $coverImage,
             'tags' => $tags,
             'blocks' => $blocks,
@@ -229,7 +233,7 @@ class ArticleService
                 continue;
             }
 
-            $image = $article['cover_image'] ?? null;
+            $image = $article['banner_image'] ?? $article['cover_image'] ?? null;
 
             if (is_string($image) && $image !== '') {
                 return $image;
@@ -307,7 +311,7 @@ class ArticleService
     }
 
     /**
-     * @param array<string, mixed> $article
+     * @param  array<string, mixed>  $article
      * @return array<int, array<string, mixed>>
      */
     private function buildShowStructuredData(array $article, string $seoTitle, string $seoDescription): array
@@ -334,8 +338,10 @@ class ArticleService
             'inLanguage' => 'id-ID',
         ];
 
-        if (! empty($article['cover_image']) && is_string($article['cover_image'])) {
-            $articleSchema['image'] = [$article['cover_image']];
+        $primaryImage = $article['banner_image'] ?? $article['cover_image'] ?? null;
+
+        if (is_string($primaryImage) && $primaryImage !== '') {
+            $articleSchema['image'] = [$primaryImage];
         }
 
         return [
@@ -365,5 +371,18 @@ class ArticleService
                 ],
             ],
         ];
+    }
+
+    private function resolveBannerImage(?string $path): ?string
+    {
+        if (! is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        try {
+            return PublicMediaUrl::resolve($path);
+        } catch (\Throwable) {
+            return $path;
+        }
     }
 }

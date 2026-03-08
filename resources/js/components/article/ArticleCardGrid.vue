@@ -38,8 +38,8 @@ function formatDate(date: string | null): string {
             >
                 <div class="relative h-48 overflow-hidden bg-elevated rounded-lg">
                     <img
-                        v-if="article.cover_image"
-                        :src="article.cover_image"
+                        v-if="article.banner_image || article.cover_image"
+                        :src="article.banner_image || article.cover_image || ''"
                         :alt="article.title"
                         class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         loading="lazy"

@@ -9,8 +9,8 @@ use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -144,7 +144,7 @@ class ArticleInfolist
                     return null;
                 }
 
-                return '<article><h4>' . e(self::resolveBlockLabel($blockType)) . '</h4>' . $builderBlockHtml . '</article>';
+                return '<article><h4>'.e(self::resolveBlockLabel($blockType)).'</h4>'.$builderBlockHtml.'</article>';
             })
             ->filter(fn (?string $builderBlockHtml): bool => filled($builderBlockHtml))
             ->implode(PHP_EOL);
@@ -276,7 +276,7 @@ class ArticleInfolist
             $headingLevel = 'h2';
         }
 
-        return "<{$headingLevel}>" . e($headingText) . "</{$headingLevel}>";
+        return "<{$headingLevel}>".e($headingText)."</{$headingLevel}>";
     }
 
     /**
@@ -284,7 +284,7 @@ class ArticleInfolist
      */
     protected static function renderRichTextBlock(array $blockData): ?string
     {
-        $richTextHtml = $blockData['content'] ?? null;
+        $richTextHtml = self::normalizeRichTextContentState($blockData['content'] ?? null);
 
         if (is_array($richTextHtml)) {
             try {
@@ -295,6 +295,126 @@ class ArticleInfolist
         }
 
         return is_string($richTextHtml) && filled($richTextHtml) ? $richTextHtml : null;
+    }
+
+    /**
+     * @return string|array<string, mixed>|null
+     */
+    protected static function normalizeRichTextContentState(mixed $value): string|array|null
+    {
+        if (is_array($value)) {
+            return self::normalizeTipTapDocument($value);
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+
+        if (is_array($decoded)) {
+            return self::normalizeTipTapDocument($decoded);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>|array<int, mixed>  $document
+     * @return array<string, mixed>
+     */
+    protected static function normalizeTipTapDocument(array $document): array
+    {
+        if (array_is_list($document)) {
+            return [
+                'type' => 'doc',
+                'content' => self::normalizeTipTapNodeList($document),
+            ];
+        }
+
+        if (($document['type'] ?? null) === 'doc') {
+            return [
+                'type' => 'doc',
+                'content' => is_array($document['content'] ?? null)
+                    ? self::normalizeTipTapNodeList($document['content'])
+                    : [],
+            ];
+        }
+
+        if (is_string($document['type'] ?? null)) {
+            $normalizedNode = self::normalizeTipTapNode($document);
+
+            return [
+                'type' => 'doc',
+                'content' => $normalizedNode ? [$normalizedNode] : [],
+            ];
+        }
+
+        if (is_array($document['content'] ?? null)) {
+            return [
+                'type' => 'doc',
+                'content' => self::normalizeTipTapNodeList($document['content']),
+            ];
+        }
+
+        return [
+            'type' => 'doc',
+            'content' => [],
+        ];
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function normalizeTipTapNodeList(array $nodes): array
+    {
+        $normalizedNodes = [];
+
+        foreach ($nodes as $node) {
+            $normalizedNode = self::normalizeTipTapNode($node);
+
+            if ($normalizedNode !== null) {
+                $normalizedNodes[] = $normalizedNode;
+            }
+        }
+
+        return $normalizedNodes;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected static function normalizeTipTapNode(mixed $node): ?array
+    {
+        if (! is_array($node)) {
+            return null;
+        }
+
+        $type = trim((string) ($node['type'] ?? ''));
+
+        if ($type === '') {
+            return null;
+        }
+
+        if (isset($node['content'])) {
+            if (is_array($node['content'])) {
+                $node['content'] = self::normalizeTipTapNodeList($node['content']);
+            } else {
+                unset($node['content']);
+            }
+        }
+
+        if ($type === 'heading') {
+            $attrs = is_array($node['attrs'] ?? null) ? $node['attrs'] : [];
+            $level = (int) ($attrs['level'] ?? 2);
+            $attrs['level'] = max(1, min(6, $level));
+            $node['attrs'] = $attrs;
+        }
+
+        $node['type'] = $type;
+
+        return $node;
     }
 
     /**
@@ -314,7 +434,7 @@ class ArticleInfolist
             return null;
         }
 
-        return '<figure><img src="' . e($imageUrl) . '" alt="' . e((string) ($blockData['alt'] ?? '')) . '" class="max-w-full rounded"></figure>';
+        return '<figure><img src="'.e($imageUrl).'" alt="'.e((string) ($blockData['alt'] ?? '')).'" class="max-w-full rounded"></figure>';
     }
 
     /**
@@ -328,11 +448,11 @@ class ArticleInfolist
             return null;
         }
 
-        $quoteHtml = '<blockquote><p>' . e($quoteText) . '</p>';
+        $quoteHtml = '<blockquote><p>'.e($quoteText).'</p>';
         $quoteCite = trim((string) ($blockData['cite'] ?? ''));
 
         if (filled($quoteCite)) {
-            $quoteHtml .= '<cite>' . e($quoteCite) . '</cite>';
+            $quoteHtml .= '<cite>'.e($quoteCite).'</cite>';
         }
 
         $quoteHtml .= '</blockquote>';
@@ -356,32 +476,32 @@ class ArticleInfolist
         $html = '';
 
         if (filled($headline)) {
-            $html .= '<h5>' . e($headline) . '</h5>';
+            $html .= '<h5>'.e($headline).'</h5>';
         }
 
         if (filled($subheadline)) {
-            $html .= '<p>' . e($subheadline) . '</p>';
+            $html .= '<p>'.e($subheadline).'</p>';
         }
 
         $ctaItems = [];
 
         if (filled($primaryCtaLabel) && filled($primaryCtaUrl)) {
-            $ctaItems[] = '<li><a href="' . e($primaryCtaUrl) . '">' . e($primaryCtaLabel) . '</a></li>';
+            $ctaItems[] = '<li><a href="'.e($primaryCtaUrl).'">'.e($primaryCtaLabel).'</a></li>';
         }
 
         if (filled($secondaryCtaLabel) && filled($secondaryCtaUrl)) {
-            $ctaItems[] = '<li><a href="' . e($secondaryCtaUrl) . '">' . e($secondaryCtaLabel) . '</a></li>';
+            $ctaItems[] = '<li><a href="'.e($secondaryCtaUrl).'">'.e($secondaryCtaLabel).'</a></li>';
         }
 
         if ($ctaItems !== []) {
-            $html .= '<ul>' . implode('', $ctaItems) . '</ul>';
+            $html .= '<ul>'.implode('', $ctaItems).'</ul>';
         }
 
         if (filled($imagePath)) {
             $imageUrl = self::resolveImageUrl($imagePath);
 
             if (filled($imageUrl)) {
-                $html .= '<figure><img src="' . e($imageUrl) . '" alt="' . e($headline ?: 'Hero Image') . '"></figure>';
+                $html .= '<figure><img src="'.e($imageUrl).'" alt="'.e($headline ?: 'Hero Image').'"></figure>';
             }
         }
 
@@ -400,7 +520,7 @@ class ArticleInfolist
         $html = '';
 
         if (filled($title)) {
-            $html .= '<h5>' . e($title) . '</h5>';
+            $html .= '<h5>'.e($title).'</h5>';
         }
 
         if (filled($content)) {
@@ -426,11 +546,11 @@ class ArticleInfolist
         $html = '';
 
         if (filled($title)) {
-            $html .= '<h5>' . e($title) . '</h5>';
+            $html .= '<h5>'.e($title).'</h5>';
         }
 
         if (filled($subtitle)) {
-            $html .= '<p>' . e($subtitle) . '</p>';
+            $html .= '<p>'.e($subtitle).'</p>';
         }
 
         $featureItems = collect($items)
@@ -449,20 +569,20 @@ class ArticleInfolist
                 $featureHtml = '';
 
                 if (filled($featureTitle)) {
-                    $featureHtml .= '<strong>' . e($featureTitle) . '</strong>';
+                    $featureHtml .= '<strong>'.e($featureTitle).'</strong>';
                 }
 
                 if (filled($featureDescription)) {
-                    $featureHtml .= '<p>' . e($featureDescription) . '</p>';
+                    $featureHtml .= '<p>'.e($featureDescription).'</p>';
                 }
 
-                return '<li>' . $featureHtml . '</li>';
+                return '<li>'.$featureHtml.'</li>';
             })
             ->filter(fn (?string $featureHtml): bool => filled($featureHtml))
             ->implode('');
 
         if (filled($featureItems)) {
-            $html .= '<ul>' . $featureItems . '</ul>';
+            $html .= '<ul>'.$featureItems.'</ul>';
         }
 
         return $html;
@@ -481,15 +601,15 @@ class ArticleInfolist
         $html = '';
 
         if (filled($title)) {
-            $html .= '<h5>' . e($title) . '</h5>';
+            $html .= '<h5>'.e($title).'</h5>';
         }
 
         if (filled($description)) {
-            $html .= '<p>' . e($description) . '</p>';
+            $html .= '<p>'.e($description).'</p>';
         }
 
         if (filled($buttonLabel) && filled($buttonUrl)) {
-            $html .= '<p><a href="' . e($buttonUrl) . '">' . e($buttonLabel) . '</a></p>';
+            $html .= '<p><a href="'.e($buttonUrl).'">'.e($buttonLabel).'</a></p>';
         }
 
         return $html;
@@ -506,7 +626,7 @@ class ArticleInfolist
         $html = '';
 
         if (filled($title)) {
-            $html .= '<h5>' . e($title) . '</h5>';
+            $html .= '<h5>'.e($title).'</h5>';
         }
 
         $faqItems = collect($items)
@@ -525,20 +645,20 @@ class ArticleInfolist
                 $faqHtml = '';
 
                 if (filled($question)) {
-                    $faqHtml .= '<strong>' . e($question) . '</strong>';
+                    $faqHtml .= '<strong>'.e($question).'</strong>';
                 }
 
                 if (filled($answer)) {
-                    $faqHtml .= '<p>' . e($answer) . '</p>';
+                    $faqHtml .= '<p>'.e($answer).'</p>';
                 }
 
-                return '<li>' . $faqHtml . '</li>';
+                return '<li>'.$faqHtml.'</li>';
             })
             ->filter(fn (?string $faqHtml): bool => filled($faqHtml))
             ->implode('');
 
         if (filled($faqItems)) {
-            $html .= '<ol>' . $faqItems . '</ol>';
+            $html .= '<ol>'.$faqItems.'</ol>';
         }
 
         return $html;
@@ -555,7 +675,7 @@ class ArticleInfolist
         $html = '';
 
         if (filled($title)) {
-            $html .= '<h5>' . e($title) . '</h5>';
+            $html .= '<h5>'.e($title).'</h5>';
         }
 
         $testimonialItems = collect($items)
@@ -579,29 +699,29 @@ class ArticleInfolist
                     $avatarUrl = self::resolveImageUrl($avatarPath);
 
                     if (filled($avatarUrl)) {
-                        $testimonialHtml .= '<img src="' . e($avatarUrl) . '" alt="' . e($name ?: 'Avatar') . '">';
+                        $testimonialHtml .= '<img src="'.e($avatarUrl).'" alt="'.e($name ?: 'Avatar').'">';
                     }
                 }
 
                 if (filled($quote)) {
-                    $testimonialHtml .= '<blockquote><p>' . e($quote) . '</p></blockquote>';
+                    $testimonialHtml .= '<blockquote><p>'.e($quote).'</p></blockquote>';
                 }
 
                 if (filled($name)) {
-                    $testimonialHtml .= '<p><strong>' . e($name) . '</strong></p>';
+                    $testimonialHtml .= '<p><strong>'.e($name).'</strong></p>';
                 }
 
                 if (filled($role)) {
-                    $testimonialHtml .= '<p>' . e($role) . '</p>';
+                    $testimonialHtml .= '<p>'.e($role).'</p>';
                 }
 
-                return '<li>' . $testimonialHtml . '</li>';
+                return '<li>'.$testimonialHtml.'</li>';
             })
             ->filter(fn (?string $testimonialHtml): bool => filled($testimonialHtml))
             ->implode('');
 
         if (filled($testimonialItems)) {
-            $html .= '<ul>' . $testimonialItems . '</ul>';
+            $html .= '<ul>'.$testimonialItems.'</ul>';
         }
 
         return $html;
@@ -620,7 +740,7 @@ class ArticleInfolist
             default => 'Spacer Medium',
         };
 
-        return '<p><em>' . e($label) . '</em></p><hr>';
+        return '<p><em>'.e($label).'</em></p><hr>';
     }
 
     /**
@@ -644,13 +764,13 @@ class ArticleInfolist
                     return null;
                 }
 
-                return '<li><strong>' . e($metaKeyString) . ':</strong> ' . e($metaValueString) . '</li>';
+                return '<li><strong>'.e($metaKeyString).':</strong> '.e($metaValueString).'</li>';
             })
             ->filter(fn (?string $metaRow): bool => filled($metaRow))
             ->implode('');
 
         if (filled($metaHtml)) {
-            $html .= '<ul>' . $metaHtml . '</ul>';
+            $html .= '<ul>'.$metaHtml.'</ul>';
         }
 
         return $html;
@@ -662,7 +782,7 @@ class ArticleInfolist
     protected static function renderUnknownBlock(string $blockType, array $blockData): ?string
     {
         if ($blockData === []) {
-            return '<p><em>Block ' . e(Str::headline($blockType)) . '</em></p>';
+            return '<p><em>Block '.e(Str::headline($blockType)).'</em></p>';
         }
 
         $json = json_encode($blockData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
@@ -671,7 +791,7 @@ class ArticleInfolist
             return null;
         }
 
-        return '<p><strong>' . e(Str::headline($blockType)) . '</strong></p><pre><code>' . e($json) . '</code></pre>';
+        return '<p><strong>'.e(Str::headline($blockType)).'</strong></p><pre><code>'.e($json).'</code></pre>';
     }
 
     protected static function normalizeSingleFileValue(mixed $value): ?string
@@ -735,7 +855,7 @@ class ArticleInfolist
         if ($disk === 'public') {
             return Str::startsWith($normalizedImagePath, 'storage/')
                 ? asset($normalizedImagePath)
-                : asset('storage/' . $normalizedImagePath);
+                : asset('storage/'.$normalizedImagePath);
         }
 
         return $normalizedImagePath;

@@ -18,8 +18,8 @@ const { publishedDate, updatedDate, readTimeLabel, jsonLdScripts, breadcrumbItem
     props.seo,
 )
 
-const hasCoverImage = computed(() => !!props.article.cover_image)
-const coverSrc = computed(() => props.article.cover_image || '')
+const heroImage = computed(() => props.article.banner_image || props.article.cover_image || '')
+const hasHeroImage = computed(() => heroImage.value !== '')
 </script>
 
 <template>
@@ -34,8 +34,8 @@ const coverSrc = computed(() => props.article.cover_image || '')
     <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
         <!-- HERO / COVER -->
         <div class="relative isolate">
-            <div v-if="hasCoverImage" class="absolute inset-0 -z-10">
-                <img :src="coverSrc" :alt="props.article.title" class="h-full w-full object-cover" />
+            <div v-if="hasHeroImage" class="absolute inset-0 -z-10">
+                <img :src="heroImage" :alt="props.article.title" class="h-full w-full object-cover" />
                 <div class="absolute inset-0 bg-linear-to-b from-black/55 via-black/35 to-gray-50 dark:to-gray-950" />
             </div>
 
@@ -86,19 +86,24 @@ const coverSrc = computed(() => props.article.cover_image || '')
 
         <!-- BODY -->
         <div class="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
-            <!-- ✅ SINGLE CARD (no double) -->
             <UCard
                 class="-mt-10 rounded-3xl backdrop-blur dark:bg-gray-950/65"
                 :ui="{ body: 'p-5 sm:p-8' }">
-                <ArticleDetailHeader :article="props.article" :breadcrumb-items="breadcrumbItems"
-                    :published-date="publishedDate" :updated-date="updatedDate" :read-time-label="readTimeLabel" />
+                <div class="space-y-8">
+                    <ArticleDetailHeader
+                        :article="props.article"
+                        :breadcrumb-items="breadcrumbItems"
+                        :published-date="publishedDate"
+                        :updated-date="updatedDate"
+                        :read-time-label="readTimeLabel"
+                    />
 
-                <USeparator class="my-6 dark:border-white/10" />
+                    <USeparator class="dark:border-white/10" />
 
-                <ArticleContentRenderer :blocks="props.article.blocks" />
+                    <ArticleContentRenderer :blocks="props.article.blocks" />
+                </div>
             </UCard>
 
-            <!-- Related (tanpa card supaya tidak terasa bertumpuk) -->
             <div class="mt-10">
                 <ArticleRelatedPosts :related-articles="props.relatedArticles" />
             </div>

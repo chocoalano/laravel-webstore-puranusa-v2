@@ -14,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
@@ -21,6 +22,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CustomerForm
 {
@@ -31,309 +33,372 @@ class CustomerForm
      */
     public static function configure(Schema $form): Schema
     {
-        return $form
+        return $form->schema(self::formSchema());
+    }
+
+    /**
+     * @return array<int, Tabs|Section>
+     */
+    private static function formSchema(): array
+    {
+        return [
+            self::customerManagementTabs(),
+            self::adminInternalLogSection(),
+        ];
+    }
+
+    private static function customerManagementTabs(): Tabs
+    {
+        return Tabs::make('Customer Management')
+            ->columnSpanFull()
+            ->tabs([
+                self::identityAddressTab(),
+                self::networkTab(),
+                self::financialTab(),
+            ]);
+    }
+
+    private static function identityAddressTab(): Tabs\Tab
+    {
+        return Tabs\Tab::make('Identitas & Alamat')
+            ->icon('heroicon-o-user-circle')
+            ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic') || self::isFormSectionEnabled('addresses'))
             ->schema([
-                Tabs::make('Customer Management')
+                self::profileBasicSection(),
+                self::addressesSection(),
+            ]);
+    }
+
+    private static function profileBasicSection(): Section
+    {
+        return Section::make('Informasi Profil Dasar')
+            ->description('Data utama akun customer yang digunakan untuk identifikasi dan login.')
+            ->columns(3)
+            ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic'))
+            ->schema([
+                TextInput::make('name')
+                    ->label('Nama Lengkap')
+                    ->required()
+                    ->maxLength(255)
+                    ->helperText('Masukkan nama lengkap sesuai identitas resmi untuk keperluan verifikasi.'),
+
+                TextInput::make('username')
+                    ->label('Username')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->alphaNum()
+                    ->helperText('Gunakan kombinasi huruf dan angka tanpa spasi (Unique ID).'),
+
+                TextInput::make('nik')
+                    ->label('Nomor NIK')
+                    ->required()
+                    ->length(16)
+                    ->helperText('16 digit Nomor Induk Kependudukan sesuai KTP.'),
+
+                TextInput::make('email')
+                    ->label('Alamat Email')
+                    ->email()
+                    ->required()
+                    ->rule(self::maxUsageRule('email'))
+                    ->prefixIcon('heroicon-m-envelope')
+                    ->helperText('Email aktif untuk korespondensi dan pemulihan akun.'),
+
+                TextInput::make('phone')
+                    ->label('Nomor Telepon/WA')
+                    ->tel()
+                    ->rule(self::maxUsageRule('phone'))
+                    ->prefix('+62')
+                    ->required()
+                    ->helperText('Masukkan nomor yang aktif di WhatsApp untuk notifikasi sistem.'),
+
+                TextInput::make('password')
+                    ->label('Password Akun')
+                    ->password()
+                    ->revealable()
+                    ->required(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->helperText('Minimal 8 karakter. Kosongkan jika tidak ingin mengubah password saat ini.'),
+
+                Select::make('gender')
+                    ->label('Jenis Kelamin')
+                    ->options([
+                        'L' => 'Laki-laki',
+                        'P' => 'Perempuan',
+                    ])
+                    ->native(false)
+                    ->helperText('Digunakan untuk personalisasi promo dan data demografi.'),
+
+                DateTimePicker::make('email_verified_at')
+                    ->label('Status Verifikasi Email')
+                    ->placeholder('Belum terverifikasi')
+                    ->helperText('Menunjukkan kapan user melakukan konfirmasi email.'),
+            ]);
+    }
+
+    private static function addressesSection(): Section
+    {
+        return Section::make('Buku Alamat')
+            ->description('Daftar lokasi pengiriman barang untuk customer ini.')
+            ->visible(fn (): bool => self::isFormSectionEnabled('addresses'))
+            ->schema([
+                self::addressesRepeater(),
+            ]);
+    }
+
+    private static function addressesRepeater(): Repeater
+    {
+        return Repeater::make('addresses')
+            ->relationship('addresses')
+            ->label('Lokasi Pengiriman')
+            ->collapsible()
+            ->itemLabel(fn (array $state): ?string => $state['label'] ?? 'Alamat Baru')
+            ->schema([
+                TextInput::make('label')
+                    ->label('Label Alamat')
+                    ->placeholder('Contoh: Rumah, Kantor, Toko')
+                    ->required()
+                    ->helperText('Nama alias untuk membedakan antar alamat.'),
+
+                Toggle::make('is_default')
+                    ->label('Alamat Utama')
+                    ->inline(false)
+                    ->helperText('Aktifkan jika ini adalah alamat tujuan utama pengiriman.'),
+
+                TextInput::make('recipient_name')
+                    ->label('Nama Penerima')
+                    ->required()
+                    ->helperText('Nama orang yang berada di lokasi tujuan.'),
+
+                TextInput::make('recipient_phone')
+                    ->label('Kontak Penerima')
+                    ->tel()
+                    ->required()
+                    ->helperText('Nomor telepon yang dapat dihubungi oleh pihak ekspedisi.'),
+
+                Textarea::make('address_line1')
+                    ->label('Detail Alamat')
+                    ->placeholder('Nama jalan, No. Rumah, RT/RW, Komplek, dll.')
+                    ->required()
+                    ->rows(2)
                     ->columnSpanFull()
-                    ->tabs([
-                        // --- TAB 1: IDENTITAS & ALAMAT ---
-                        Tabs\Tab::make('Identitas & Alamat')
-                            ->icon('heroicon-o-user-circle')
-                            ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic') || self::isFormSectionEnabled('addresses'))
-                            ->schema([
-                                Section::make('Informasi Profil Dasar')
-                                    ->description('Data utama akun customer yang digunakan untuk identifikasi dan login.')
-                                    ->columns(3)
-                                    ->visible(fn (): bool => self::isFormSectionEnabled('profile_basic'))
-                                    ->schema([
-                                        TextInput::make('name')
-                                            ->label('Nama Lengkap')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->helperText('Masukkan nama lengkap sesuai identitas resmi untuk keperluan verifikasi.'),
+                    ->helperText('Tuliskan alamat selengkap mungkin agar mudah ditemukan kurir.'),
 
-                                        TextInput::make('username')
-                                            ->label('Username')
-                                            ->required()
-                                            ->unique(ignoreRecord: true)
-                                            ->alphaNum()
-                                            ->helperText('Gunakan kombinasi huruf dan angka tanpa spasi (Unique ID).'),
+                Select::make('province_id')
+                    ->label('Provinsi')
+                    ->options(fn (): array => self::provinceOptions())
+                    ->searchable()
+                    ->live()
+                    ->required()
+                    ->afterStateUpdated(function (Set $set, $state) {
+                        $selectedId = self::normalizeRegionId($state);
+                        $provinceLabel = $selectedId ? (self::provinceOptions()[$selectedId] ?? null) : null;
+                        $set('province_label', self::toUppercaseLabel($provinceLabel));
 
-                                        TextInput::make('nik')
-                                            ->label('Nomor NIK')
-                                            ->required()
-                                            ->length(16)
-                                            ->helperText('16 digit Nomor Induk Kependudukan sesuai KTP.'),
+                        $set('city_id', null);
+                        $set('city_label', null);
+                        $set('district', null);
+                    })
+                    ->helperText('Pilih provinsi tujuan terlebih dahulu.'),
 
-                                        TextInput::make('email')
-                                            ->label('Alamat Email')
-                                            ->email()
-                                            ->required()
-                                            ->rule(self::maxUsageRule('email'))
-                                            ->prefixIcon('heroicon-m-envelope')
-                                            ->helperText('Email aktif untuk korespondensi dan pemulihan akun.'),
+                Select::make('city_id')
+                    ->label('Kota/Kabupaten')
+                    ->options(fn (Get $get): array => self::cityOptions($get('province_id')))
+                    ->searchable()
+                    ->live()
+                    ->required()
+                    ->disabled(fn (Get $get): bool => blank($get('province_id')))
+                    ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                        $selectedId = self::normalizeRegionId($state);
+                        $cityOptions = self::cityOptions($get('province_id'));
+                        $cityLabel = $selectedId ? ($cityOptions[$selectedId] ?? null) : null;
+                        $set('city_label', self::toUppercaseLabel($cityLabel));
 
-                                        TextInput::make('phone')
-                                            ->label('Nomor Telepon/WA')
-                                            ->tel()
-                                            ->rule(self::maxUsageRule('phone'))
-                                            ->prefix('+62')
-                                            ->required()
-                                            ->helperText('Masukkan nomor yang aktif di WhatsApp untuk notifikasi sistem.'),
+                        $set('district', null);
+                    })
+                    ->helperText('Daftar kota akan muncul setelah provinsi dipilih.'),
 
-                                        TextInput::make('password')
-                                            ->label('Password Akun')
-                                            ->password()
-                                            ->revealable()
-                                            ->required(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
-                                            ->dehydrated(fn ($state) => filled($state))
-                                            ->helperText('Minimal 8 karakter. Kosongkan jika tidak ingin mengubah password saat ini.'),
+                Select::make('district')
+                    ->label('Kecamatan')
+                    ->options(fn (Get $get): array => self::districtOptions($get('city_id')))
+                    ->searchable()
+                    ->required()
+                    ->disabled(fn (Get $get): bool => blank($get('city_id')))
+                    ->afterStateUpdated(function (Set $set, $state) {
+                        $set('district_lion', self::toUppercaseLabel($state));
+                    })
+                    ->helperText('Wajib diisi untuk perhitungan ongkir yang akurat.'),
 
-                                        Select::make('gender')
-                                            ->label('Jenis Kelamin')
-                                            ->options([
-                                                'L' => 'Laki-laki',
-                                                'P' => 'Perempuan',
-                                            ])
-                                            ->native(false)
-                                            ->helperText('Digunakan untuk personalisasi promo dan data demografi.'),
+                TextInput::make('postal_code')
+                    ->label('Kode Pos')
+                    ->numeric()
+                    ->length(5)
+                    ->helperText('5 digit kode wilayah pos.'),
 
-                                        DateTimePicker::make('email_verified_at')
-                                            ->label('Status Verifikasi Email')
-                                            ->placeholder('Belum terverifikasi')
-                                            ->helperText('Menunjukkan kapan user melakukan konfirmasi email.'),
-                                    ]),
+                Textarea::make('description')
+                    ->label('Catatan Kurir')
+                    ->placeholder('Contoh: Pagar hitam, dekat warung Padang...')
+                    ->rows(2)
+                    ->columnSpanFull(),
 
-                                Section::make('Buku Alamat')
-                                    ->description('Daftar lokasi pengiriman barang untuk customer ini.')
-                                    ->visible(fn (): bool => self::isFormSectionEnabled('addresses'))
-                                    ->schema([
-                                        Repeater::make('addresses')
-                                            ->relationship('addresses')
-                                            ->label('Lokasi Pengiriman')
-                                            ->collapsible()
-                                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? 'Alamat Baru')
-                                            ->schema([
-                                                TextInput::make('label')
-                                                    ->label('Label Alamat')
-                                                    ->placeholder('Contoh: Rumah, Kantor, Toko')
-                                                    ->required()
-                                                    ->helperText('Nama alias untuk membedakan antar alamat.'),
+                Hidden::make('province_label'),
+                Hidden::make('city_label'),
+                Hidden::make('district_lion'),
+            ])
+            ->columns(2)
+            ->defaultItems(1)
+            ->addActionLabel('Tambahkan Alamat Lain')
+            ->columnSpanFull();
+    }
 
-                                                Toggle::make('is_default')
-                                                    ->label('Alamat Utama')
-                                                    ->inline(false)
-                                                    ->helperText('Aktifkan jika ini adalah alamat tujuan utama pengiriman.'),
+    private static function networkTab(): Tabs\Tab
+    {
+        return Tabs\Tab::make('Jaringan')
+            ->icon('heroicon-o-share')
+            ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
+            ->schema([
+                self::networkAffiliationSection(),
+            ]);
+    }
 
-                                                TextInput::make('recipient_name')
-                                                    ->label('Nama Penerima')
-                                                    ->required()
-                                                    ->helperText('Nama orang yang berada di lokasi tujuan.'),
+    private static function networkAffiliationSection(): Section
+    {
+        return Section::make('Posisi & Afiliasi')
+            ->columns(3)
+            ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
+            ->schema([
+                Select::make('sponsor_id')
+                    ->label('Sponsor')
+                    ->relationship('sponsor', 'username')
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Member yang mereferensikan pendaftaran akun ini.'),
 
-                                                TextInput::make('recipient_phone')
-                                                    ->label('Kontak Penerima')
-                                                    ->tel()
-                                                    ->required()
-                                                    ->helperText('Nomor telepon yang dapat dihubungi oleh pihak ekspedisi.'),
+                Select::make('upline_id')
+                    ->label('Upline')
+                    ->relationship('upline', 'username')
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Titik koordinat penempatan akun dalam struktur organisasi.'),
 
-                                                Textarea::make('address_line1')
-                                                    ->label('Detail Alamat')
-                                                    ->placeholder('Nama jalan, No. Rumah, RT/RW, Komplek, dll.')
-                                                    ->required()
-                                                    ->rows(2)
-                                                    ->columnSpanFull()
-                                                    ->helperText('Tuliskan alamat selengkap mungkin agar mudah ditemukan kurir.'),
+                Select::make('position')
+                    ->label('Posisi Jalur')
+                    ->options(['left' => 'Kiri (Left)', 'right' => 'Kanan (Right)'])
+                    ->helperText('Penempatan pada kaki kiri atau kaki kanan (Binary System).'),
 
-                                                Select::make('province_id')
-                                                    ->label('Provinsi')
-                                                    ->options(fn (): array => self::provinceOptions())
-                                                    ->searchable()
-                                                    ->live()
-                                                    ->required()
-                                                    ->afterStateUpdated(function (Set $set, $state) {
-                                                        $selectedId = self::normalizeRegionId($state);
-                                                        $provinceLabel = $selectedId ? (self::provinceOptions()[$selectedId] ?? null) : null;
-                                                        $set('province_label', self::toUppercaseLabel($provinceLabel));
+                Select::make('package_id')
+                    ->label('Paket Bergabung')
+                    ->relationship('package', 'name')
+                    ->required()
+                    ->helperText('Lisensi paket bisnis yang dibeli saat pendaftaran.'),
 
-                                                        $set('city_id', null);
-                                                        $set('city_label', null);
-                                                        $set('district', null);
-                                                    })
-                                                    ->helperText('Pilih provinsi tujuan terlebih dahulu.'),
+                Select::make('level')
+                    ->label('Peringkat Karier')
+                    ->options([
+                        'Associate' => 'Associate',
+                        'Senior Associate' => 'Senior Associate',
+                        'Executive' => 'Executive',
+                        'Director' => 'Director',
+                    ])
+                    ->helperText('Status jenjang karier member berdasarkan omzet/prestasi.'),
 
-                                                Select::make('city_id')
-                                                    ->label('Kota/Kabupaten')
-                                                    ->options(fn (Get $get): array => self::cityOptions($get('province_id')))
-                                                    ->searchable()
-                                                    ->live()
-                                                    ->required()
-                                                    ->disabled(fn (Get $get): bool => blank($get('province_id')))
-                                                    ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                                        $selectedId = self::normalizeRegionId($state);
-                                                        $cityOptions = self::cityOptions($get('province_id'));
-                                                        $cityLabel = $selectedId ? ($cityOptions[$selectedId] ?? null) : null;
-                                                        $set('city_label', self::toUppercaseLabel($cityLabel));
+                ToggleButtons::make('status')
+                    ->label('Status member berdasarkan jaringan.')
+                    ->options(self::statusFieldOptions())
+                    ->required()
+                    ->default(1)
+                    ->dehydrateStateUsing(fn (mixed $state): int => (int) $state)
+                    ->rules(self::statusFieldRules())
+                    ->grouped(),
+            ]);
+    }
 
-                                                        $set('district', null);
-                                                    })
-                                                    ->helperText('Daftar kota akan muncul setelah provinsi dipilih.'),
+    private static function financialTab(): Tabs\Tab
+    {
+        return Tabs\Tab::make('Finansial')
+            ->icon('heroicon-o-banknotes')
+            ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank') || self::isFormSectionEnabled('stockist_authority'))
+            ->schema([
+                self::financialBankSection(),
+                self::stockistAuthoritySection(),
+            ]);
+    }
 
-                                                Select::make('district')
-                                                    ->label('Kecamatan')
-                                                    ->options(fn (Get $get): array => self::districtOptions($get('city_id')))
-                                                    ->searchable()
-                                                    ->required()
-                                                    ->disabled(fn (Get $get): bool => blank($get('city_id')))
-                                                    ->afterStateUpdated(function (Set $set, $state) {
-                                                        $set('district_lion', self::toUppercaseLabel($state));
-                                                    })
-                                                    ->helperText('Wajib diisi untuk perhitungan ongkir yang akurat.'),
+    private static function financialBankSection(): Section
+    {
+        return Section::make('Data Rekening Transfer')
+            ->description('Informasi bank digunakan untuk pencairan (Withdrawal) bonus.')
+            ->columns(2)
+            ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank'))
+            ->schema([
+                TextInput::make('bank_name')
+                    ->label('Nama Bank')
+                    ->placeholder('Contoh: BCA / Mandiri / BNI')
+                    ->helperText('Gunakan nama resmi bank.'),
 
-                                                TextInput::make('postal_code')
-                                                    ->label('Kode Pos')
-                                                    ->numeric()
-                                                    ->length(5)
-                                                    ->helperText('5 digit kode wilayah pos.'),
+                TextInput::make('bank_account')
+                    ->label('Nomor Rekening')
+                    ->helperText('Pastikan nomor rekening sesuai dengan nama pemilik akun.'),
+            ]);
+    }
 
-                                                Textarea::make('description')
-                                                    ->label('Catatan Kurir')
-                                                    ->placeholder('Contoh: Pagar hitam, dekat warung Padang...')
-                                                    ->rows(2)
-                                                    ->columnSpanFull(),
+    private static function stockistAuthoritySection(): Section
+    {
+        return Section::make('Otoritas Stockist')
+            ->description('Akses khusus jika member ditunjuk sebagai distributor wilayah.')
+            ->columns(3)
+            ->visible(fn (): bool => self::isFormSectionEnabled('stockist_authority'))
+            ->schema([
+                Toggle::make('is_stockist')
+                    ->label('Status Stockist Aktif')
+                    ->live()
+                    ->helperText('Aktifkan jika member ini berperan sebagai gudang distribusi.'),
 
-                                                Hidden::make('province_label'),
-                                                Hidden::make('city_label'),
-                                                Hidden::make('district_lion'),
-                                            ])
-                                            ->columns(2)
-                                            ->defaultItems(1)
-                                            ->addActionLabel('Tambahkan Alamat Lain')
-                                            ->columnSpanFull(),
-                                    ]),
-                            ]),
+                Select::make('stockist_province_id')
+                    ->label('Provinsi Stockist')
+                    ->options(fn (): array => self::provinceOptions())
+                    ->searchable()
+                    ->live()
+                    ->required(fn (Get $get): bool => (bool) $get('is_stockist'))
+                    ->disabled(fn (Get $get): bool => ! (bool) $get('is_stockist'))
+                    ->afterStateUpdated(function (Set $set, $state) {
+                        $selectedId = self::normalizeRegionId($state);
+                        $provinceLabel = $selectedId ? (self::provinceOptions()[$selectedId] ?? null) : null;
+                        $set('stockist_province_name', self::toUppercaseLabel($provinceLabel));
+                        $set('stockist_kabupaten_id', null);
+                    })
+                    ->helperText('Wilayah provinsi penempatan stok.'),
 
-                        // --- TAB 2: STRUKTUR JARINGAN ---
-                        Tabs\Tab::make('Jaringan')
-                            ->icon('heroicon-o-share')
-                            ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
-                            ->schema([
-                                Section::make('Posisi & Afiliasi')
-                                    ->columns(3)
-                                    ->visible(fn (): bool => self::isFormSectionEnabled('network_affiliation'))
-                                    ->schema([
-                                        Select::make('sponsor_id')
-                                            ->label('Sponsor')
-                                            ->relationship('sponsor', 'username')
-                                            ->searchable()
-                                            ->preload()
-                                            ->helperText('Member yang mereferensikan pendaftaran akun ini.'),
+                Select::make('stockist_kabupaten_id')
+                    ->label('Kota/Kabupaten Stockist')
+                    ->options(fn (Get $get): array => self::cityOptions($get('stockist_province_id')))
+                    ->searchable()
+                    ->live()
+                    ->required(fn (Get $get): bool => (bool) $get('is_stockist'))
+                    ->disabled(fn (Get $get): bool => ! (bool) $get('is_stockist') || blank($get('stockist_province_id')))
+                    ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                        $selectedId = self::normalizeRegionId($state);
+                        $cityOptions = self::cityOptions($get('stockist_province_id'));
+                        $cityLabel = $selectedId ? ($cityOptions[$selectedId] ?? null) : null;
+                        $set('stockist_kabupaten_name', self::toUppercaseLabel($cityLabel));
+                    })
+                    ->helperText('Cakupan kota operasional distributor.'),
 
-                                        Select::make('upline_id')
-                                            ->label('Upline')
-                                            ->relationship('upline', 'username')
-                                            ->searchable()
-                                            ->preload()
-                                            ->helperText('Titik koordinat penempatan akun dalam struktur organisasi.'),
+                Hidden::make('stockist_province_name'),
+                Hidden::make('stockist_kabupaten_name'),
+            ]);
+    }
 
-                                        Select::make('position')
-                                            ->label('Posisi Jalur')
-                                            ->options(['left' => 'Kiri (Left)', 'right' => 'Kanan (Right)'])
-                                            ->helperText('Penempatan pada kaki kiri atau kaki kanan (Binary System).'),
-
-                                        Select::make('package_id')
-                                            ->label('Paket Bergabung')
-                                            ->relationship('package', 'name')
-                                            ->required()
-                                            ->helperText('Lisensi paket bisnis yang dibeli saat pendaftaran.'),
-
-                                        Select::make('level')
-                                            ->label('Peringkat Karier')
-                                            ->options([
-                                                'Associate' => 'Associate',
-                                                'Senior Associate' => 'Senior Associate',
-                                                'Executive' => 'Executive',
-                                                'Director' => 'Director',
-                                            ])
-                                            ->helperText('Status jenjang karier member berdasarkan omzet/prestasi.'),
-                                    ]),
-                            ]),
-
-                        // --- TAB 3: PERBANKAN & STOCKIST ---
-                        Tabs\Tab::make('Finansial')
-                            ->icon('heroicon-o-banknotes')
-                            ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank') || self::isFormSectionEnabled('stockist_authority'))
-                            ->schema([
-                                Section::make('Data Rekening Transfer')
-                                    ->description('Informasi bank digunakan untuk pencairan (Withdrawal) bonus.')
-                                    ->columns(2)
-                                    ->visible(fn (): bool => self::isFormSectionEnabled('financial_bank'))
-                                    ->schema([
-                                        TextInput::make('bank_name')
-                                            ->label('Nama Bank')
-                                            ->placeholder('Contoh: BCA / Mandiri / BNI')
-                                            ->helperText('Gunakan nama resmi bank.'),
-
-                                        TextInput::make('bank_account')
-                                            ->label('Nomor Rekening')
-                                            ->helperText('Pastikan nomor rekening sesuai dengan nama pemilik akun.'),
-                                    ]),
-
-                                Section::make('Otoritas Stockist')
-                                    ->description('Akses khusus jika member ditunjuk sebagai distributor wilayah.')
-                                    ->columns(3)
-                                    ->visible(fn (): bool => self::isFormSectionEnabled('stockist_authority'))
-                                    ->schema([
-                                        Toggle::make('is_stockist')
-                                            ->label('Status Stockist Aktif')
-                                            ->live()
-                                            ->helperText('Aktifkan jika member ini berperan sebagai gudang distribusi.'),
-
-                                        Select::make('stockist_province_id')
-                                            ->label('Provinsi Stockist')
-                                            ->options(fn (): array => self::provinceOptions())
-                                            ->searchable()
-                                            ->live()
-                                            ->required(fn (Get $get): bool => (bool) $get('is_stockist'))
-                                            ->disabled(fn (Get $get): bool => ! (bool) $get('is_stockist'))
-                                            ->afterStateUpdated(function (Set $set, $state) {
-                                                $selectedId = self::normalizeRegionId($state);
-                                                $provinceLabel = $selectedId ? (self::provinceOptions()[$selectedId] ?? null) : null;
-                                                $set('stockist_province_name', self::toUppercaseLabel($provinceLabel));
-                                                $set('stockist_kabupaten_id', null);
-                                            })
-                                            ->helperText('Wilayah provinsi penempatan stok.'),
-
-                                        Select::make('stockist_kabupaten_id')
-                                            ->label('Kota/Kabupaten Stockist')
-                                            ->options(fn (Get $get): array => self::cityOptions($get('stockist_province_id')))
-                                            ->searchable()
-                                            ->live()
-                                            ->required(fn (Get $get): bool => (bool) $get('is_stockist'))
-                                            ->disabled(fn (Get $get): bool => ! (bool) $get('is_stockist') || blank($get('stockist_province_id')))
-                                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                                $selectedId = self::normalizeRegionId($state);
-                                                $cityOptions = self::cityOptions($get('stockist_province_id'));
-                                                $cityLabel = $selectedId ? ($cityOptions[$selectedId] ?? null) : null;
-                                                $set('stockist_kabupaten_name', self::toUppercaseLabel($cityLabel));
-                                            })
-                                            ->helperText('Cakupan kota operasional distributor.'),
-
-                                        Hidden::make('stockist_province_name'),
-                                        Hidden::make('stockist_kabupaten_name'),
-                                    ]),
-                            ]),
-                    ]),
-
-                Section::make('Admin Internal Log')
-                    ->collapsed()
-                    ->visible(fn (): bool => self::isFormSectionEnabled('admin_internal_log'))
-                    ->schema([
-                        Textarea::make('description')
-                            ->label('Catatan Khusus Admin')
-                            ->rows(3)
-                            ->placeholder('Tuliskan catatan internal di sini...')
-                            ->helperText('Catatan ini hanya dapat dilihat oleh admin dan tidak akan muncul di panel member.'),
-                    ]),
+    private static function adminInternalLogSection(): Section
+    {
+        return Section::make('Admin Internal Log')
+            ->collapsed()
+            ->visible(fn (): bool => self::isFormSectionEnabled('admin_internal_log'))
+            ->schema([
+                Textarea::make('description')
+                    ->label('Catatan Khusus Admin')
+                    ->rows(3)
+                    ->placeholder('Tuliskan catatan internal di sini...')
+                    ->helperText('Catatan ini hanya dapat dilihat oleh admin dan tidak akan muncul di panel member.'),
             ]);
     }
 
@@ -360,6 +425,18 @@ class CustomerForm
         }
 
         return $labels;
+    }
+
+    /**
+     * @return array<int, string|\Illuminate\Contracts\Validation\ValidationRule>
+     */
+    private static function statusFieldRules(): array
+    {
+        return [
+            'required',
+            'integer',
+            Rule::in(array_keys(self::statusFieldOptions())),
+        ];
     }
 
     // -------------------------------------------------------------------------

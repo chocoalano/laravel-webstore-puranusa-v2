@@ -17,29 +17,26 @@ class MidtransService
      */
     public function createSnapToken(Order $order, Cart $cart, Customer $customer): string
     {
-        $serverKey    = config('services.midtrans.server_key', '');
-        $isProduction = config('services.midtrans.env', 'sandbox') === 'production';
+        $serverKey = $this->midtransServerKey();
 
         if ($serverKey === '') {
             throw new \RuntimeException('Midtrans server key belum dikonfigurasi.');
         }
 
-        $baseUrl = $isProduction
-            ? 'https://app.midtrans.com/snap/v1/transactions'
-            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+        $baseUrl = $this->snapTransactionUrl();
 
         $itemDetails = $this->buildItemDetails($order, $cart);
         $grossAmount = $this->sumItemDetails($itemDetails);
 
         $payload = [
             'transaction_details' => [
-                'order_id'     => $order->order_no,
+                'order_id' => $order->order_no,
                 'gross_amount' => $grossAmount,
             ],
             'customer_details' => [
                 'first_name' => $customer->name,
-                'email'      => $customer->email ?? '',
-                'phone'      => $customer->phone ?? '',
+                'email' => $customer->email ?? '',
+                'phone' => $customer->phone ?? '',
             ],
             'item_details' => $itemDetails,
         ];
@@ -50,7 +47,7 @@ class MidtransService
 
         if ($response->failed()) {
             $errorMsg = $response->json('error_messages.0') ?? $response->body();
-            throw new \RuntimeException('Midtrans API error: ' . $errorMsg);
+            throw new \RuntimeException('Midtrans API error: '.$errorMsg);
         }
 
         return $response->json('token');
@@ -63,16 +60,13 @@ class MidtransService
      */
     public function createSnapTokenForOrder(Order $order, Customer $customer): string
     {
-        $serverKey = config('services.midtrans.server_key', '');
-        $isProduction = config('services.midtrans.env', 'sandbox') === 'production';
+        $serverKey = $this->midtransServerKey();
 
         if ($serverKey === '') {
             throw new \RuntimeException('Midtrans server key belum dikonfigurasi.');
         }
 
-        $baseUrl = $isProduction
-            ? 'https://app.midtrans.com/snap/v1/transactions'
-            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+        $baseUrl = $this->snapTransactionUrl();
 
         $itemDetails = $this->buildItemDetailsFromOrder($order);
         $grossAmount = $this->sumItemDetails($itemDetails);
@@ -96,7 +90,7 @@ class MidtransService
 
         if ($response->failed()) {
             $errorMsg = $response->json('error_messages.0') ?? $response->body();
-            throw new \RuntimeException('Midtrans API error: ' . $errorMsg);
+            throw new \RuntimeException('Midtrans API error: '.$errorMsg);
         }
 
         $token = $response->json('token');
@@ -115,16 +109,13 @@ class MidtransService
      */
     public function createSnapTokenForWalletTopup(string $transactionRef, float $amount, Customer $customer): string
     {
-        $serverKey = config('services.midtrans.server_key', '');
-        $isProduction = config('services.midtrans.env', 'sandbox') === 'production';
+        $serverKey = $this->midtransServerKey();
 
         if ($serverKey === '') {
             throw new \RuntimeException('Midtrans server key belum dikonfigurasi.');
         }
 
-        $baseUrl = $isProduction
-            ? 'https://app.midtrans.com/snap/v1/transactions'
-            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+        $baseUrl = $this->snapTransactionUrl();
 
         $orderId = mb_substr(trim($transactionRef), 0, 50);
         $grossAmount = $this->toMidtransAmount($amount);
@@ -163,7 +154,7 @@ class MidtransService
 
         if ($response->failed()) {
             $errorMsg = $response->json('error_messages.0') ?? $response->body();
-            throw new \RuntimeException('Midtrans API error: ' . $errorMsg);
+            throw new \RuntimeException('Midtrans API error: '.$errorMsg);
         }
 
         $token = $response->json('token');
@@ -184,16 +175,13 @@ class MidtransService
      */
     public function getTransactionStatus(string $orderNo): array
     {
-        $serverKey = config('services.midtrans.server_key', '');
-        $isProduction = config('services.midtrans.env', 'sandbox') === 'production';
+        $serverKey = $this->midtransServerKey();
 
         if ($serverKey === '') {
             throw new \RuntimeException('Midtrans server key belum dikonfigurasi.');
         }
 
-        $baseUrl = $isProduction
-            ? 'https://api.midtrans.com/v2'
-            : 'https://api.sandbox.midtrans.com/v2';
+        $baseUrl = $this->transactionStatusApiBaseUrl();
 
         $response = Http::withBasicAuth($serverKey, '')
             ->acceptJson()
@@ -204,7 +192,7 @@ class MidtransService
                 ?? $response->json('error_messages.0')
                 ?? $response->body();
 
-            throw new \RuntimeException('Midtrans API error: ' . $errorMsg);
+            throw new \RuntimeException('Midtrans API error: '.$errorMsg);
         }
 
         $payload = $response->json();
@@ -223,54 +211,54 @@ class MidtransService
     {
         $itemDetails = $cart->items->map(function ($item): array {
             return [
-                'id'       => (string) $item->product_id,
-                'price'    => $this->toMidtransAmount($item->unit_price),
+                'id' => (string) $item->product_id,
+                'price' => $this->toMidtransAmount($item->unit_price),
                 'quantity' => max(1, (int) $item->qty),
-                'name'     => $this->formatItemName((string) $item->product_name),
+                'name' => $this->formatItemName((string) $item->product_name),
             ];
         })->values()->all();
 
         $shippingAmount = $this->toMidtransAmount($order->shipping_amount);
-        $taxAmount      = $this->toMidtransAmount($order->tax_amount);
+        $taxAmount = $this->toMidtransAmount($order->tax_amount);
         $discountAmount = $this->toMidtransAmount($order->discount_amount);
 
         if ($shippingAmount > 0) {
             $itemDetails[] = [
-                'id'       => 'SHIPPING',
-                'price'    => $shippingAmount,
+                'id' => 'SHIPPING',
+                'price' => $shippingAmount,
                 'quantity' => 1,
-                'name'     => 'Biaya Pengiriman',
+                'name' => 'Biaya Pengiriman',
             ];
         }
 
         if ($taxAmount > 0) {
             $itemDetails[] = [
-                'id'       => 'TAX',
-                'price'    => $taxAmount,
+                'id' => 'TAX',
+                'price' => $taxAmount,
                 'quantity' => 1,
-                'name'     => 'Pajak',
+                'name' => 'Pajak',
             ];
         }
 
         if ($discountAmount > 0) {
             $itemDetails[] = [
-                'id'       => 'DISCOUNT',
-                'price'    => -$discountAmount,
+                'id' => 'DISCOUNT',
+                'price' => -$discountAmount,
                 'quantity' => 1,
-                'name'     => 'Diskon',
+                'name' => 'Diskon',
             ];
         }
 
         $expectedGrossAmount = $this->toMidtransAmount($order->grand_total);
-        $currentGrossAmount  = $this->sumItemDetails($itemDetails);
-        $difference          = $expectedGrossAmount - $currentGrossAmount;
+        $currentGrossAmount = $this->sumItemDetails($itemDetails);
+        $difference = $expectedGrossAmount - $currentGrossAmount;
 
         if ($difference !== 0) {
             $itemDetails[] = [
-                'id'       => 'ADJUSTMENT',
-                'price'    => $difference,
+                'id' => 'ADJUSTMENT',
+                'price' => $difference,
                 'quantity' => 1,
-                'name'     => 'Penyesuaian Pembulatan',
+                'name' => 'Penyesuaian Pembulatan',
             ];
         }
 
@@ -278,7 +266,7 @@ class MidtransService
     }
 
     /**
-     * @param list<array{id: string, price: int, quantity: int, name: string}> $itemDetails
+     * @param  list<array{id: string, price: int, quantity: int, name: string}>  $itemDetails
      */
     private function sumItemDetails(array $itemDetails): int
     {
@@ -303,6 +291,40 @@ class MidtransService
         }
 
         return mb_substr($normalizedName, 0, 50);
+    }
+
+    private function midtransServerKey(): string
+    {
+        return trim((string) config('services.midtrans.server_key', ''));
+    }
+
+    private function isProductionMode(): bool
+    {
+        $midtransEnv = strtolower(trim((string) config('services.midtrans.env', '')));
+
+        if ($midtransEnv === 'production') {
+            return true;
+        }
+
+        if ($midtransEnv === 'sandbox') {
+            return false;
+        }
+
+        return (bool) config('services.midtrans.is_production', false);
+    }
+
+    private function snapTransactionUrl(): string
+    {
+        return $this->isProductionMode()
+            ? 'https://app.midtrans.com/snap/v1/transactions'
+            : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+    }
+
+    private function transactionStatusApiBaseUrl(): string
+    {
+        return $this->isProductionMode()
+            ? 'https://api.midtrans.com/v2'
+            : 'https://api.sandbox.midtrans.com/v2';
     }
 
     /**

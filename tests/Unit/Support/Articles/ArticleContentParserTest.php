@@ -3,7 +3,7 @@
 use App\Support\Articles\ArticleContentParser;
 
 it('normalizes legacy blocks correctly', function (): void {
-    $parser = new ArticleContentParser();
+    $parser = new ArticleContentParser;
 
     $blocks = $parser->normalizeBlocks([
         [
@@ -41,11 +41,11 @@ it('normalizes legacy blocks correctly', function (): void {
         ->and($blocks[1]['type'])->toBe('rich_text')
         ->and($blocks[2]['type'])->toBe('list')
         ->and($blocks[3]['type'])->toBe('image')
-        ->and($parser->extractFirstImageFromBlocks($blocks))->toBe('/storage/articles/legacy.jpg');
+        ->and($parser->extractFirstImageFromBlocks($blocks))->toBe('/media/public/articles/legacy.jpg');
 });
 
 it('normalizes builder blocks correctly', function (): void {
-    $parser = new ArticleContentParser();
+    $parser = new ArticleContentParser;
 
     $blocks = $parser->normalizeBlocks([
         [
@@ -85,7 +85,7 @@ it('normalizes builder blocks correctly', function (): void {
 });
 
 it('falls back to unknown block type safely', function (): void {
-    $parser = new ArticleContentParser();
+    $parser = new ArticleContentParser;
 
     $blocks = $parser->normalizeBlocks([
         [
@@ -101,4 +101,76 @@ it('falls back to unknown block type safely', function (): void {
         ->and($blocks[0]['type'])->toBe('unknown')
         ->and($blocks[0]['block_type'])->toBe('custom_hero')
         ->and($blocks[0]['data'])->toBeArray();
+});
+
+it('normalizes tiptap rich text json into html for article blocks', function (): void {
+    $parser = new ArticleContentParser;
+
+    $tiptapDocument = [
+        'type' => 'doc',
+        'content' => [
+            [
+                'type' => 'heading',
+                'attrs' => [
+                    'level' => 2,
+                ],
+                'content' => [
+                    [
+                        'type' => 'text',
+                        'text' => 'Judul Tiptap',
+                    ],
+                ],
+            ],
+            [
+                'type' => 'paragraph',
+                'content' => [
+                    [
+                        'type' => 'text',
+                        'text' => 'Konten TipTap',
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $blocks = $parser->normalizeBlocks([
+        [
+            'type' => 'rich_text',
+            'data' => [
+                'content' => $tiptapDocument,
+            ],
+        ],
+    ]);
+
+    expect($blocks)->toHaveCount(1)
+        ->and($blocks[0]['type'])->toBe('rich_text')
+        ->and($blocks[0]['html'])->toContain('<h2>Judul Tiptap</h2>')
+        ->and($blocks[0]['html'])->toContain('Konten TipTap');
+});
+
+it('handles legacy tiptap heading node without level attrs safely', function (): void {
+    $parser = new ArticleContentParser;
+
+    $blocks = $parser->normalizeBlocks([
+        [
+            'type' => 'rich_text',
+            'data' => [
+                'content' => [
+                    [
+                        'type' => 'heading',
+                        'content' => [
+                            [
+                                'type' => 'text',
+                                'text' => 'Judul Legacy',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    expect($blocks)->toHaveCount(1)
+        ->and($blocks[0]['type'])->toBe('rich_text')
+        ->and($blocks[0]['html'])->toContain('<h2>Judul Legacy</h2>');
 });

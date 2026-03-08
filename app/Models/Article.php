@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $slug URL-friendly identifier
  * @property string|null $seo_title Judul SEO
  * @property string|null $seo_description Deskripsi SEO
+ * @property string|null $image_banner Banner artikel untuk listing/detail
  * @property bool $is_published Status publikasi
  * @property \Illuminate\Support\Carbon|null $published_at Tanggal publikasi
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -33,6 +34,7 @@ class Article extends BaseModel
         'slug',
         'seo_title',
         'seo_description',
+        'image_banner',
         'is_published',
         'published_at',
     ];
