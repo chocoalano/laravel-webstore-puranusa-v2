@@ -24,9 +24,7 @@ defineProps<{
                 {{ product.name }}
             </h1>
 
-            <p v-if="product.shortDescription" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {{ product.shortDescription }}
-            </p>
+            <div v-if="product.shortDescription" class="mt-2 text-sm text-gray-600 dark:text-gray-400" v-html="product.shortDescription"></div>
 
             <div class="mt-3 flex flex-wrap items-center gap-2">
                 <UBadge v-if="product.brand" color="neutral" variant="subtle">

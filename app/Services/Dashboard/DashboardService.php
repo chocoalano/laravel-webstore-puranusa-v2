@@ -1466,7 +1466,11 @@ class DashboardService
 
         if ($mappedStatus === 'paid') {
             $this->dashboardRepository->markOrderAsPaid($order);
-            $this->runBonusEngineAfterPaymentSettlement($order, $previousPaymentStatus);
+            $this->runBonusEngineAfterPaymentSettlement(
+                $order,
+                $previousPaymentStatus,
+                (int) ($authenticatedCustomer->status ?? 0),
+            );
         }
 
         $refreshedOrder = $this->dashboardRepository->findOrderForCustomer($authenticatedCustomer->id, $orderId);
@@ -1483,8 +1487,15 @@ class DashboardService
         ];
     }
 
-    private function runBonusEngineAfterPaymentSettlement(Order $order, ?string $previousPaymentStatus): void
-    {
+    private function runBonusEngineAfterPaymentSettlement(
+        Order $order,
+        ?string $previousPaymentStatus,
+        int $customerStatus,
+    ): void {
+        if ($customerStatus !== 3) {
+            return;
+        }
+
         if ($previousPaymentStatus === 'paid' || (bool) ($order->bonus_generated ?? false)) {
             return;
         }

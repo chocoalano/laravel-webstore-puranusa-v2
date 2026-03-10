@@ -136,7 +136,7 @@ class CheckoutService
         });
 
         $this->syncOrderRetailAndStockistAmounts($order);
-        $this->runBonusEngineForOrder($order);
+        $this->runBonusEngineForOrder($order, (int) ($customer->status ?? 0));
 
         return $order;
     }
@@ -463,8 +463,12 @@ class CheckoutService
         }
     }
 
-    private function runBonusEngineForOrder(Order $order): void
+    private function runBonusEngineForOrder(Order $order, int $customerStatus): void
     {
+        if ($customerStatus !== 3) {
+            return;
+        }
+
         if ((bool) ($order->bonus_generated ?? false)) {
             return;
         }
