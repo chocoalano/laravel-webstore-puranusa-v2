@@ -23,11 +23,15 @@ class CategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Kategori Produk';
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static ?string $modelLabel = 'Kategori Produk';
+
     protected static ?string $navigationLabel = 'Kategori Produk';
+
     protected static ?string $pluralModelLabel = 'Kategori Produk';
-    protected static string | UnitEnum | null $navigationGroup = 'Toko';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Toko';
 
     public static function form(Schema $schema): Schema
     {

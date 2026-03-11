@@ -8,6 +8,14 @@ defineProps<{
     customer?: Customer | null
     networkProfile?: NetworkProfile
 }>()
+
+const emit = defineEmits<{
+    navigate: [section: string]
+}>()
+
+function moveToFormAccount(): void {
+    emit('navigate', 'form_account')
+}
 </script>
 
 <template>
@@ -18,7 +26,7 @@ defineProps<{
                     <UIcon name="i-lucide-circle-user-round" class="size-5 text-gray-500 dark:text-gray-300" />
                     <p class="text-base font-semibold text-gray-900 dark:text-white">Profil Network</p>
                 </div>
-                <UButton color="neutral" variant="ghost" size="xs" class="rounded-xl" icon="i-lucide-arrow-right">
+                <UButton color="neutral" variant="ghost" size="xs" class="rounded-xl" icon="i-lucide-arrow-right" @click="moveToFormAccount">
                     Lengkapi Profil
                 </UButton>
             </div>

@@ -251,7 +251,7 @@ class CustomerWithdrawalsTable
                 throw new \RuntimeException('Customer untuk transaksi withdrawal tidak ditemukan.');
             }
 
-            $currentBalance = (float) ($customer->ewallet_saldo ?? 0);
+            // $currentBalance = (float) ($customer->ewallet_saldo ?? 0);
             $grossAmount = max(0.0, (float) ($transaction->amount ?? 0));
             $recordedBalanceBefore = (float) ($transaction->balance_before ?? 0);
             $recordedBalanceAfter = (float) ($transaction->balance_after ?? 0);
@@ -259,9 +259,9 @@ class CustomerWithdrawalsTable
             $missingGrossDeduction = max(0.0, $grossAmount - $alreadyDeductedGross);
             $additionalDeduction = $missingGrossDeduction + self::WITHDRAWAL_ADMIN_FEE;
 
-            if ($currentBalance < $additionalDeduction) {
-                throw new \RuntimeException('Saldo wallet customer tidak mencukupi untuk proses approval withdrawal.');
-            }
+            // if ($currentBalance < $additionalDeduction) {
+            //     throw new \RuntimeException('Saldo wallet customer tidak mencukupi untuk proses approval withdrawal.');
+            // }
 
             if ($additionalDeduction > 0) {
                 $customer->decrement('ewallet_saldo', $additionalDeduction);

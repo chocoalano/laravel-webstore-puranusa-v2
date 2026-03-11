@@ -29,7 +29,11 @@ defineEmits<{
         <DashboardAddressWidget :default-address="defaultAddress" @navigate="$emit('navigate', $event)" />
 
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <DashboardNetworkProfile :customer="customer" :network-profile="networkProfile" />
+            <DashboardNetworkProfile
+                :customer="customer"
+                :network-profile="networkProfile"
+                @navigate="$emit('navigate', $event)"
+            />
             <DashboardNetworkStats :network-stats="networkStats" @navigate="$emit('navigate', $event)" />
         </div>
 
