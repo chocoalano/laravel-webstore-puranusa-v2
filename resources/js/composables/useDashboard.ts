@@ -17,19 +17,19 @@ export function useDashboard() {
     }
 
     async function copyToClipboard(text: string): Promise<void> {
-        const referralCode = text.trim()
+        const username = text.trim()
 
-        if (!referralCode) {
+        if (!username) {
             toast.add({
-                title: 'Kode referral tidak tersedia',
-                description: 'Tidak ada kode referral yang bisa disalin.',
+                title: 'Username referral tidak tersedia',
+                description: 'Tidak ada username referral yang bisa disalin.',
                 color: 'warning',
             })
 
             return
         }
 
-        const referralUrl = `${window.location.origin}?referral_code=${encodeURIComponent(referralCode)}`
+        const referralUrl = `${window.location.origin}?username=${encodeURIComponent(username)}`
         let copied = false
 
         try {

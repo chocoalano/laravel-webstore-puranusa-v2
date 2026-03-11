@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Models\Customer;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\CustomerRegistrationService;
 use App\Services\Dashboard\DashboardService;
@@ -53,11 +54,7 @@ class CustomerAuthController extends Controller
 
     public function showRegister(Request $request): Response
     {
-        if ($request->has('referral_code')) {
-            $referralCode = $request->query('referral_code');
-            // Simpan referral code di session untuk digunakan saat registrasi
-            $request->session()->put('referral_code', $referralCode);
-        }
+        $this->captureReferralCode($request);
 
         return Inertia::render('Auth/Register', [
             'referralCode' => $request->session()->get('referral_code'),
@@ -67,6 +64,40 @@ class CustomerAuthController extends Controller
                 'canonical' => route('register'),
             ],
         ]);
+    }
+
+    private function captureReferralCode(Request $request): void
+    {
+        if ($request->filled('referral_code')) {
+            $request->session()->put('referral_code', (string) $request->query('referral_code'));
+
+            return;
+        }
+
+        if (! $request->filled('username')) {
+            return;
+        }
+
+        $username = trim((string) $request->query('username'));
+
+        if ($username === '') {
+            $request->session()->forget('referral_code');
+
+            return;
+        }
+
+        $resolvedReferralCode = Customer::query()
+            ->where('username', mb_strtolower($username))
+            ->orWhere('username', $username)
+            ->value('ref_code');
+
+        if (filled($resolvedReferralCode)) {
+            $request->session()->put('referral_code', (string) $resolvedReferralCode);
+
+            return;
+        }
+
+        $request->session()->forget('referral_code');
     }
 
     public function register(RegisterRequest $request): RedirectResponse

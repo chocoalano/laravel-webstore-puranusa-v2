@@ -78,20 +78,29 @@ class Customer extends Authenticatable
 
     protected static function booted(): void
     {
-        static::creating(function (self $customer): void {
+        static::created(function (self $customer): void {
+            $updates = [];
+
             if (
                 blank($customer->ref_code)
                 && Schema::hasColumn($customer->getTable(), 'ref_code')
             ) {
-                $customer->ref_code = self::generateUniqueRefCode();
+                $updates['ref_code'] = self::generateUniqueRefCode($customer);
             }
 
             if (
                 blank($customer->ewallet_id)
                 && Schema::hasColumn($customer->getTable(), 'ewallet_id')
             ) {
-                $customer->ewallet_id = self::generateUniqueEwalletId();
+                $updates['ewallet_id'] = self::generateUniqueEwalletId($customer);
             }
+
+            if ($updates === []) {
+                return;
+            }
+
+            $customer->forceFill($updates);
+            $customer->saveQuietly();
         });
     }
 
@@ -177,22 +186,45 @@ class Customer extends Authenticatable
         ];
     }
 
-    private static function generateUniqueRefCode(): string
+    private static function generateUniqueRefCode(self $customer): string
     {
+        $customerId = max(1, (int) $customer->getKey());
+        $timestamp = ($customer->created_at ?? now())->format('YmdHis');
+        $increment = $customerId;
+
         do {
-            $refCode = Str::upper(Str::random(8));
-        } while (self::query()->where('ref_code', $refCode)->exists());
+            $refCode = $timestamp.'-'.self::formatIncrement($increment);
+            $alreadyUsed = self::query()
+                ->where('id', '!=', $customerId)
+                ->where('ref_code', $refCode)
+                ->exists();
+            $increment++;
+        } while ($alreadyUsed);
 
         return $refCode;
     }
 
-    private static function generateUniqueEwalletId(): string
+    private static function generateUniqueEwalletId(self $customer): string
     {
+        $customerId = max(1, (int) $customer->getKey());
+        $date = ($customer->created_at ?? now())->format('Ymd');
+        $increment = $customerId;
+
         do {
-            $ewalletId = 'EW-'.now()->format('Ymd').'-'.Str::upper(Str::random(5));
-        } while (self::query()->where('ewallet_id', $ewalletId)->exists());
+            $ewalletId = 'EW-'.$date.'-'.self::formatIncrement($increment);
+            $alreadyUsed = self::query()
+                ->where('id', '!=', $customerId)
+                ->where('ewallet_id', $ewalletId)
+                ->exists();
+            $increment++;
+        } while ($alreadyUsed);
 
         return $ewalletId;
+    }
+
+    private static function formatIncrement(int $increment): string
+    {
+        return str_pad((string) $increment, 4, '0', STR_PAD_LEFT);
     }
 
     // ──────────────────────────────────────────────

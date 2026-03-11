@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import type { RegisterData, RegisterForm, RegisterValidationError } from '@/composables/useRegisterForm'
 
 const props = defineProps<{
     form: RegisterForm
     validate: (state: Partial<RegisterData>) => RegisterValidationError[]
     firstError: string | undefined
+    isReferralReadonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -16,6 +18,9 @@ const genderOptions = [
     { label: 'Laki-laki', value: 'L' },
     { label: 'Perempuan', value: 'P' },
 ]
+
+const showPassword = ref(false)
+const showPasswordConfirmation = ref(false)
 </script>
 
 <template>
@@ -37,15 +42,8 @@ const genderOptions = [
             </div>
 
             <!-- Server error alert -->
-            <UAlert
-                v-if="firstError"
-                class="mb-6"
-                color="error"
-                variant="soft"
-                icon="i-lucide-alert-triangle"
-                title="Pendaftaran gagal"
-                :description="String(firstError)"
-            />
+            <UAlert v-if="firstError" class="mb-6" color="error" variant="soft" icon="i-lucide-alert-triangle"
+                title="Pendaftaran gagal" :description="String(firstError)" />
 
             <!-- Form -->
             <UForm :state="props.form" :validate="props.validate" @submit="emit('submit')" class="space-y-6">
@@ -55,81 +53,52 @@ const genderOptions = [
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <UFormField label="Nama Lengkap" name="name" required :error="props.form.errors.name">
-                            <UInput
-                                v-model="props.form.name"
-                                placeholder="Nama sesuai KTP"
-                                autocomplete="name"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.name" placeholder="Nama sesuai KTP" autocomplete="name"
+                                class="w-full" />
                         </UFormField>
 
                         <UFormField label="Username" name="username" required :error="props.form.errors.username">
-                            <UInput
-                                v-model="props.form.username"
-                                placeholder="Contoh: puranusa_partner"
-                                autocomplete="username"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.username" placeholder="Contoh: puranusa_partner"
+                                autocomplete="username" class="w-full" />
                         </UFormField>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <UFormField label="Email" name="email" required :error="props.form.errors.email">
-                            <UInput
-                                v-model="props.form.email"
-                                type="email"
-                                placeholder="email@contoh.com"
-                                autocomplete="email"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.email" type="email" placeholder="email@contoh.com"
+                                autocomplete="email" class="w-full" />
                         </UFormField>
 
                         <UFormField label="Nomor WhatsApp" name="telp" required :error="props.form.errors.telp">
-                            <UInput
-                                v-model="props.form.telp"
-                                type="tel"
-                                placeholder="08xxxxxxxxxx"
-                                autocomplete="tel"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.telp" type="tel" placeholder="08xxxxxxxxxx" autocomplete="tel"
+                                class="w-full" />
                         </UFormField>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <UFormField label="NIK (opsional)" name="nik" :error="props.form.errors.nik">
-                            <UInput
-                                v-model="props.form.nik"
-                                placeholder="16 digit"
-                                autocomplete="off"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.nik" placeholder="16 digit" autocomplete="off" class="w-full" />
                         </UFormField>
 
                         <UFormField label="Jenis Kelamin" name="gender" required :error="props.form.errors.gender">
-                            <USelect
-                                v-model="props.form.gender"
-                                :items="genderOptions"
-                                placeholder="Pilih jenis kelamin"
-                                class="w-full"
-                            />
+                            <USelect v-model="props.form.gender" :items="genderOptions"
+                                placeholder="Pilih jenis kelamin" class="w-full" />
                         </UFormField>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <UFormField label="Alamat (opsional)" name="alamat" :error="props.form.errors.alamat">
-                            <UInput
-                                v-model="props.form.alamat"
-                                placeholder="Alamat lengkap untuk pengiriman"
-                                autocomplete="street-address"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.alamat" placeholder="Alamat lengkap untuk pengiriman"
+                                autocomplete="street-address" class="w-full" />
                         </UFormField>
 
-                        <UFormField label="Kode Referral (opsional)" name="referral_code" :error="props.form.errors.referral_code">
+                        <UFormField label="Kode Referral (opsional)" name="referral_code"
+                            :error="props.form.errors.referral_code">
                             <UInput
                                 v-model="props.form.referral_code"
-                                placeholder="Jika ada, masukkan di sini"
+                                :placeholder="props.isReferralReadonly ? 'Kode referral dari link tidak bisa diubah' : 'Jika ada, masukkan di sini'"
                                 autocomplete="off"
+                                :readonly="props.isReferralReadonly"
                                 class="w-full"
                             />
                         </UFormField>
@@ -142,23 +111,32 @@ const genderOptions = [
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <UFormField label="Kata Sandi" name="password" required :error="props.form.errors.password">
-                            <UInput
-                                v-model="props.form.password"
-                                type="password"
-                                placeholder="Minimal 8 karakter"
-                                autocomplete="new-password"
-                                class="w-full"
-                            />
+                            <UInput v-model="props.form.password" id="password"
+                                :type="showPassword ? 'text' : 'password'" placeholder="Minimal 8 karakter"
+                                autocomplete="new-password" class="w-full" :ui="{ trailing: 'pe-1' }">
+                                <template #trailing>
+                                    <UButton color="neutral" type="button" variant="link" size="sm"
+                                        :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                                        :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+                                        :aria-pressed="showPassword" aria-controls="password"
+                                        @click="showPassword = !showPassword" />
+                                </template>
+                            </UInput>
                         </UFormField>
 
-                        <UFormField label="Konfirmasi Kata Sandi" name="password_confirmation" required :error="props.form.errors.password_confirmation">
-                            <UInput
-                                v-model="props.form.password_confirmation"
-                                type="password"
-                                placeholder="Ulangi kata sandi"
-                                autocomplete="new-password"
-                                class="w-full"
-                            />
+                        <UFormField label="Konfirmasi Kata Sandi" name="password_confirmation" required
+                            :error="props.form.errors.password_confirmation">
+                            <UInput v-model="props.form.password_confirmation" id="password_confirmation"
+                                :type="showPasswordConfirmation ? 'text' : 'password'" placeholder="Ulangi kata sandi"
+                                autocomplete="new-password" class="w-full" :ui="{ trailing: 'pe-1' }">
+                                <template #trailing>
+                                    <UButton color="neutral" type="button" variant="link" size="sm"
+                                        :icon="showPasswordConfirmation ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                                        :aria-label="showPasswordConfirmation ? 'Sembunyikan konfirmasi kata sandi' : 'Tampilkan konfirmasi kata sandi'"
+                                        :aria-pressed="showPasswordConfirmation" aria-controls="password_confirmation"
+                                        @click="showPasswordConfirmation = !showPasswordConfirmation" />
+                                </template>
+                            </UInput>
                         </UFormField>
                     </div>
                 </div>
@@ -166,22 +144,12 @@ const genderOptions = [
                 <!-- Terms & Submit -->
                 <div class="space-y-4">
                     <UFormField name="terms" :error="props.form.errors.terms">
-                        <UCheckbox
-                            v-model="props.form.terms"
-                            label="Saya setuju dengan Syarat & Ketentuan"
-                            :description="props.form.errors.terms ? undefined : 'Wajib dicentang untuk melanjutkan.'"
-                        />
+                        <UCheckbox v-model="props.form.terms" label="Saya setuju dengan Syarat & Ketentuan"
+                            :description="props.form.errors.terms ? undefined : 'Wajib dicentang untuk melanjutkan.'" />
                     </UFormField>
 
-                    <UButton
-                        type="submit"
-                        block
-                        size="lg"
-                        color="primary"
-                        :loading="props.form.processing"
-                        :disabled="props.form.processing"
-                        leading-icon="i-lucide-user-plus"
-                    >
+                    <UButton type="submit" block size="lg" color="primary" :loading="props.form.processing"
+                        :disabled="props.form.processing" leading-icon="i-lucide-user-plus">
                         {{ props.form.processing ? 'Sedang membuat akun…' : 'Daftar Sekarang' }}
                     </UButton>
                 </div>
@@ -190,7 +158,8 @@ const genderOptions = [
                 <div class="space-y-3 text-center">
                     <p class="text-xs text-slate-500">
                         Dengan mendaftar, Anda menyetujui
-                        <a href="#" class="font-semibold text-primary-600 hover:text-primary-500">Syarat & Ketentuan</a>.
+                        <a href="#" class="font-semibold text-primary-600 hover:text-primary-500">Syarat &
+                            Ketentuan</a>.
                     </p>
                     <div class="text-sm text-slate-500">
                         Sudah punya akun?

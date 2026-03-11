@@ -75,7 +75,7 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
     const formattedBalance = computed(() => formatIDR(balance.value))
     const withdrawalMinimumAmount = 10000
     const withdrawalAdminFee = 6500
-    const withdrawalStepAmount = 1000
+    const withdrawalStepAmount = 500
     const maxWithdrawalAmount = computed(() => Math.max(0, Math.floor(balance.value)))
     const minimumWithdrawalRequestAmount = computed(() => {
         const rounded = Math.ceil(withdrawalMinimumAmount / withdrawalStepAmount) * withdrawalStepAmount
@@ -457,7 +457,7 @@ export function useDashboardWallet(options: UseDashboardWalletOptions) {
         if (!Number.isInteger(amountValue) || amountValue % withdrawalStepAmount !== 0) {
             toast?.add?.({
                 title: 'Nominal withdrawal tidak valid',
-                description: 'Nominal withdrawal harus kelipatan Rp 1.000.',
+                description: 'Nominal withdrawal harus kelipatan Rp 500.',
                 color: 'warning',
                 icon: 'i-lucide-alert-circle',
             })

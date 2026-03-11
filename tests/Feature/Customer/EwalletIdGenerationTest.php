@@ -41,8 +41,8 @@ it('generates ewallet id on customer create with register pattern', function ():
 
     expect($customer->ewallet_id)
         ->not->toBeNull()
-        ->toMatch('/^EW-\d{8}-[A-Z0-9]{5}$/')
-        ->toStartWith('EW-20260307-');
+        ->toMatch('/^EW-\d{8}-\d{4}$/')
+        ->toBe('EW-20260307-0001');
 });
 
 it('keeps provided ewallet id when value is explicitly set', function (): void {
@@ -65,7 +65,27 @@ it('generates referral code on customer create with register pattern', function 
 
     expect($customer->ref_code)
         ->not->toBeNull()
-        ->toMatch('/^[A-Z0-9]{8}$/');
+        ->toMatch('/^\d{14}-\d{4}$/')
+        ->toBe('20260307103000-0001');
+});
+
+it('increments generated ref_code and ewallet_id based on customer id', function (): void {
+    Customer::query()->create([
+        'name' => 'First Customer',
+        'email' => 'first.customer@example.test',
+        'password' => 'secret123',
+    ]);
+
+    $secondCustomer = Customer::query()->create([
+        'name' => 'Second Customer',
+        'email' => 'second.customer@example.test',
+        'password' => 'secret123',
+    ]);
+
+    expect($secondCustomer->ref_code)
+        ->toBe('20260307103000-0002')
+        ->and($secondCustomer->ewallet_id)
+        ->toBe('EW-20260307-0002');
 });
 
 it('keeps provided referral code when value is explicitly set', function (): void {

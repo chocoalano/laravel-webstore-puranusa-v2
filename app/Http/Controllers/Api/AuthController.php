@@ -72,6 +72,7 @@ class AuthController extends Controller
      *     description="Mengembalikan metadata SEO dan referral code aktif yang digunakan pada halaman registrasi web customer.",
      *
      *     @OA\Parameter(name="referral_code", in="query", required=false, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="username", in="query", required=false, @OA\Schema(type="string")),
      *
      *     @OA\Response(
      *         response=200,
@@ -94,13 +95,11 @@ class AuthController extends Controller
      */
     public function registerMeta(Request $request): JsonResponse
     {
-        if ($request->filled('referral_code')) {
-            $request->session()->put('referral_code', (string) $request->query('referral_code'));
-        }
+        $referralCode = $this->captureReferralCode($request);
 
         return response()->json([
             'data' => [
-                'referralCode' => $request->session()->get('referral_code'),
+                'referralCode' => $referralCode,
                 'seo' => [
                     'title' => 'Daftar Jadi Member',
                     'description' => 'Bergabunglah sebagai member '.config('app.name').' dan nikmati harga eksklusif, bonus afiliasi, serta akses ke ribuan produk unggulan. Gratis daftar sekarang!',
@@ -108,6 +107,59 @@ class AuthController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function captureReferralCode(Request $request): ?string
+    {
+        if ($request->filled('referral_code')) {
+            $referralCode = (string) $request->query('referral_code');
+            $this->storeReferralCode($request, $referralCode);
+
+            return $referralCode;
+        }
+
+        if (! $request->filled('username')) {
+            return $request->hasSession() ? $request->session()->get('referral_code') : null;
+        }
+
+        $username = trim((string) $request->query('username'));
+
+        if ($username === '') {
+            $this->storeReferralCode($request, null);
+
+            return null;
+        }
+
+        $resolvedReferralCode = Customer::query()
+            ->where('username', mb_strtolower($username))
+            ->orWhere('username', $username)
+            ->value('ref_code');
+
+        if (filled($resolvedReferralCode)) {
+            $referralCode = (string) $resolvedReferralCode;
+            $this->storeReferralCode($request, $referralCode);
+
+            return $referralCode;
+        }
+
+        $this->storeReferralCode($request, null);
+
+        return null;
+    }
+
+    private function storeReferralCode(Request $request, ?string $referralCode): void
+    {
+        if (! $request->hasSession()) {
+            return;
+        }
+
+        if (filled($referralCode)) {
+            $request->session()->put('referral_code', $referralCode);
+
+            return;
+        }
+
+        $request->session()->forget('referral_code');
     }
 
     /**

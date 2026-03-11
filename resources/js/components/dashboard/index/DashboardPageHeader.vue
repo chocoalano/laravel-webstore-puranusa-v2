@@ -23,13 +23,13 @@ const emit = defineEmits<{
 const { formatDate, copyToClipboard } = useDashboard()
 
 const referralPath = computed<string | null>(() => {
-    const referralCode = props.networkProfile?.referral_code?.trim()
+    const username = props.networkProfile?.username?.trim()
 
-    if (!referralCode) {
+    if (!username) {
         return null
     }
 
-    return `?referral_code=${encodeURIComponent(referralCode)}`
+    return `/?username=${encodeURIComponent(username)}`
 })
 
 const referralUrlLabel = computed<string>(() => {
@@ -49,8 +49,8 @@ function handleLogout(): void {
 }
 
 function handleCopyReferral(): void {
-    const referralCode = props.networkProfile?.referral_code ?? ''
-    void copyToClipboard(referralCode)
+    const username = props.networkProfile?.username ?? ''
+    void copyToClipboard(username)
 }
 </script>
 

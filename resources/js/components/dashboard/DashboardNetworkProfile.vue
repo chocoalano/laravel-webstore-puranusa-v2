@@ -57,9 +57,9 @@ function moveToFormAccount(): void {
                     <p class="truncate font-mono text-sm font-semibold tracking-wider text-gray-900 dark:text-white">
                         {{ networkProfile?.referral_code ?? '—' }}
                     </p>
-                    <UButton v-if="networkProfile?.referral_code" color="neutral" variant="ghost" size="xs"
+                    <UButton v-if="networkProfile?.username" color="neutral" variant="ghost" size="xs"
                         icon="i-lucide-copy" class="shrink-0 rounded-lg"
-                        @click="copyToClipboard(networkProfile?.referral_code ?? '')" />
+                        @click="copyToClipboard(networkProfile?.username ?? '')" />
                 </div>
             </div>
             <div class="col-span-2 rounded-xl bg-primary-50 dark:bg-primary-950/30 px-3 py-2.5">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const isOpen = defineModel<boolean>('open', { required: true })
 const amount = defineModel<number | null>('amount', { required: true })
@@ -19,7 +19,7 @@ const props = withDefaults(
     }
 )
 
-const withdrawalStepAmount = 1000
+const withdrawalStepAmount = 500
 const minimumWithdrawalAmount = 10000
 
 const idrFormatter = new Intl.NumberFormat('id-ID', {
@@ -48,6 +48,8 @@ const minimumRequestAmount = computed(() => {
 })
 
 const formattedMinimumRequestAmount = computed(() => idrFormatter.format(minimumRequestAmount.value))
+const hasAmountKeyup = ref(false)
+const showPassword = ref(false)
 
 const hasInvalidAmount = computed(() => {
     const requestedAmount = Number(amount.value ?? 0)
@@ -73,6 +75,107 @@ const hasInvalidAmount = computed(() => {
 
 const hasInvalidSubmission = computed(() => hasInvalidAmount.value || password.value.trim() === '')
 
+const withdrawalRulesHint = computed(
+    () =>
+        `Masukkan nominal kelipatan Rp 500, minimal ${formattedMinimumRequestAmount.value}, maksimal ${formattedMaxAmount.value}, dan lebih besar dari biaya admin ${formattedAdminFee.value}.`
+)
+
+const amountAlert = computed(() => {
+    const requestedAmount = Number(amount.value ?? 0)
+
+    if (!hasAmountKeyup.value) {
+        return {
+            color: 'info',
+            icon: 'i-lucide-info',
+            title: 'Panduan nominal withdrawal',
+            description: withdrawalRulesHint.value,
+        }
+    }
+
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal belum valid',
+            description: 'Masukkan nominal angka yang valid untuk lanjut proses withdrawal.',
+        }
+    }
+
+    if (!Number.isInteger(requestedAmount)) {
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal harus bilangan bulat',
+            description: 'Nominal withdrawal tidak boleh mengandung desimal.',
+        }
+    }
+
+    if (requestedAmount % withdrawalStepAmount !== 0) {
+        const lowerSuggestion = Math.floor(requestedAmount / withdrawalStepAmount) * withdrawalStepAmount
+        const upperSuggestion = Math.ceil(requestedAmount / withdrawalStepAmount) * withdrawalStepAmount
+        const suggestions = [lowerSuggestion, upperSuggestion]
+            .filter((value, index, all) => value > 0 && all.indexOf(value) === index)
+            .map((value) => idrFormatter.format(value))
+            .join(' atau ')
+
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal wajib kelipatan Rp 500',
+            description: suggestions !== ''
+                ? `Contoh nominal terdekat yang valid: ${suggestions}.`
+                : 'Ubah nominal agar sesuai kelipatan Rp 500.',
+        }
+    }
+
+    if (requestedAmount < minimumRequestAmount.value) {
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal di bawah minimum',
+            description: `Minimal withdrawal adalah ${formattedMinimumRequestAmount.value}.`,
+        }
+    }
+
+    if (requestedAmount > maxAmountInputValue.value) {
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal melebihi saldo',
+            description: `Maksimal yang bisa diajukan saat ini ${formattedMaxAmount.value}.`,
+        }
+    }
+
+    const estimatedReceivedAmount = Math.max(0, requestedAmount - adminFeeValue.value)
+
+    if (estimatedReceivedAmount <= 0) {
+        return {
+            color: 'warning',
+            icon: 'i-lucide-alert-triangle',
+            title: 'Nominal belum memenuhi biaya admin',
+            description: `Nominal harus lebih besar dari biaya admin ${formattedAdminFee.value}.`,
+        }
+    }
+
+    return {
+        color: 'success',
+        icon: 'i-lucide-badge-check',
+        title: 'Nominal valid',
+        description: `Estimasi dana diterima: ${idrFormatter.format(estimatedReceivedAmount)} setelah biaya admin ${formattedAdminFee.value}.`,
+    }
+})
+
+function onAmountKeyup(): void {
+    hasAmountKeyup.value = true
+}
+
+watch(isOpen, (open) => {
+    if (!open) {
+        hasAmountKeyup.value = false
+        showPassword.value = false
+    }
+})
+
 defineEmits<{
     submit: []
 }>()
@@ -89,7 +192,7 @@ defineEmits<{
                 <UFormField
                     label="Nominal withdrawal"
                     required
-                    :help="`Minimal ${formattedMinimumRequestAmount} • Maksimal ${formattedMaxAmount} • Kelipatan Rp 1.000`"
+                    :help="`Minimal ${formattedMinimumRequestAmount} • Maksimal ${formattedMaxAmount} • Kelipatan Rp 500`"
                 >
                     <UInput
                         v-model="amount"
@@ -100,8 +203,17 @@ defineEmits<{
                         placeholder="Contoh: 50000"
                         class="w-full"
                         icon="i-lucide-wallet"
+                        @keyup="onAmountKeyup"
                     />
                 </UFormField>
+
+                <UAlert
+                    :color="amountAlert.color"
+                    variant="soft"
+                    :icon="amountAlert.icon"
+                    :title="amountAlert.title"
+                    :description="amountAlert.description"
+                />
 
                 <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
                     <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">
@@ -115,11 +227,27 @@ defineEmits<{
                 <UFormField label="Password akun" required help="Password dipakai sebagai konfirmasi withdrawal.">
                     <UInput
                         v-model="password"
-                        type="password"
+                        id="withdrawal-password"
+                        :type="showPassword ? 'text' : 'password'"
                         class="w-full"
                         placeholder="Masukkan password akun"
                         icon="i-lucide-lock-keyhole"
-                    />
+                        :ui="{ trailing: 'pe-1' }"
+                    >
+                        <template #trailing>
+                            <UButton
+                                color="neutral"
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                                :aria-pressed="showPassword"
+                                aria-controls="withdrawal-password"
+                                @click="showPassword = !showPassword"
+                            />
+                        </template>
+                    </UInput>
                 </UFormField>
 
                 <UFormField label="Catatan (opsional)">

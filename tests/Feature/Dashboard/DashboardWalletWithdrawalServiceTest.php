@@ -82,7 +82,7 @@ it('rejects withdrawal when amount is below minimum request amount', function ()
         ->toContain('Nominal withdrawal minimal Rp 10.000');
 });
 
-it('rejects withdrawal amount that is not a multiple of one thousand', function (): void {
+it('rejects withdrawal amount that is not a multiple of five hundred', function (): void {
     $service = buildDashboardWalletWithdrawalService();
     $customer = createWalletWithdrawalCustomer(5102, 500000);
 
@@ -100,7 +100,7 @@ it('rejects withdrawal amount that is not a multiple of one thousand', function 
     expect($caughtException)->not->toBeNull()
         ->and($caughtException?->errors())->toHaveKey('amount')
         ->and($caughtException?->errors()['amount'][0] ?? null)
-        ->toBe('Nominal withdrawal harus kelipatan Rp 1.000.');
+        ->toBe('Nominal withdrawal harus kelipatan Rp 500.');
 });
 
 it('accepts minimum withdrawal amount and applies admin fee in notes', function (): void {

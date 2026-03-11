@@ -39,7 +39,7 @@ class DashboardService
 
     private const WITHDRAWAL_ADMIN_FEE = 6500;
 
-    private const WITHDRAWAL_STEP_AMOUNT = 1000;
+    private const WITHDRAWAL_STEP_AMOUNT = 500;
 
     public function __construct(
         protected DashboardRepositoryInterface $dashboardRepository,
@@ -879,7 +879,7 @@ class DashboardService
 
         if (((int) $amount) % self::WITHDRAWAL_STEP_AMOUNT !== 0) {
             throw ValidationException::withMessages([
-                'amount' => 'Nominal withdrawal harus kelipatan Rp 1.000.',
+                'amount' => 'Nominal withdrawal harus kelipatan Rp 500.',
             ]);
         }
 

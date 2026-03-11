@@ -39,6 +39,7 @@ class CustomersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('id', 'desc')
             ->columns(self::columns())
             ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(6)

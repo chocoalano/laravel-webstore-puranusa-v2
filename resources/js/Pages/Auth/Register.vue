@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const { form, validate, firstError, onSubmit } = useRegisterForm(props.referralCode)
+const isReferralReadonly = Boolean(props.referralCode)
 </script>
 
 <template>
@@ -25,6 +26,7 @@ const { form, validate, firstError, onSubmit } = useRegisterForm(props.referralC
             :form="form"
             :validate="validate"
             :first-error="firstError"
+            :is-referral-readonly="isReferralReadonly"
             @submit="onSubmit"
         />
     </div>

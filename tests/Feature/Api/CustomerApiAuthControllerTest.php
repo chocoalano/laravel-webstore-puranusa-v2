@@ -18,6 +18,31 @@ it('registers customer auth api routes', function (): void {
         ->and(route('api.auth.me.update', [], false))->toBe('/api/auth/me');
 });
 
+it('resolves referral code from username on register-meta endpoint', function (): void {
+    prepareRegisterMetaDatabase();
+
+    DB::table('customers')->insert([
+        'username' => 'mitra.api',
+        'ref_code' => '20260311123000-0001',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->getJson(route('api.auth.register-meta', ['username' => 'mitra.api']))
+        ->assertOk()
+        ->assertJsonPath('data.referralCode', '20260311123000-0001');
+});
+
+it('clears referral code session on register-meta when username is unknown', function (): void {
+    prepareRegisterMetaDatabase();
+
+    $this->withSession([
+        'referral_code' => '20260311123000-0009',
+    ])->getJson(route('api.auth.register-meta', ['username' => 'username.tidak.ada']))
+        ->assertOk()
+        ->assertJsonPath('data.referralCode', null);
+});
+
 it('returns access token payload when customer api login succeeds', function (): void {
     $customer = makeCustomerForApi(501);
 
@@ -355,5 +380,22 @@ function prepareAuthProfileUpdateDatabase(): void
         $table->string('anak')->nullable();
         $table->string('kerja')->nullable();
         $table->string('office')->nullable();
+    });
+}
+
+function prepareRegisterMetaDatabase(): void
+{
+    config()->set('database.default', 'sqlite');
+    config()->set('database.connections.sqlite.database', ':memory:');
+    DB::purge('sqlite');
+    DB::reconnect('sqlite');
+
+    Schema::dropIfExists('customers');
+
+    Schema::create('customers', function (Blueprint $table): void {
+        $table->id();
+        $table->string('username')->nullable();
+        $table->string('ref_code')->nullable();
+        $table->timestamps();
     });
 }

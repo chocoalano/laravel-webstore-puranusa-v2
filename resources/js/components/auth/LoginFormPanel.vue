@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import type { LoginData, LoginForm, LoginValidationError } from '@/composables/useLoginForm'
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const props = defineProps<{
 const emit = defineEmits<{
     submit: []
 }>()
+
+const showPassword = ref(false)
 </script>
 
 <template>
@@ -76,11 +79,27 @@ const emit = defineEmits<{
                     </template>
                     <UInput
                         v-model="props.form.password"
-                        type="password"
+                        id="password"
+                        :type="showPassword ? 'text' : 'password'"
                         placeholder="Masukkan kata sandi"
                         autocomplete="current-password"
                         class="w-full"
-                    />
+                        :ui="{ trailing: 'pe-1' }"
+                    >
+                        <template #trailing>
+                            <UButton
+                                color="neutral"
+                                type="button"
+                                variant="link"
+                                size="sm"
+                                :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                                :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+                                :aria-pressed="showPassword"
+                                aria-controls="password"
+                                @click="showPassword = !showPassword"
+                            />
+                        </template>
+                    </UInput>
                 </UFormField>
 
                 <UFormField name="remember">
