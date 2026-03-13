@@ -182,81 +182,69 @@ defineEmits<{
 </script>
 
 <template>
-    <UModal
-        v-model:open="isOpen"
-        title="Ajukan Withdrawal Wallet"
-        description="Konfirmasi password akun untuk keamanan proses withdrawal."
-    >
+    <UModal v-model:open="isOpen" title="Ajukan Withdrawal Wallet"
+        description="Konfirmasi password akun untuk keamanan proses withdrawal.">
         <template #body>
             <div class="space-y-4">
-                <UFormField
-                    label="Nominal withdrawal"
-                    required
-                    :help="`Minimal ${formattedMinimumRequestAmount} • Maksimal ${formattedMaxAmount} • Kelipatan Rp 500`"
-                >
-                    <UInput
-                        v-model="amount"
-                        type="number"
-                        :min="minimumRequestAmount"
-                        :max="maxAmountInputValue"
-                        :step="withdrawalStepAmount"
-                        placeholder="Contoh: 50000"
-                        class="w-full"
-                        icon="i-lucide-wallet"
-                        @keyup="onAmountKeyup"
-                    />
+                <UFormField label="Nominal withdrawal" required
+                    :help="`Minimal ${formattedMinimumRequestAmount} • Maksimal ${formattedMaxAmount} • Kelipatan Rp 500`">
+                    <UInput v-model="amount" type="number" :min="minimumRequestAmount" :max="maxAmountInputValue"
+                        :step="withdrawalStepAmount" placeholder="Contoh: 50000" class="w-full" icon="i-lucide-wallet"
+                        @keyup="onAmountKeyup" />
                 </UFormField>
 
-                <UAlert
-                    :color="amountAlert.color"
-                    variant="soft"
-                    :icon="amountAlert.icon"
-                    :title="amountAlert.title"
-                    :description="amountAlert.description"
-                />
+                <UAlert :color="amountAlert.color" variant="soft" :icon="amountAlert.icon" :title="amountAlert.title"
+                    :description="amountAlert.description" />
 
-                <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
-                    <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">
-                        Aturan withdrawal
+                <div
+                    class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/30">
+                    <p class="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-200">
+                        Aturan Withdrawal
                     </p>
-                    <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Setiap transaksi withdrawal dikenakan biaya admin {{ formattedAdminFee }}.
-                    </p>
+
+                    <div class="mt-2 space-y-3 text-xs text-amber-700 dark:text-amber-300">
+                        <p flex items-start>
+                            <span class="font-semibold mr-1">1.</span>
+                            Setiap penarikan dikenakan biaya administrasi <span
+                                class="font-bold text-amber-800 dark:text-amber-100">{{ formattedAdminFee }}</span> (Rp
+                            6.500).
+                        </p>
+
+                        <div>
+                            <p class="font-semibold">2. Periode Pentransferan:</p>
+                            <ul class="mt-1 ml-4 list-disc space-y-1">
+                                <li>Penarikan <span class="font-medium">00.01 - 12.00 WIB</span>: Ditransfer pukul <span
+                                        class="font-bold">14.00 WIB</span> (hari yang sama).</li>
+                                <li>Penarikan <span class="font-medium">12.01 - 16.00 WIB</span>: Ditransfer pukul <span
+                                        class="font-bold">17.00 WIB</span> (hari yang sama).</li>
+                                <li>Penarikan <span class="font-medium">16.01 - 00.00 WIB</span>: Ditransfer pukul <span
+                                        class="font-bold">14.00 WIB</span> (keesokan harinya).</li>
+                            </ul>
+                        </div>
+
+                        <p>
+                            <span class="font-semibold">3.</span> Pastikan data rekening Anda sudah benar untuk
+                            menghindari kegagalan transaksi.
+                        </p>
+                    </div>
                 </div>
 
                 <UFormField label="Password akun" required help="Password dipakai sebagai konfirmasi withdrawal.">
-                    <UInput
-                        v-model="password"
-                        id="withdrawal-password"
-                        :type="showPassword ? 'text' : 'password'"
-                        class="w-full"
-                        placeholder="Masukkan password akun"
-                        icon="i-lucide-lock-keyhole"
-                        :ui="{ trailing: 'pe-1' }"
-                    >
+                    <UInput v-model="password" id="withdrawal-password" :type="showPassword ? 'text' : 'password'"
+                        class="w-full" placeholder="Masukkan password akun" icon="i-lucide-lock-keyhole"
+                        :ui="{ trailing: 'pe-1' }">
                         <template #trailing>
-                            <UButton
-                                color="neutral"
-                                type="button"
-                                variant="link"
-                                size="sm"
+                            <UButton color="neutral" type="button" variant="link" size="sm"
                                 :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
-                                :aria-pressed="showPassword"
-                                aria-controls="withdrawal-password"
-                                @click="showPassword = !showPassword"
-                            />
+                                :aria-pressed="showPassword" aria-controls="withdrawal-password"
+                                @click="showPassword = !showPassword" />
                         </template>
                     </UInput>
                 </UFormField>
 
                 <UFormField label="Catatan (opsional)">
-                    <UTextarea
-                        v-model="notes"
-                        :rows="3"
-                        class="w-full"
-                        placeholder="Catatan untuk tim finance."
-                    />
+                    <UTextarea v-model="notes" :rows="3" class="w-full" placeholder="Catatan untuk tim finance." />
                 </UFormField>
             </div>
         </template>
@@ -265,13 +253,8 @@ defineEmits<{
                 <UButton color="neutral" variant="outline" @click="isOpen = false">
                     Batal
                 </UButton>
-                <UButton
-                    color="primary"
-                    icon="i-lucide-arrow-up-right"
-                    :loading="loading"
-                    :disabled="loading || hasInvalidSubmission"
-                    @click="$emit('submit')"
-                >
+                <UButton color="primary" icon="i-lucide-arrow-up-right" :loading="loading"
+                    :disabled="loading || hasInvalidSubmission" @click="$emit('submit')">
                     Kirim Withdrawal
                 </UButton>
             </div>
