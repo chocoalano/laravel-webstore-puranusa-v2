@@ -39,11 +39,11 @@ class CustomerWithdrawalExporter extends Exporter
 
             ExportColumn::make('admin_fee')
                 ->label('Biaya Admin')
-                ->state(fn (): int => 6500),
+                ->state(fn (CustomerWalletTransaction $record): float => self::extractSubmissionAdminFee($record->notes)),
 
             ExportColumn::make('total_potongan')
                 ->label('Total Potongan Wallet')
-                ->state(fn (CustomerWalletTransaction $record): float => (float) ($record->amount ?? 0) + 6500),
+                ->state(fn (CustomerWalletTransaction $record): float => (float) ($record->amount ?? 0) + self::extractSubmissionAdminFee($record->notes)),
 
             ExportColumn::make('balance_before')
                 ->label('Saldo Sebelum'),
@@ -122,5 +122,23 @@ class CustomerWithdrawalExporter extends Exporter
         }
 
         return filled($value) ? (string) $value : '-';
+    }
+
+    private static function extractSubmissionAdminFee(?string $notes): float
+    {
+        $normalized = trim((string) $notes);
+
+        if ($normalized === '') {
+            return 0.0;
+        }
+
+        if (! preg_match('/Biaya admin:\s*Rp\s*([0-9\.\,]+)/i', $normalized, $matches)) {
+            return 0.0;
+        }
+
+        $rawAmount = trim((string) ($matches[1] ?? '0'));
+        $normalizedAmount = str_replace(['.', ','], ['', '.'], $rawAmount);
+
+        return max(0.0, (float) $normalizedAmount);
     }
 }

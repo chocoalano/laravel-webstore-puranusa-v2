@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\OrderObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * Model Order (Pesanan).
@@ -36,12 +38,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property float $stockist_amount Komponen bonus stockist
  * @property string $type Tipe order (planA|planB)
  * @property bool $bonus_generated Apakah bonus sudah dihitung
- * @property \Illuminate\Support\Carbon|null $processed_at
- * @property \Illuminate\Support\Carbon|null $placed_at
- * @property \Illuminate\Support\Carbon|null $paid_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $processed_at
+ * @property Carbon|null $placed_at
+ * @property Carbon|null $paid_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
+#[ObservedBy(OrderObserver::class)]
 class Order extends BaseModel
 {
     use HasFactory;

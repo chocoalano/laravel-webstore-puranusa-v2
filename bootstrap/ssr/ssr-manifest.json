@@ -340,10 +340,10 @@
     "/build/assets/Login-CFn75R_4.js"
   ],
   "resources/js/Pages/Auth/Register.vue": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/Pages/Auth/Register.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/Pages/Home.vue": [
     "/build/assets/Home-BxzAg2F0.js"
@@ -448,16 +448,16 @@
     "/build/assets/Login-CFn75R_4.js"
   ],
   "resources/js/components/auth/RegisterFormPanel.vue": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/components/auth/RegisterFormPanel.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/components/auth/RegisterInfoPanel.vue": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/components/auth/RegisterInfoPanel.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/components/checkout/CheckoutAddressPanel.vue": [
     "/build/assets/Index-BQD4twjG.js"
@@ -1134,7 +1134,7 @@
     "/build/assets/Show-BhM0gMDu.js"
   ],
   "resources/js/composables/useRegisterForm.ts": [
-    "/build/assets/Register-Dli5Phyn.js"
+    "/build/assets/Register-DdmG9-oD.js"
   ],
   "resources/js/composables/useShare.ts": [
     "/build/assets/Show-BhM0gMDu.js"

@@ -95,3 +95,21 @@ it('exposes expected export columns for customer withdrawals', function (): void
         'transaction_ref',
     );
 });
+
+it('extracts admin fee amount from withdrawal notes format', function (): void {
+    $adminFee = invokePrivateStatic(
+        CustomerWithdrawalExporter::class,
+        'extractSubmissionAdminFee',
+        ['Bank: BCA (1234567890)'.PHP_EOL.'Biaya admin: Rp 6.500'.PHP_EOL.'Estimasi diterima: Rp 43.500'],
+    );
+
+    expect($adminFee)->toBe(6500.0);
+});
+
+function invokePrivateStatic(string $className, string $methodName, array $arguments = []): mixed
+{
+    $reflection = new ReflectionMethod($className, $methodName);
+    $reflection->setAccessible(true);
+
+    return $reflection->invokeArgs(null, $arguments);
+}

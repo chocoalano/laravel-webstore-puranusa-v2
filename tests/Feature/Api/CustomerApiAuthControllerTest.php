@@ -30,7 +30,8 @@ it('resolves referral code from username on register-meta endpoint', function ()
 
     $this->getJson(route('api.auth.register-meta', ['username' => 'mitra.api']))
         ->assertOk()
-        ->assertJsonPath('data.referralCode', '20260311123000-0001');
+        ->assertJsonPath('data.referralCode', '20260311123000-0001')
+        ->assertJsonPath('data.referralUsername', 'mitra.api');
 });
 
 it('clears referral code session on register-meta when username is unknown', function (): void {
@@ -38,9 +39,11 @@ it('clears referral code session on register-meta when username is unknown', fun
 
     $this->withSession([
         'referral_code' => '20260311123000-0009',
+        'referral_username' => 'mitra.session',
     ])->getJson(route('api.auth.register-meta', ['username' => 'username.tidak.ada']))
         ->assertOk()
-        ->assertJsonPath('data.referralCode', null);
+        ->assertJsonPath('data.referralCode', null)
+        ->assertJsonPath('data.referralUsername', null);
 });
 
 it('returns access token payload when customer api login succeeds', function (): void {

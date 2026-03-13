@@ -31,9 +31,17 @@ beforeEach(function (): void {
 });
 
 it('stores referral code from home query into session', function (): void {
+    DB::table('customers')->insert([
+        'username' => 'mitra.kode',
+        'ref_code' => 'REF-MLM-001',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     $this->get('/?referral_code=REF-MLM-001')
         ->assertSuccessful()
-        ->assertSessionHas('referral_code', 'REF-MLM-001');
+        ->assertSessionHas('referral_code', 'REF-MLM-001')
+        ->assertSessionHas('referral_username', 'mitra.kode');
 });
 
 it('stores referral code from username query into session', function (): void {
@@ -46,21 +54,36 @@ it('stores referral code from username query into session', function (): void {
 
     $this->get('/?username=mitra.test')
         ->assertSuccessful()
-        ->assertSessionHas('referral_code', '20260311123000-0001');
+        ->assertSessionHas('referral_code', '20260311123000-0001')
+        ->assertSessionHas('referral_username', 'mitra.test');
 });
 
 it('clears existing referral code session when username query is not found', function (): void {
     $this->withSession([
         'referral_code' => 'REF-SESSION-EXISTING',
+        'referral_username' => 'mitra.session',
     ])->get('/?username=username.tidak.ada')
         ->assertSuccessful()
-        ->assertSessionMissing('referral_code');
+        ->assertSessionMissing('referral_code')
+        ->assertSessionMissing('referral_username');
 });
 
 it('keeps existing referral code session when query is missing', function (): void {
     $this->withSession([
         'referral_code' => 'REF-SESSION-EXISTING',
+        'referral_username' => 'mitra.session',
     ])->get('/')
         ->assertSuccessful()
-        ->assertSessionHas('referral_code', 'REF-SESSION-EXISTING');
+        ->assertSessionHas('referral_code', 'REF-SESSION-EXISTING')
+        ->assertSessionHas('referral_username', 'mitra.session');
+});
+
+it('clears existing referral session when referral code query is not found', function (): void {
+    $this->withSession([
+        'referral_code' => 'REF-SESSION-EXISTING',
+        'referral_username' => 'mitra.session',
+    ])->get('/?referral_code=REF-TIDAK-ADA')
+        ->assertSuccessful()
+        ->assertSessionMissing('referral_code')
+        ->assertSessionMissing('referral_username');
 });

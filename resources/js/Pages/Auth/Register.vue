@@ -10,10 +10,15 @@ defineOptions({ layout: AppLayout })
 const props = defineProps<{
     seo: { title: string; description: string; canonical: string }
     referralCode?: string
+    referralUsername?: string
+    debugMode: boolean
 }>()
 
-const { form, validate, firstError, onSubmit } = useRegisterForm(props.referralCode)
-const isReferralReadonly = Boolean(props.referralCode)
+const { form, validate, firstError, onSubmit, autofillDebugForm, resetRegisterForm } = useRegisterForm(
+    props.referralCode,
+    props.referralUsername,
+)
+const isReferralReadonly = Boolean(props.referralUsername ?? props.referralCode)
 </script>
 
 <template>
@@ -27,6 +32,9 @@ const isReferralReadonly = Boolean(props.referralCode)
             :validate="validate"
             :first-error="firstError"
             :is-referral-readonly="isReferralReadonly"
+            :debug-mode="props.debugMode"
+            :on-autofill-debug-form="autofillDebugForm"
+            :on-reset-register-form="resetRegisterForm"
             @submit="onSubmit"
         />
     </div>

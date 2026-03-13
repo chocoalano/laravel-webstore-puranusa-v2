@@ -14,13 +14,7 @@ class CustomerRegistrationService
 
     public function register(RegisterRequest $request): Customer
     {
-        $sponsor = null;
-
-        if ($request->filled('referral_code')) {
-            $sponsor = $this->repository->findBySponsorCode(
-                $request->string('referral_code')->toString()
-            );
-        }
+        $sponsor = $request->sponsor();
 
         return $this->repository->create([
             'name' => $request->string('name')->trim()->toString(),

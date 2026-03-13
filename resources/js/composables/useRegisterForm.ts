@@ -11,6 +11,7 @@ export type RegisterData = {
     nik: string
     gender: 'L' | 'P' | ''
     alamat: string
+    referral_username: string
     referral_code: string
     password: string
     password_confirmation: string
@@ -20,10 +21,9 @@ export type RegisterData = {
 export type RegisterValidationError = FormError<string>
 export type RegisterForm = ReturnType<typeof useForm<RegisterData>>
 
-export function useRegisterForm(referralCode?: string) {
+export function useRegisterForm(referralCode?: string, referralUsername?: string) {
     const toast = useToast()
-
-    const form = useForm<RegisterData>({
+    const initialState: RegisterData = {
         name: '',
         username: '',
         email: '',
@@ -31,11 +31,14 @@ export function useRegisterForm(referralCode?: string) {
         nik: '',
         gender: '',
         alamat: '',
+        referral_username: referralUsername ?? '',
         referral_code: referralCode ?? '',
         password: '',
         password_confirmation: '',
         terms: false,
-    })
+    }
+
+    const form = useForm<RegisterData>({ ...initialState })
 
     const firstError = computed<string | undefined>(() => Object.values(form.errors ?? {})[0])
 
@@ -45,6 +48,8 @@ export function useRegisterForm(referralCode?: string) {
         'email',
         'telp',
         'gender',
+        'referral_username',
+        'referral_code',
         'password',
         'password_confirmation',
         'terms',
@@ -60,6 +65,7 @@ export function useRegisterForm(referralCode?: string) {
         const email = String(state.email ?? '').trim()
         const telp = String(state.telp ?? '').replace(/\s+/g, '')
         const username = String(state.username ?? '').trim()
+        const referralUsername = String(state.referral_username ?? '').trim().replace(/^@+/, '')
         const password = String(state.password ?? '')
         const passwordConfirmation = String(state.password_confirmation ?? '')
 
@@ -92,6 +98,13 @@ export function useRegisterForm(referralCode?: string) {
             errors.push({ name: 'gender', message: 'Silakan pilih jenis kelamin.' })
         }
 
+        if (referralUsername && !/^[a-zA-Z0-9_.]{3,30}$/.test(referralUsername)) {
+            errors.push({
+                name: 'referral_username',
+                message: 'Username referral tidak valid.',
+            })
+        }
+
         if (!password || password.length < 8) {
             errors.push({ name: 'password', message: 'Kata sandi minimal 8 karakter.' })
         }
@@ -110,7 +123,13 @@ export function useRegisterForm(referralCode?: string) {
     function onSubmit(): void {
         form.clearErrors()
 
-        form.post('/register', {
+        form.transform((data) => ({
+            ...data,
+            username: data.username.trim().toLowerCase(),
+            email: data.email.trim().toLowerCase(),
+            telp: data.telp.replace(/\s+/g, ''),
+            referral_username: data.referral_username.trim().replace(/^@+/, '').toLowerCase(),
+        })).post('/register', {
             preserveScroll: true,
             onError: () => {
                 toast.add({
@@ -130,10 +149,33 @@ export function useRegisterForm(referralCode?: string) {
         })
     }
 
+    function autofillDebugForm(): void {
+        const timestampSeed = Date.now().toString().slice(-6)
+
+        form.clearErrors()
+        form.name = `Debug Member ${timestampSeed}`
+        form.username = `debug.member.${timestampSeed}`
+        form.email = `debug.member.${timestampSeed}@example.test`
+        form.telp = `08123${timestampSeed}`
+        form.nik = '3276010101010001'
+        form.gender = 'L'
+        form.alamat = 'Jl. Debug Mode No. 1, Jakarta'
+        form.password = 'secret12345'
+        form.password_confirmation = 'secret12345'
+        form.terms = true
+    }
+
+    function resetRegisterForm(): void {
+        form.clearErrors()
+        form.reset()
+    }
+
     return {
         form,
         firstError,
         validate,
         onSubmit,
+        autofillDebugForm,
+        resetRegisterForm,
     }
 }

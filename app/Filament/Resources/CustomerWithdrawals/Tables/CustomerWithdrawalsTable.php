@@ -24,8 +24,6 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerWithdrawalsTable
 {
-    private const WITHDRAWAL_ADMIN_FEE = 6500.0;
-
     public static function configure(Table $table): Table
     {
         return $table
@@ -57,6 +55,13 @@ class CustomerWithdrawalsTable
                             ->label('Total Penarikan')
                             ->money('IDR')
                     ),
+
+                TextColumn::make('submission_admin_fee')
+                    ->label('Biaya Admin')
+                    ->state(fn (CustomerWalletTransaction $record): float => self::extractSubmissionAdminFee($record->notes))
+                    ->money('IDR')
+                    ->alignEnd()
+                    ->toggleable(),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -185,9 +190,38 @@ class CustomerWithdrawalsTable
                     ->visible(fn (CustomerWalletTransaction $record): bool => self::normalizeStatus($record->status) === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Setujui Withdrawal')
-                    ->modalDescription('Withdrawal akan ditandai completed, saldo customer disesuaikan, dan notifikasi WhatsApp dikirim.')
+                    ->modalDescription('Pilih "Ya, Setujui" untuk menyelesaikan withdrawal, atau "Tidak, Tolak permintaan" untuk membatalkan dan mengembalikan saldo customer.')
                     ->modalSubmitActionLabel('Ya, Setujui')
-                    ->action(function (CustomerWalletTransaction $record): void {
+                    ->modalCancelAction(false)
+                    ->extraModalFooterActions(fn (Action $action): array => [
+                        $action->makeModalSubmitAction('reject_withdrawal', arguments: ['decision' => 'reject'])
+                            ->label('Tolak permintaan')
+                            ->color('danger')
+                            ->icon('heroicon-o-x-circle'),
+                    ])
+                    ->action(function (CustomerWalletTransaction $record, array $arguments): void {
+                        if (($arguments['decision'] ?? null) === 'reject') {
+                            try {
+                                self::rejectPendingWithdrawal((int) $record->id);
+                            } catch (\Throwable $exception) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Gagal Menolak Withdrawal')
+                                    ->body($exception->getMessage())
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->warning()
+                                ->title('Withdrawal Ditolak')
+                                ->body('Permintaan withdrawal ditolak dan saldo customer dikembalikan.')
+                                ->send();
+
+                            return;
+                        }
+
                         try {
                             $approvedTransactionId = self::approvePendingWithdrawal((int) $record->id);
                         } catch (\Throwable $exception) {
@@ -206,13 +240,13 @@ class CustomerWithdrawalsTable
                             Notification::make()
                                 ->success()
                                 ->title('Withdrawal Disetujui')
-                                ->body('Withdrawal berhasil disetujui, saldo diperbarui, dan notifikasi WhatsApp berhasil dikirim.')
+                                ->body('Withdrawal berhasil disetujui dan notifikasi WhatsApp berhasil dikirim.')
                                 ->send();
                         } catch (\Throwable $exception) {
                             Notification::make()
                                 ->warning()
                                 ->title('Withdrawal Disetujui, Notifikasi WA Gagal')
-                                ->body('Status dan saldo sudah diperbarui, namun notifikasi WhatsApp gagal terkirim: '.$exception->getMessage())
+                                ->body('Status withdrawal sudah diperbarui, namun notifikasi WhatsApp gagal terkirim: '.$exception->getMessage())
                                 ->send();
                         }
                     }),
@@ -251,32 +285,59 @@ class CustomerWithdrawalsTable
                 throw new \RuntimeException('Customer untuk transaksi withdrawal tidak ditemukan.');
             }
 
-            // $currentBalance = (float) ($customer->ewallet_saldo ?? 0);
-            $grossAmount = max(0.0, (float) ($transaction->amount ?? 0));
-            $recordedBalanceBefore = (float) ($transaction->balance_before ?? 0);
-            $recordedBalanceAfter = (float) ($transaction->balance_after ?? 0);
-            $alreadyDeductedGross = max(0.0, $recordedBalanceBefore - $recordedBalanceAfter);
-            $missingGrossDeduction = max(0.0, $grossAmount - $alreadyDeductedGross);
-            $additionalDeduction = $missingGrossDeduction + self::WITHDRAWAL_ADMIN_FEE;
-
-            // if ($currentBalance < $additionalDeduction) {
-            //     throw new \RuntimeException('Saldo wallet customer tidak mencukupi untuk proses approval withdrawal.');
-            // }
-
-            if ($additionalDeduction > 0) {
-                $customer->decrement('ewallet_saldo', $additionalDeduction);
-                $customer->refresh();
-            }
-
             $transaction->forceFill([
                 'status' => 'completed',
                 'completed_at' => now(),
                 'balance_after' => (float) ($customer->ewallet_saldo ?? 0),
-                'notes' => self::appendApprovalNotes(
-                    $transaction->notes,
-                    self::WITHDRAWAL_ADMIN_FEE,
-                    $missingGrossDeduction
-                ),
+                'notes' => self::appendApprovalNotes($transaction->notes),
+            ])->save();
+
+            return (int) $transaction->id;
+        });
+    }
+
+    private static function rejectPendingWithdrawal(int $transactionId): int
+    {
+        return DB::transaction(function () use ($transactionId): int {
+            $transaction = CustomerWalletTransaction::query()
+                ->whereKey($transactionId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $transaction) {
+                throw new \RuntimeException('Data withdrawal tidak ditemukan.');
+            }
+
+            if (self::normalizeType($transaction->type) !== 'withdrawal') {
+                throw new \RuntimeException('Transaksi ini bukan withdrawal.');
+            }
+
+            if (self::normalizeStatus($transaction->status) !== 'pending') {
+                throw new \RuntimeException('Withdrawal ini sudah diproses sebelumnya.');
+            }
+
+            /** @var Customer|null $customer */
+            $customer = Customer::query()
+                ->whereKey($transaction->customer_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $customer) {
+                throw new \RuntimeException('Customer untuk transaksi withdrawal tidak ditemukan.');
+            }
+
+            $refundAmount = max(0.0, (float) ($transaction->amount ?? 0));
+
+            if ($refundAmount > 0) {
+                $customer->increment('ewallet_saldo', $refundAmount);
+                $customer->refresh();
+            }
+
+            $transaction->forceFill([
+                'status' => 'cancelled',
+                'completed_at' => now(),
+                'balance_after' => (float) ($customer->ewallet_saldo ?? 0),
+                'notes' => self::appendRejectionNotes($transaction->notes, $refundAmount),
             ])->save();
 
             return (int) $transaction->id;
@@ -337,7 +398,7 @@ class CustomerWithdrawalsTable
         ];
     }
 
-    private static function appendApprovalNotes(?string $existingNotes, float $adminFee, float $missingGrossDeduction): string
+    private static function appendApprovalNotes(?string $existingNotes): string
     {
         $chunks = [];
         $normalized = trim((string) $existingNotes);
@@ -346,11 +407,39 @@ class CustomerWithdrawalsTable
             $chunks[] = $normalized;
         }
 
-        $chunks[] = 'Biaya admin approval: '.self::formatIdr($adminFee);
+        $chunks[] = 'Approval selesai tanpa potongan saldo tambahan.';
 
-        if ($missingGrossDeduction > 0) {
-            $chunks[] = 'Potongan gross saat approve: '.self::formatIdr($missingGrossDeduction);
+        return implode(PHP_EOL, $chunks);
+    }
+
+    private static function extractSubmissionAdminFee(?string $notes): float
+    {
+        $normalized = trim((string) $notes);
+
+        if ($normalized === '') {
+            return 0.0;
         }
+
+        if (! preg_match('/Biaya admin:\s*Rp\s*([0-9\.\,]+)/i', $normalized, $matches)) {
+            return 0.0;
+        }
+
+        $rawAmount = trim((string) ($matches[1] ?? '0'));
+        $normalizedAmount = str_replace(['.', ','], ['', '.'], $rawAmount);
+
+        return max(0.0, (float) $normalizedAmount);
+    }
+
+    private static function appendRejectionNotes(?string $existingNotes, float $refundAmount): string
+    {
+        $chunks = [];
+        $normalized = trim((string) $existingNotes);
+
+        if ($normalized !== '') {
+            $chunks[] = $normalized;
+        }
+
+        $chunks[] = 'Withdrawal ditolak. Saldo dikembalikan: '.self::formatIdr($refundAmount).'.';
 
         return implode(PHP_EOL, $chunks);
     }

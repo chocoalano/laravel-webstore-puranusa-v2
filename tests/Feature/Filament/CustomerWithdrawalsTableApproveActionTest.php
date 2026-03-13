@@ -45,7 +45,7 @@ beforeEach(function (): void {
     });
 });
 
-it('approves pending withdrawal and deducts admin fee when gross deduction already exists', function (): void {
+it('approves pending withdrawal without changing customer balance', function (): void {
     $customer = createCustomerWithBalance(7001, 3076250);
     $transaction = createPendingWithdrawal(
         transactionId: 9001,
@@ -61,15 +61,14 @@ it('approves pending withdrawal and deducts admin fee when gross deduction alrea
     $freshTransaction = CustomerWalletTransaction::query()->findOrFail($transaction->id);
 
     expect($approvedTransactionId)->toBe((int) $transaction->id)
-        ->and((float) $freshCustomer->ewallet_saldo)->toBe(3069750.0)
+        ->and((float) $freshCustomer->ewallet_saldo)->toBe(3076250.0)
         ->and((string) $freshTransaction->status)->toBe('completed')
         ->and($freshTransaction->completed_at)->not->toBeNull()
-        ->and((float) $freshTransaction->balance_after)->toBe(3069750.0)
-        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Biaya admin approval: Rp 6.500')
-        ->not->toContain('Potongan gross saat approve');
+        ->and((float) $freshTransaction->balance_after)->toBe(3076250.0)
+        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Approval selesai tanpa potongan saldo tambahan.');
 });
 
-it('approves pending withdrawal and deducts missing gross plus admin fee when gross not deducted yet', function (): void {
+it('approves pending withdrawal even when legacy transaction has no gross deduction', function (): void {
     $customer = createCustomerWithBalance(7002, 3093250);
     $transaction = createPendingWithdrawal(
         transactionId: 9002,
@@ -84,11 +83,56 @@ it('approves pending withdrawal and deducts missing gross plus admin fee when gr
     $freshCustomer = Customer::query()->findOrFail($customer->id);
     $freshTransaction = CustomerWalletTransaction::query()->findOrFail($transaction->id);
 
-    expect((float) $freshCustomer->ewallet_saldo)->toBe(3069750.0)
+    expect((float) $freshCustomer->ewallet_saldo)->toBe(3093250.0)
         ->and((string) $freshTransaction->status)->toBe('completed')
-        ->and((float) $freshTransaction->balance_after)->toBe(3069750.0)
-        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Biaya admin approval: Rp 6.500')
-        ->toContain('Potongan gross saat approve: Rp 17.000');
+        ->and((float) $freshTransaction->balance_after)->toBe(3093250.0)
+        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Approval selesai tanpa potongan saldo tambahan.');
+});
+
+it('approves pending withdrawal with small balance because no extra deduction happens on approval', function (): void {
+    $customer = createCustomerWithBalance(7003, 250);
+    $transaction = createPendingWithdrawal(
+        transactionId: 9003,
+        customerId: (int) $customer->id,
+        amount: 126500,
+        balanceBefore: 126750,
+        balanceAfter: 250,
+    );
+
+    $approvedTransactionId = invokePrivateStatic(CustomerWithdrawalsTable::class, 'approvePendingWithdrawal', [(int) $transaction->id]);
+
+    $freshCustomer = Customer::query()->findOrFail($customer->id);
+    $freshTransaction = CustomerWalletTransaction::query()->findOrFail($transaction->id);
+
+    expect($approvedTransactionId)->toBe((int) $transaction->id)
+        ->and((float) $freshCustomer->ewallet_saldo)->toBe(250.0)
+        ->and((string) $freshTransaction->status)->toBe('completed')
+        ->and($freshTransaction->completed_at)->not->toBeNull()
+        ->and((float) $freshTransaction->balance_after)->toBe(250.0)
+        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Approval selesai tanpa potongan saldo tambahan.');
+});
+
+it('rejects pending withdrawal and refunds customer balance', function (): void {
+    $customer = createCustomerWithBalance(7004, 3076250);
+    $transaction = createPendingWithdrawal(
+        transactionId: 9004,
+        customerId: (int) $customer->id,
+        amount: 17000,
+        balanceBefore: 3093250,
+        balanceAfter: 3076250,
+    );
+
+    $rejectedTransactionId = invokePrivateStatic(CustomerWithdrawalsTable::class, 'rejectPendingWithdrawal', [(int) $transaction->id]);
+
+    $freshCustomer = Customer::query()->findOrFail($customer->id);
+    $freshTransaction = CustomerWalletTransaction::query()->findOrFail($transaction->id);
+
+    expect($rejectedTransactionId)->toBe((int) $transaction->id)
+        ->and((float) $freshCustomer->ewallet_saldo)->toBe(3093250.0)
+        ->and((string) $freshTransaction->status)->toBe('cancelled')
+        ->and($freshTransaction->completed_at)->not->toBeNull()
+        ->and((float) $freshTransaction->balance_after)->toBe(3093250.0)
+        ->and((string) ($freshTransaction->notes ?? ''))->toContain('Withdrawal ditolak. Saldo dikembalikan: Rp 17.000.');
 });
 
 function createCustomerWithBalance(int $id, float $balance): Customer

@@ -8,19 +8,23 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\Customer;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\CustomerRegistrationService;
+use App\Services\Auth\ReferralContextService;
 use App\Services\Dashboard\DashboardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 class CustomerAuthController extends Controller
 {
     public function __construct(
         private readonly CustomerAuthService $authService,
         private readonly CustomerRegistrationService $registrationService,
+        private readonly ReferralContextService $referralContextService,
         private readonly DashboardService $dashboardService,
     ) {}
 
@@ -54,10 +58,12 @@ class CustomerAuthController extends Controller
 
     public function showRegister(Request $request): Response
     {
-        $this->captureReferralCode($request);
+        $referralContext = $this->referralContextService->captureFromRequest($request);
 
         return Inertia::render('Auth/Register', [
-            'referralCode' => $request->session()->get('referral_code'),
+            'referralCode' => $referralContext['referralCode'],
+            'referralUsername' => $referralContext['referralUsername'],
+            'debugMode' => config('app.debug'),
             'seo' => [
                 'title' => 'Daftar Jadi Member',
                 'description' => 'Bergabunglah sebagai member '.config('app.name').' dan nikmati harga eksklusif, bonus afiliasi, serta akses ke ribuan produk unggulan. Gratis daftar sekarang!',
@@ -66,43 +72,38 @@ class CustomerAuthController extends Controller
         ]);
     }
 
-    private function captureReferralCode(Request $request): void
-    {
-        if ($request->filled('referral_code')) {
-            $request->session()->put('referral_code', (string) $request->query('referral_code'));
-
-            return;
-        }
-
-        if (! $request->filled('username')) {
-            return;
-        }
-
-        $username = trim((string) $request->query('username'));
-
-        if ($username === '') {
-            $request->session()->forget('referral_code');
-
-            return;
-        }
-
-        $resolvedReferralCode = Customer::query()
-            ->where('username', mb_strtolower($username))
-            ->orWhere('username', $username)
-            ->value('ref_code');
-
-        if (filled($resolvedReferralCode)) {
-            $request->session()->put('referral_code', (string) $resolvedReferralCode);
-
-            return;
-        }
-
-        $request->session()->forget('referral_code');
-    }
-
     public function register(RegisterRequest $request): RedirectResponse
     {
-        $this->registrationService->register($request);
+        try {
+            $this->registrationService->register($request);
+        } catch (Throwable $exception) {
+            Log::error('Customer registration failed.', [
+                'username' => $request->string('username')->toString(),
+                'email' => $request->string('email')->toString(),
+                'telp' => $request->string('telp')->toString(),
+                'referral_username' => $request->string('referral_username')->toString(),
+                'referral_code' => $request->string('referral_code')->toString(),
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'error' => 'Pendaftaran gagal. Silakan coba lagi.',
+                ])
+                ->onlyInput(
+                    'name',
+                    'username',
+                    'email',
+                    'telp',
+                    'nik',
+                    'gender',
+                    'alamat',
+                    'referral_username',
+                    'referral_code',
+                    'terms',
+                );
+        }
 
         return redirect()->route('login')->with('status', 'Akun berhasil dibuat! Silakan masuk.');
     }
@@ -116,7 +117,7 @@ class CustomerAuthController extends Controller
 
     public function dashboard(Request $request): Response
     {
-        /** @var \App\Models\Customer $customer */
+        /** @var Customer $customer */
         $customer = auth('customer')->user();
 
         if (! $customer) {

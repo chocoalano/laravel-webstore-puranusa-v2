@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -36,7 +37,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property int|null $city_id ID kota
  * @property int|null $province_id ID provinsi
  * @property string|null $remember_token Token remember me
- * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property Carbon|null $email_verified_at
  * @property string|null $ewallet_id ID unik e-wallet
  * @property float $ewallet_saldo Saldo e-wallet
  * @property float $bonus_pending Bonus yang belum diproses
@@ -64,11 +65,11 @@ use Laravel\Sanctum\HasApiTokens;
  * @property bool $is_stockist Apakah member adalah stockist
  * @property int $daily_pairing Jumlah pairing harian
  * @property int $max_daily_pairing Batas maksimum pairing harian
- * @property \Illuminate\Support\Carbon|null $last_pairing_date Tanggal pairing terakhir
+ * @property Carbon|null $last_pairing_date Tanggal pairing terakhir
  * @property bool $network_generated Apakah network sudah digenerate
  * @property int $status Status (1=prospek, 2=pasif, 3=aktif)
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class Customer extends Authenticatable
 {
@@ -189,7 +190,7 @@ class Customer extends Authenticatable
     private static function generateUniqueRefCode(self $customer): string
     {
         $customerId = max(1, (int) $customer->getKey());
-        $timestamp = ($customer->created_at ?? now())->format('YmdHis');
+        $timestamp = ($customer->created_at ?? now())->format('ymdHis');
         $increment = $customerId;
 
         do {
@@ -207,7 +208,7 @@ class Customer extends Authenticatable
     private static function generateUniqueEwalletId(self $customer): string
     {
         $customerId = max(1, (int) $customer->getKey());
-        $date = ($customer->created_at ?? now())->format('Ymd');
+        $date = ($customer->created_at ?? now())->format('ymd');
         $increment = $customerId;
 
         do {

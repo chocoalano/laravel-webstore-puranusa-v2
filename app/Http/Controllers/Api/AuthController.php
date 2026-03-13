@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\LoginCustomerApiRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Dashboard\UpdateAccountProfileRequest;
-use App\Models\Customer;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\CustomerProfileService;
 use App\Services\Auth\CustomerRegistrationService;
+use App\Services\Auth\ReferralContextService;
 use App\Services\Dashboard\DashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +24,7 @@ class AuthController extends Controller
         private readonly CustomerAuthService $authService,
         private readonly CustomerRegistrationService $registrationService,
         private readonly CustomerProfileService $profileService,
+        private readonly ReferralContextService $referralContextService,
     ) {}
 
     /**
@@ -82,6 +83,7 @@ class AuthController extends Controller
      *             example={
      *                 "data":{
      *                     "referralCode":"ABCD1234",
+     *                     "referralUsername":"mitra.api",
      *                     "seo":{
      *                         "title":"Daftar Jadi Member",
      *                         "description":"Bergabunglah sebagai member Webstore.",
@@ -95,11 +97,12 @@ class AuthController extends Controller
      */
     public function registerMeta(Request $request): JsonResponse
     {
-        $referralCode = $this->captureReferralCode($request);
+        $referralContext = $this->referralContextService->captureFromRequest($request);
 
         return response()->json([
             'data' => [
-                'referralCode' => $referralCode,
+                'referralCode' => $referralContext['referralCode'],
+                'referralUsername' => $referralContext['referralUsername'],
                 'seo' => [
                     'title' => 'Daftar Jadi Member',
                     'description' => 'Bergabunglah sebagai member '.config('app.name').' dan nikmati harga eksklusif, bonus afiliasi, serta akses ke ribuan produk unggulan. Gratis daftar sekarang!',
@@ -107,59 +110,6 @@ class AuthController extends Controller
                 ],
             ],
         ]);
-    }
-
-    private function captureReferralCode(Request $request): ?string
-    {
-        if ($request->filled('referral_code')) {
-            $referralCode = (string) $request->query('referral_code');
-            $this->storeReferralCode($request, $referralCode);
-
-            return $referralCode;
-        }
-
-        if (! $request->filled('username')) {
-            return $request->hasSession() ? $request->session()->get('referral_code') : null;
-        }
-
-        $username = trim((string) $request->query('username'));
-
-        if ($username === '') {
-            $this->storeReferralCode($request, null);
-
-            return null;
-        }
-
-        $resolvedReferralCode = Customer::query()
-            ->where('username', mb_strtolower($username))
-            ->orWhere('username', $username)
-            ->value('ref_code');
-
-        if (filled($resolvedReferralCode)) {
-            $referralCode = (string) $resolvedReferralCode;
-            $this->storeReferralCode($request, $referralCode);
-
-            return $referralCode;
-        }
-
-        $this->storeReferralCode($request, null);
-
-        return null;
-    }
-
-    private function storeReferralCode(Request $request, ?string $referralCode): void
-    {
-        if (! $request->hasSession()) {
-            return;
-        }
-
-        if (filled($referralCode)) {
-            $request->session()->put('referral_code', $referralCode);
-
-            return;
-        }
-
-        $request->session()->forget('referral_code');
     }
 
     /**

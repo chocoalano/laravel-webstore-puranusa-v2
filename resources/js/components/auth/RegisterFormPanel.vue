@@ -8,6 +8,9 @@ const props = defineProps<{
     validate: (state: Partial<RegisterData>) => RegisterValidationError[]
     firstError: string | undefined
     isReferralReadonly?: boolean
+    debugMode: boolean
+    onAutofillDebugForm: () => void
+    onResetRegisterForm: () => void
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +24,16 @@ const genderOptions = [
 
 const showPassword = ref(false)
 const showPasswordConfirmation = ref(false)
+
+function handleAutofillDebugForm(): void {
+    props.onAutofillDebugForm()
+}
+
+function handleResetRegisterForm(): void {
+    props.onResetRegisterForm()
+    showPassword.value = false
+    showPasswordConfirmation.value = false
+}
 </script>
 
 <template>
@@ -92,12 +105,14 @@ const showPasswordConfirmation = ref(false)
                                 autocomplete="street-address" class="w-full" />
                         </UFormField>
 
-                        <UFormField label="Kode Referral (opsional)" name="referral_code"
-                            :error="props.form.errors.referral_code">
+                        <UFormField label="Username Referral (opsional)" name="referral_username"
+                            :error="props.form.errors.referral_username ?? props.form.errors.referral_code">
                             <UInput
-                                v-model="props.form.referral_code"
-                                :placeholder="props.isReferralReadonly ? 'Kode referral dari link tidak bisa diubah' : 'Jika ada, masukkan di sini'"
+                                v-model="props.form.referral_username"
+                                :placeholder="props.isReferralReadonly ? 'Username referral dari link tidak bisa diubah' : 'Jika ada, masukkan username sponsor di sini'"
                                 autocomplete="off"
+                                autocapitalize="none"
+                                spellcheck="false"
                                 :readonly="props.isReferralReadonly"
                                 class="w-full"
                             />
@@ -143,6 +158,29 @@ const showPasswordConfirmation = ref(false)
 
                 <!-- Terms & Submit -->
                 <div class="space-y-4">
+                    <div v-if="props.debugMode"
+                        class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">Debug Tools</p>
+                                <p class="text-xs text-amber-700 dark:text-amber-300">
+                                    Autofill mengisi data contoh. Reset mengembalikan form ke nilai awal.
+                                </p>
+                            </div>
+
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <UButton type="button" color="warning" variant="soft" icon="i-lucide-wand-sparkles"
+                                    :disabled="props.form.processing" @click="handleAutofillDebugForm">
+                                    Autofill Debug
+                                </UButton>
+                                <UButton type="button" color="neutral" variant="outline" icon="i-lucide-rotate-ccw"
+                                    :disabled="props.form.processing" @click="handleResetRegisterForm">
+                                    Reset Form
+                                </UButton>
+                            </div>
+                        </div>
+                    </div>
+
                     <UFormField name="terms" :error="props.form.errors.terms">
                         <UCheckbox v-model="props.form.terms" label="Saya setuju dengan Syarat & Ketentuan"
                             :description="props.form.errors.terms ? undefined : 'Wajib dicentang untuk melanjutkan.'" />
