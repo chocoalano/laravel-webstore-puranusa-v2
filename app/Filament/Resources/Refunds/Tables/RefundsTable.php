@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Refunds\Tables;
 
+use App\Models\Order;
+use App\Models\Payment;
+use App\Support\Refunds\RefundOptionLabelFormatter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -107,14 +110,16 @@ class RefundsTable
             ->filters([
                 SelectFilter::make('order_id')
                     ->label('Nomor Pesanan')
-                    ->relationship('order', 'order_no')
+                    ->relationship('order', 'order_no', fn (Builder $query): Builder => $query->latest('id'))
+                    ->getOptionLabelFromRecordUsing(fn (Order $record): string => RefundOptionLabelFormatter::formatOrder($record))
                     ->searchable()
                     ->preload()
                     ->placeholder('Semua pesanan'),
 
                 SelectFilter::make('payment_id')
                     ->label('ID Pembayaran')
-                    ->relationship('payment', 'provider_txn_id')
+                    ->relationship('payment', 'provider_txn_id', fn (Builder $query): Builder => $query->with(['method:id,name'])->latest('id'))
+                    ->getOptionLabelFromRecordUsing(fn (Payment $record): string => RefundOptionLabelFormatter::formatPayment($record))
                     ->searchable()
                     ->preload()
                     ->placeholder('Semua pembayaran'),
@@ -159,11 +164,11 @@ class RefundsTable
                         $indicators = [];
 
                         if (filled($data['min'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≥ Rp' . number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
+                            $indicators[] = Indicator::make('Nominal ≥ Rp'.number_format((float) $data['min'], 0, ',', '.'))->removeField('min');
                         }
 
                         if (filled($data['max'] ?? null)) {
-                            $indicators[] = Indicator::make('Nominal ≤ Rp' . number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
+                            $indicators[] = Indicator::make('Nominal ≤ Rp'.number_format((float) $data['max'], 0, ',', '.'))->removeField('max');
                         }
 
                         return $indicators;
@@ -185,11 +190,11 @@ class RefundsTable
                         }
 
                         return $query->where(function (Builder $builder) use ($keyword): void {
-                            $builder->where('reason', 'like', '%' . $keyword . '%')
-                                ->orWhereHas('order', fn (Builder $order): Builder => $order->where('order_no', 'like', '%' . $keyword . '%'))
+                            $builder->where('reason', 'like', '%'.$keyword.'%')
+                                ->orWhereHas('order', fn (Builder $order): Builder => $order->where('order_no', 'like', '%'.$keyword.'%'))
                                 ->orWhereHas('payment', function (Builder $payment) use ($keyword): Builder {
-                                    return $payment->where('transaction_id', 'like', '%' . $keyword . '%')
-                                        ->orWhere('provider_txn_id', 'like', '%' . $keyword . '%');
+                                    return $payment->where('transaction_id', 'like', '%'.$keyword.'%')
+                                        ->orWhere('provider_txn_id', 'like', '%'.$keyword.'%');
                                 });
                         });
                     })
@@ -248,11 +253,11 @@ class RefundsTable
                 $indicators = [];
 
                 if (filled($data['from'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' ≥ ' . $data['from'])->removeField('from');
+                    $indicators[] = Indicator::make($label.' ≥ '.$data['from'])->removeField('from');
                 }
 
                 if (filled($data['until'] ?? null)) {
-                    $indicators[] = Indicator::make($label . ' ≤ ' . $data['until'])->removeField('until');
+                    $indicators[] = Indicator::make($label.' ≤ '.$data['until'])->removeField('until');
                 }
 
                 return $indicators;

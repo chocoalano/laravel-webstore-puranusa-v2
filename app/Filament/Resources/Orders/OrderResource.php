@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Orders;
 
-use App\Filament\Resources\Orders\Pages\CreateOrder;
 use App\Filament\Resources\Orders\Pages\EditOrder;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Orders\Pages\ViewOrder;
@@ -51,11 +50,15 @@ class OrderResource extends Resource
         return [];
     }
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListOrders::route('/'),
-            'create' => CreateOrder::route('/create'),
             'view' => ViewOrder::route('/{record}'),
             'edit' => EditOrder::route('/{record}/edit'),
         ];

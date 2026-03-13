@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\Refunds\Schemas;
 
+use App\Models\Order;
 use App\Models\Payment;
+use App\Support\Refunds\RefundOptionLabelFormatter;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +22,7 @@ class RefundForm
                     Select::make('order_id')
                         ->label('Pesanan')
                         ->relationship('order', 'order_no', fn (Builder $query): Builder => $query->latest('id'))
+                        ->getOptionLabelFromRecordUsing(fn (Order $record): string => RefundOptionLabelFormatter::formatOrder($record))
                         ->searchable()
                         ->preload()
                         ->required()
@@ -33,12 +36,7 @@ class RefundForm
                     Select::make('payment_id')
                         ->label('Pembayaran')
                         ->relationship('payment', 'id', fn (Builder $query): Builder => $query->with(['method:id,name'])->latest('id'))
-                        ->getOptionLabelFromRecordUsing(function (Payment $record): string {
-                            $paymentMethod = $record->method?->name ?? 'Tanpa metode';
-                            $transactionId = $record->transaction_id ?? $record->provider_txn_id ?? '-';
-
-                            return '#' . $record->id . ' - ' . $paymentMethod . ' - TX: ' . $transactionId;
-                        })
+                        ->getOptionLabelFromRecordUsing(fn (Payment $record): string => RefundOptionLabelFormatter::formatPayment($record))
                         ->searchable()
                         ->preload()
                         ->required()

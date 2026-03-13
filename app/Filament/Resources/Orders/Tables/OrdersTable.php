@@ -201,7 +201,7 @@ class OrdersTable
             ->groupingSettingsInDropdownOnDesktop()
             ->columns(self::columns())
             ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
-            ->filtersFormColumns(6)
+            ->filtersFormColumns(4)
             ->filtersFormSchema(fn (array $filters): array => self::filtersFormSchema($filters))
             ->recordActions(self::recordActions())
             ->toolbarActions(self::toolbarActions());
@@ -499,12 +499,6 @@ class OrdersTable
                 ->preload()
                 ->placeholder('Semua pelanggan'),
 
-            SelectFilter::make('status')
-                ->label('Status')
-                ->options(fn (): array => self::statusOptions())
-                ->searchable()
-                ->placeholder('Semua status'),
-
             SelectFilter::make('type')
                 ->label('Tipe')
                 ->options(fn (): array => self::typeOptions())
@@ -512,6 +506,7 @@ class OrdersTable
 
             Filter::make('order_no_search')
                 ->label('Nomor Pesanan')
+                ->columnSpan(2)
                 ->schema([
                     TextInput::make('q')
                         ->label('Cari Nomor Pesanan')
@@ -541,7 +536,6 @@ class OrdersTable
     {
         return [
             $filters['customer_id'],
-            $filters['status'],
             $filters['type'],
 
             $filters['order_no_search'],
