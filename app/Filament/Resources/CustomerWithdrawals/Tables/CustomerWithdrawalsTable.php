@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\CustomerWithdrawals\Tables;
 
-use App\Jobs\SendWithdrawalApprovedWhatsAppJob;
 use App\Models\Customer;
 use App\Models\CustomerWalletTransaction;
+use App\Services\QontactService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
@@ -21,6 +21,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CustomerWithdrawalsTable
 {
@@ -59,6 +60,13 @@ class CustomerWithdrawalsTable
                 TextColumn::make('submission_admin_fee')
                     ->label('Biaya Admin')
                     ->state(fn (CustomerWalletTransaction $record): float => self::extractSubmissionAdminFee($record->notes))
+                    ->money('IDR')
+                    ->alignEnd()
+                    ->toggleable(),
+
+                TextColumn::make('net_amount')
+                    ->label('Net Diterima')
+                    ->state(fn (CustomerWalletTransaction $record): float => max(0.0, (float) ($record->amount ?? 0) - self::extractSubmissionAdminFee($record->notes)))
                     ->money('IDR')
                     ->alignEnd()
                     ->toggleable(),
@@ -190,38 +198,9 @@ class CustomerWithdrawalsTable
                     ->visible(fn (CustomerWalletTransaction $record): bool => self::normalizeStatus($record->status) === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Setujui Withdrawal')
-                    ->modalDescription('Pilih "Ya, Setujui" untuk menyelesaikan withdrawal, atau "Tidak, Tolak permintaan" untuk membatalkan dan mengembalikan saldo customer.')
+                    ->modalDescription('Apakah Anda yakin ingin menyetujui withdrawal ini?')
                     ->modalSubmitActionLabel('Ya, Setujui')
-                    ->modalCancelAction(false)
-                    ->extraModalFooterActions(fn (Action $action): array => [
-                        $action->makeModalSubmitAction('reject_withdrawal', arguments: ['decision' => 'reject'])
-                            ->label('Tolak permintaan')
-                            ->color('danger')
-                            ->icon('heroicon-o-x-circle'),
-                    ])
-                    ->action(function (CustomerWalletTransaction $record, array $arguments): void {
-                        if (($arguments['decision'] ?? null) === 'reject') {
-                            try {
-                                self::rejectPendingWithdrawal((int) $record->id);
-                            } catch (\Throwable $exception) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Gagal Menolak Withdrawal')
-                                    ->body($exception->getMessage())
-                                    ->send();
-
-                                return;
-                            }
-
-                            Notification::make()
-                                ->warning()
-                                ->title('Withdrawal Ditolak')
-                                ->body('Permintaan withdrawal ditolak dan saldo customer dikembalikan.')
-                                ->send();
-
-                            return;
-                        }
-
+                    ->action(function (CustomerWalletTransaction $record): void {
                         try {
                             $approvedTransactionId = self::approvePendingWithdrawal((int) $record->id);
                         } catch (\Throwable $exception) {
@@ -235,7 +214,7 @@ class CustomerWithdrawalsTable
                         }
 
                         try {
-                            dispatch_sync(new SendWithdrawalApprovedWhatsAppJob($approvedTransactionId));
+                            self::sendApprovedWhatsApp($approvedTransactionId);
 
                             Notification::make()
                                 ->success()
@@ -250,6 +229,46 @@ class CustomerWithdrawalsTable
                                 ->send();
                         }
                     }),
+
+                Action::make('reject_withdrawal')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (CustomerWalletTransaction $record): bool => self::normalizeStatus($record->status) === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Tolak Withdrawal')
+                    ->modalDescription('Apakah Anda yakin ingin menolak withdrawal ini? Saldo customer akan dikembalikan.')
+                    ->modalSubmitActionLabel('Ya, Tolak')
+                    ->action(function (CustomerWalletTransaction $record): void {
+                        try {
+                            $rejectedTransactionId = self::rejectPendingWithdrawal((int) $record->id);
+                        } catch (\Throwable $exception) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Gagal Menolak Withdrawal')
+                                ->body($exception->getMessage())
+                                ->send();
+
+                            return;
+                        }
+
+                        try {
+                            self::sendRejectedWhatsApp($rejectedTransactionId);
+
+                            Notification::make()
+                                ->warning()
+                                ->title('Withdrawal Ditolak')
+                                ->body('Permintaan withdrawal ditolak, saldo dikembalikan, dan notifikasi WhatsApp berhasil dikirim.')
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Withdrawal Ditolak, Notifikasi WA Gagal')
+                                ->body('Status withdrawal sudah diperbarui, namun notifikasi WhatsApp gagal terkirim: '.$exception->getMessage())
+                                ->send();
+                        }
+                    }),
+
                 ViewAction::make(),
             ])
             ->toolbarActions([]);
@@ -447,6 +466,96 @@ class CustomerWithdrawalsTable
     private static function formatIdr(float $amount): string
     {
         return 'Rp '.number_format((int) round($amount), 0, ',', '.');
+    }
+
+    private static function sendApprovedWhatsApp(int $transactionId): void
+    {
+        $transaction = CustomerWalletTransaction::query()
+            ->with('customer:id,name,phone')
+            ->whereKey($transactionId)
+            ->first();
+
+        $customerName = (string) ($transaction?->customer?->name ?? '');
+        $customerPhone = (string) ($transaction?->customer?->phone ?? '');
+
+        if ($customerName === '' || $customerPhone === '') {
+            Log::warning('Withdrawal approved WhatsApp skipped: customer contact incomplete.', [
+                'transaction_id' => $transactionId,
+            ]);
+
+            return;
+        }
+
+        $rawAmount = (float) ($transaction->amount ?? 0);
+        $rawAdminFee = self::extractSubmissionAdminFee($transaction->notes);
+        $rawNetAmount = max(0.0, $rawAmount - $rawAdminFee);
+
+        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
+        $formattedAmount = number_format((int) round($rawAmount), 0, ',', '.');
+        $formattedAdminFee = $rawAdminFee > 0 ? number_format((int) round($rawAdminFee), 0, ',', '.') : '';
+        $formattedNetAmount = $rawAdminFee > 0 ? number_format((int) round($rawNetAmount), 0, ',', '.') : '';
+
+        Log::info('Withdrawal approved WhatsApp sending.', [
+            'transaction_id' => $transactionId,
+            'customer_name' => $customerName,
+            'customer_phone' => $customerPhone,
+            'amount' => $rawAmount,
+            'admin_fee' => $rawAdminFee,
+            'net_amount' => $rawNetAmount,
+        ]);
+
+        $sent = app(QontactService::class)->sendWithdrawalApproved(
+            $customerName,
+            $customerPhone,
+            $formattedAmount,
+            $formattedAdminFee,
+            $formattedNetAmount,
+        );
+
+        if (! $sent) {
+            throw new \RuntimeException('Pengiriman notifikasi WhatsApp approval gagal.');
+        }
+    }
+
+    private static function sendRejectedWhatsApp(int $transactionId): void
+    {
+        $transaction = CustomerWalletTransaction::query()
+            ->with('customer:id,name,phone')
+            ->whereKey($transactionId)
+            ->first();
+
+        $customerName = (string) ($transaction?->customer?->name ?? '');
+        $customerPhone = (string) ($transaction?->customer?->phone ?? '');
+
+        if ($customerName === '' || $customerPhone === '') {
+            Log::warning('Withdrawal rejected WhatsApp skipped: customer contact incomplete.', [
+                'transaction_id' => $transactionId,
+            ]);
+
+            return;
+        }
+
+        $rawAmount = (float) ($transaction->amount ?? 0);
+
+        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
+        $formattedAmount = number_format((int) round($rawAmount), 0, ',', '.');
+
+        Log::info('Withdrawal rejected WhatsApp sending.', [
+            'transaction_id' => $transactionId,
+            'customer_name' => $customerName,
+            'customer_phone' => $customerPhone,
+            'amount' => $rawAmount,
+        ]);
+
+        $sent = app(QontactService::class)->sendWithdrawalRejected(
+            $customerName,
+            $customerPhone,
+            $formattedAmount,
+        );
+
+        if (! $sent) {
+            throw new \RuntimeException('Pengiriman notifikasi WhatsApp penolakan gagal.');
+        }
     }
 
     private static function normalizeStatus(mixed $status): string

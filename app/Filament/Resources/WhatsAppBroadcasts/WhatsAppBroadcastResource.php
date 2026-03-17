@@ -2,23 +2,15 @@
 
 namespace App\Filament\Resources\WhatsAppBroadcasts;
 
-use App\Filament\Resources\WhatsAppBroadcasts\Schemas\WhatsAppBroadcastInfolist;
 use App\Filament\Resources\WhatsAppBroadcasts\Pages\ManageWhatsAppBroadcasts;
 use App\Filament\Resources\WhatsAppBroadcasts\Schemas\WhatsAppBroadcastForm;
+use App\Filament\Resources\WhatsAppBroadcasts\Schemas\WhatsAppBroadcastInfolist;
 use App\Filament\Resources\WhatsAppBroadcasts\Tables\WhatsAppBroadcastTable;
 use App\Models\WhatsAppBroadcast;
 use BackedEnum;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class WhatsAppBroadcastResource extends Resource
 {
@@ -27,8 +19,11 @@ class WhatsAppBroadcastResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'bi-whatsapp';
 
     protected static ?string $recordTitleAttribute = 'title';
+
     protected static ?string $navigationLabel = 'WhatsApp Broadcast';
+
     protected static ?string $modelLabel = 'WhatsApp Broadcast';
+
     protected static ?string $pluralModelLabel = 'WhatsApp Broadcasts';
 
     public static function form(Schema $schema): Schema

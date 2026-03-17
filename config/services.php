@@ -52,8 +52,8 @@ return [
     ],
 
     'lion_parcel' => [
-        'base_url' => env('LION_PARCEL_BASE_URL', 'https://api-stg-middleware.thelionparcel.com'),
-        'auth' => env('LION_PARCEL_AUTH', 'bGlvbnBhcmNlbDpsaW9ucGFyY2VsQDEyMw=='),
+        'base_url' => env('LION_PARCEL_BASE_URL', 'https://api-middleware.lionparcel.com'),
+        'auth' => env('LION_PARCEL_AUTH', 'WkVOSVRIIFNJTkVSR0kgVVRBTUEgQjJCIENPUlAgQ0dLIENMMzgyMTM='),
         'origin' => env('LION_PARCEL_ORIGIN', 'KALIDERES, JAKARTA BARAT'),
         'commodity' => env('LION_PARCEL_COMMODITY', 'ABR036'),
     ],
@@ -63,8 +63,11 @@ return [
         'channel_integration_id' => env('QONTAK_CHANNEL_INTEGRATION_ID'),
         'wd_approved_template_id' => env('QONTAK_WD_APPROVED_TEMPLATE_ID'),
         'wd_approved_header_image_url' => env('QONTAK_WD_APPROVED_HEADER_IMAGE_URL'),
+        'wd_rejected_template_id' => env('QONTAK_WD_REJECTED_TEMPLATE_ID'),
         'broadcast_template_id' => env('QONTAK_BROADCAST_TEMPLATE_ID'),
         'broadcast_header_image_url' => env('QONTAK_BROADCAST_HEADER_IMAGE_URL'),
+        'wa_gateway_number' => env('QONTAK_WA_GATEWAY_NUMBER'),
+        'wa_gateway_hemat_mode' => env('QONTAK_WA_GATEWAY_HEMAT_MODE', false),
     ],
 
     'rajaongkir' => [

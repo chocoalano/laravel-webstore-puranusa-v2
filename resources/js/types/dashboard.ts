@@ -28,6 +28,7 @@ export type Customer = {
     wallet_balance?: number
     status?: number
     has_placement?: boolean
+    is_wa_confirmed?: boolean
 }
 
 export type Address = {
@@ -470,6 +471,8 @@ export type DashboardPageProps = {
     networkProfile?: NetworkProfile
     networkStats?: NetworkStats
     securitySummary?: SecuritySummary
+    waConfirmationUrl?: string | null
+    waGatewayHematMode?: boolean
 }
 
 export type DashboardSectionKey =

@@ -19,11 +19,6 @@ class WhatsAppBroadcastForm
             Section::make('Konfigurasi API Qontak')
                 ->description('Hubungkan pesan dengan Template ID yang terdaftar di Dashboard Qontak.')
                 ->schema([
-                    Placeholder::make('qontak_info')
-                        ->label('Informasi Gateway')
-                        ->content('Penyedia: Qontak WA Gateway (API Based)')
-                        ->extraAttributes(['class' => 'text-primary-600 font-bold']),
-
                     TextInput::make('template_id')
                         ->label('Template ID Qontak')
                         ->helperText('Masukkan UUID template yang didapat dari Qontak (Contoh: 52cfcf36-cd75-...)')
@@ -45,12 +40,6 @@ class WhatsAppBroadcastForm
             Section::make('Informasi Teknis Broadcast')
                 ->description('Detail teknis yang akan dikirimkan ke server gateway.')
                 ->schema([
-                    // Menggunakan Hint visual untuk mengarahkan user
-                    Placeholder::make('technical_hint')
-                        ->label('Status Validasi')
-                        ->content('Sistem akan mengirimkan pesan menggunakan Template ID di bawah ini.')
-                        ->columnSpanFull(),
-
                     TextInput::make('display_template_id')
                         ->label('ID Terdeteksi')
                         ->default('52cfcf36-cd75-44a3-8708-2eafe53e6f14')
@@ -88,14 +77,6 @@ class WhatsAppBroadcastForm
                         ->rows(6)
                         ->columnSpanFull()
                         ->live(debounce: 300),
-
-                    Placeholder::make('message_stats')
-                        ->label('Statistik Karakter')
-                        ->content(function (callable $get): string {
-                            $len = Str::length((string) ($get('message') ?? ''));
-                            return "{$len} karakter terpakai.";
-                        })
-                        ->extraAttributes(['class' => 'text-sm text-gray-500']),
                 ])->columnSpanFull(),
         ]);
     }

@@ -9,6 +9,8 @@ use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
@@ -19,49 +21,38 @@ class CustomerWithdrawalExporter extends Exporter
     public static function getColumns(): array
     {
         return [
-            ExportColumn::make('id')
-                ->label('ID'),
+            ExportColumn::make('customer.username')
+                ->label('Username Customer'),
 
             ExportColumn::make('customer.name')
-                ->label('Customer'),
+                ->label('Nama Customer'),
 
-            ExportColumn::make('customer.ref_code')
-                ->label('Kode Referral'),
+            ExportColumn::make('amount')
+                ->label('Nominal Penarikan'),
+
+            ExportColumn::make('submission_admin_fee')
+                ->label('Biaya Admin')
+                ->state(fn (CustomerWalletTransaction $record): float => self::extractSubmissionAdminFee($record->notes)),
+
+            ExportColumn::make('net_amount')
+                ->label('Net Diterima')
+                ->state(fn (CustomerWalletTransaction $record): float => max(0.0, (float) ($record->amount ?? 0) - self::extractSubmissionAdminFee($record->notes))),
+
+            ExportColumn::make('status')
+                ->label('Status')
+                ->formatStateUsing(fn (mixed $state): string => self::statusLabels()[$state] ?? (string) $state),
 
             ExportColumn::make('customer.bank_name')
                 ->label('Bank'),
 
             ExportColumn::make('customer.bank_account')
-                ->label('No Rekening'),
-
-            ExportColumn::make('amount')
-                ->label('Nominal Transfer (Net)'),
-
-            ExportColumn::make('admin_fee')
-                ->label('Biaya Admin')
-                ->state(fn (CustomerWalletTransaction $record): float => self::extractSubmissionAdminFee($record->notes)),
-
-            ExportColumn::make('total_potongan')
-                ->label('Total Potongan Wallet')
-                ->state(fn (CustomerWalletTransaction $record): float => (float) ($record->amount ?? 0) + self::extractSubmissionAdminFee($record->notes)),
-
-            ExportColumn::make('balance_before')
-                ->label('Saldo Sebelum'),
-
-            ExportColumn::make('balance_after')
-                ->label('Saldo Sesudah'),
-
-            ExportColumn::make('status')
-                ->label('Status'),
+                ->label('No. Rekening'),
 
             ExportColumn::make('payment_method')
                 ->label('Metode Bayar'),
 
             ExportColumn::make('transaction_ref')
                 ->label('Ref Transaksi'),
-
-            ExportColumn::make('midtrans_transaction_id')
-                ->label('Midtrans Transaction ID'),
 
             ExportColumn::make('is_system')
                 ->label('Sistem')
@@ -70,9 +61,6 @@ class CustomerWithdrawalExporter extends Exporter
             ExportColumn::make('completed_at')
                 ->label('Selesai')
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
-
-            ExportColumn::make('notes')
-                ->label('Catatan'),
 
             ExportColumn::make('created_at')
                 ->label('Dibuat')
@@ -84,13 +72,48 @@ class CustomerWithdrawalExporter extends Exporter
         ];
     }
 
+    public static function getOptionsFormComponents(): array
+    {
+        return [
+            DateTimePicker::make('date_from')
+                ->label('Dari Tanggal')
+                ->seconds(false)
+                ->placeholder('Awal periode'),
+
+            DateTimePicker::make('date_until')
+                ->label('Sampai Tanggal')
+                ->seconds(false)
+                ->placeholder('Akhir periode'),
+
+            Select::make('status')
+                ->label('Status')
+                ->options([
+                    'pending' => 'Pending',
+                    'completed' => 'Completed',
+                    'failed' => 'Failed',
+                    'cancelled' => 'Cancelled',
+                ])
+                ->placeholder('Semua status'),
+        ];
+    }
+
     public static function modifyQuery(Builder $query): Builder
     {
         return $query
             ->where('type', 'withdrawal')
             ->with([
-                'customer:id,name,ref_code,bank_name,bank_account',
+                'customer:id,name,username,bank_name,bank_account',
             ]);
+    }
+
+    private static function statusLabels(): array
+    {
+        return [
+            'pending' => 'Pending',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+            'cancelled' => 'Cancelled',
+        ];
     }
 
     /**

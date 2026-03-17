@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Customers\Tables;
 
 use App\Models\Customer;
+use App\Models\CustomerWhatsAppConfirmation;
+use App\Services\QontactService;
 use App\Support\CustomerUiSettingsConfig;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -419,6 +421,7 @@ class CustomersTable
         return [
             self::impersonateAction(),
             self::injectEwallet(),
+            self::confirmWhatsAppManual(),
             ActionGroup::make([
                 ViewAction::make(),
                 EditAction::make(),
@@ -508,6 +511,56 @@ class CustomersTable
             ->modalIcon('heroicon-o-banknotes')
             ->modalHeading('Konfirmasi Inject Saldo')
             ->modalDescription('Pastikan nominal dan alasan sudah sesuai. Tindakan ini akan tercatat di log sistem.');
+    }
+
+    private static function confirmWhatsAppManual(): Action
+    {
+        return Action::make('confirm_wa_manual')
+            ->label('Konfirmasi WA')
+            ->tooltip('Konfirmasi nomor WhatsApp customer secara manual')
+            ->icon('heroicon-o-check-badge')
+            ->color('success')
+            ->hidden(fn (Customer $record): bool => self::isWaAlreadyConfirmed($record))
+            ->requiresConfirmation()
+            ->modalHeading('Konfirmasi WhatsApp Manual')
+            ->modalIcon('heroicon-o-chat-bubble-left-ellipsis')
+            ->modalDescription(fn (Customer $record): string => sprintf(
+                'Konfirmasi nomor WhatsApp %s (%s) secara manual. Gunakan ini jika webhook Qontak tidak bisa menjangkau server (contoh: development) atau pesan sudah terkirim namun sistem belum mendeteksinya.',
+                $record->name,
+                $record->phone ?? '-',
+            ))
+            ->action(function (Customer $record): void {
+                $phone = app(QontactService::class)->normalizePhoneNumber((string) ($record->phone ?? ''));
+
+                if ($phone === '') {
+                    Notification::make()
+                        ->warning()
+                        ->title('Nomor Tidak Valid')
+                        ->body('Customer ini tidak memiliki nomor telepon yang valid.')
+                        ->send();
+
+                    return;
+                }
+
+                CustomerWhatsAppConfirmation::recordIncoming($phone, (int) $record->getKey());
+
+                Notification::make()
+                    ->success()
+                    ->title('WhatsApp Terkonfirmasi')
+                    ->body('Nomor '.$phone.' berhasil dikonfirmasi secara manual.')
+                    ->send();
+            });
+    }
+
+    private static function isWaAlreadyConfirmed(Customer $record): bool
+    {
+        $phone = app(QontactService::class)->normalizePhoneNumber((string) ($record->phone ?? ''));
+
+        if ($phone === '') {
+            return true;
+        }
+
+        return CustomerWhatsAppConfirmation::isConfirmed($phone);
     }
 
     /**

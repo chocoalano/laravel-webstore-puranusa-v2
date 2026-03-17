@@ -3,16 +3,27 @@
 namespace App\Filament\Resources\WhatsAppBroadcasts\Pages;
 
 use App\Filament\Resources\WhatsAppBroadcasts\WhatsAppBroadcastResource;
+use App\Filament\Widgets\WhatsAppBroadcasts\CustomerWhatsAppConfirmationWidget;
+use App\Filament\Widgets\WhatsAppBroadcasts\WhatsAppOutboundLogWidget;
 use App\Jobs\ProcessWhatsAppBroadcastJob;
-use App\Jobs\SendWhatsAppTestMessageJob;
 use App\Models\WhatsAppBroadcast;
 use App\Services\QontactService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\EmbeddedTable;
+use Filament\Schemas\Components\Livewire;
+use Filament\Schemas\Components\RenderHook;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\View\PanelsRenderHook;
 
 class ManageWhatsAppBroadcasts extends ManageRecords
 {
@@ -42,25 +53,61 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                         ->placeholder('081234567890')
                         ->helperText('Bisa format 08xxx atau 62xxx.'),
 
-                    TextInput::make('template_id')
-                        ->label('Template ID Qontak')
+                    Select::make('template_id')
+                        ->label('Template WhatsApp Qontak')
                         ->required()
-                        ->maxLength(100)
-                        ->default((string) config('services.qontak.broadcast_template_id', '')),
+                        ->searchable()
+                        ->live()
+                        ->options(fn (): array => app(QontactService::class)->getWhatsAppTemplates())
+                        ->placeholder('Pilih template...')
+                        ->default((string) config('services.qontak.broadcast_template_id', ''))
+                        ->helperText('Pilih template yang sudah disetujui (Approved) di Qontak. [N var] menunjukkan jumlah variabel.')
+                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                            if (! $state) {
+                                $set('body_params', []);
 
-                    Textarea::make('message')
-                        ->label('Pesan Uji')
-                        ->required()
-                        ->rows(4)
-                        ->default('Ini adalah pesan test WhatsApp Broadcast.'),
+                                return;
+                            }
+
+                            $params = app(QontactService::class)->getWhatsAppTemplateParams($state);
+                            if ($params === []) {
+                                $set('body_params', []);
+
+                                return;
+                            }
+
+                            $set('body_params', array_map(
+                                fn (array $param): array => ['value' => $param['value'], 'value_text' => ''],
+                                $params,
+                            ));
+                        }),
+
+                    Repeater::make('body_params')
+                        ->label('Parameter Body (Variabel Template)')
+                        ->helperText('Kosongkan jika template tidak memiliki variabel. Nama variabel harus sesuai yang terdaftar di Qontak, contoh: full_name.')
+                        ->schema([
+                            TextInput::make('value')
+                                ->label('Nama Variabel')
+                                ->placeholder('Contoh: full_name')
+                                ->required(),
+                            TextInput::make('value_text')
+                                ->label('Nilai')
+                                ->placeholder('Contoh: Burhanudin Hakim')
+                                ->required(),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->addActionLabel('Tambah Variabel')
+                        ->reorderable(false),
+
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $normalizedPhone = self::dispatchTestWhatsAppMessage($data);
+                        $normalizedPhone = self::sendTestWhatsAppMessageNow($data);
 
                         Notification::make()
-                            ->title('Pesan test dijadwalkan')
-                            ->body("Pesan test dimasukkan ke queue whatsapp untuk nomor {$normalizedPhone}.")
+                            ->title('Pesan test berhasil terkirim')
+                            ->body("Pesan test WhatsApp berhasil dikirim ke nomor {$normalizedPhone}.")
                             ->success()
                             ->send();
                     } catch (\InvalidArgumentException $exception) {
@@ -71,7 +118,7 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                             ->send();
                     } catch (\Throwable $exception) {
                         Notification::make()
-                            ->title('Terjadi kesalahan saat menjadwalkan test')
+                            ->title('Pengiriman test gagal')
                             ->body($exception->getMessage())
                             ->danger()
                             ->send();
@@ -112,29 +159,95 @@ class ManageWhatsAppBroadcasts extends ManageRecords
         ];
     }
 
+    public function content(Schema $schema): Schema
+    {
+        return $schema->components([
+            Callout::make('Syarat Pengiriman Pesan WhatsApp')
+                ->warning()
+                ->description(
+                    'Pesan broadcast/informasi lainya hanya akan terkirim ke penerima yang sebelumnya sudah pernah mengirim pesan WhatsApp ke nomor gateway yang terdaftar di Qontak. '
+                    .'Ini adalah ketentuan dari WhatsApp Business API — nomor yang belum pernah memulai percakapan tidak dapat menerima pesan outgoing dari sistem. '
+                    .'Pastikan penerima sudah terdaftar di tab "Nomor WA Terkonfirmasi" sebelum menjalankan broadcast.'
+                ),
+
+            Tabs::make()
+                ->contained(false)
+                ->tabs([
+                    Tab::make('WA Broadcasts')
+                        ->icon('bi-whatsapp')
+                        ->schema([
+                            $this->getTabsContentComponent(),
+                            RenderHook::make(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE),
+                            EmbeddedTable::make(),
+                            RenderHook::make(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_AFTER),
+                        ]),
+
+                    Tab::make('Nomor WA Terkonfirmasi')
+                        ->icon('heroicon-o-check-badge')
+                        ->schema([
+                            Livewire::make(CustomerWhatsAppConfirmationWidget::class),
+                        ]),
+
+                    Tab::make('Log Outbound')
+                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                        ->schema([
+                            Livewire::make(WhatsAppOutboundLogWidget::class),
+                        ]),
+                ]),
+        ]);
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [];
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function dispatchTestWhatsAppMessage(array $data): string
+    private static function sendTestWhatsAppMessageNow(array $data): string
     {
         $qontactService = app(QontactService::class);
 
         $recipientName = trim((string) ($data['to_name'] ?? ''));
         $rawPhone = trim((string) ($data['phone'] ?? ''));
         $templateId = trim((string) ($data['template_id'] ?? ''));
-        $message = trim((string) ($data['message'] ?? ''));
         $normalizedPhone = $qontactService->normalizePhoneNumber($rawPhone);
 
         if ($normalizedPhone === '') {
             throw new \InvalidArgumentException('Gunakan format nomor Indonesia yang valid, contoh 0812xxxx atau 62812xxxx.');
         }
 
-        SendWhatsAppTestMessageJob::dispatch(
-            $recipientName,
+        $resolvedName = $recipientName !== '' ? $recipientName : 'Tester Admin';
+
+        $rawBodyParams = [];
+        foreach (array_values((array) ($data['body_params'] ?? [])) as $index => $item) {
+            $varName = trim((string) ($item['value'] ?? ''));
+            $varText = trim((string) ($item['value_text'] ?? ''));
+
+            if ($varName === '' || $varText === '') {
+                continue;
+            }
+
+            $rawBodyParams[] = [
+                'key' => (string) ($index + 1),
+                'value' => $varName,
+                'value_text' => $varText,
+            ];
+        }
+
+        $result = $qontactService->sendWhatsAppWithFormattedParams(
+            $resolvedName,
             $normalizedPhone,
             $templateId,
-            $message,
+            $rawBodyParams,
+            'id',
         );
+
+        if (! (bool) ($result['success'] ?? false)) {
+            $error = trim((string) ($result['error'] ?? ''));
+            throw new \RuntimeException($error !== '' ? $error : 'Pengiriman pesan test WhatsApp gagal.');
+        }
 
         return $normalizedPhone;
     }

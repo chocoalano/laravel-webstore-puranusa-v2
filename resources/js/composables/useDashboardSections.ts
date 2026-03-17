@@ -34,7 +34,7 @@ const formAccountPropKeys = ['customer', 'defaultAddress']
 const ordersPropKeys = ['orders']
 const promoPropKeys = ['promos']
 const zennerPropKeys = ['zennerCategories', 'zennerContents']
-const walletPropKeys = ['customer', 'stats', 'walletTransactions', 'hasPendingWithdrawal', 'midtrans']
+const walletPropKeys = ['customer', 'stats', 'walletTransactions', 'hasPendingWithdrawal', 'midtrans', 'waConfirmationUrl', 'waGatewayHematMode']
 const bonusPropKeys = ['bonusStats', 'bonusTables']
 const lifetimePropKeys = ['lifetimeRewards']
 const mitraPropKeys = ['currentCustomerId', 'activeMembers', 'passiveMembers', 'prospectMembers', 'hasLeft', 'hasRight']
@@ -109,6 +109,8 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
                     hasPendingWithdrawal: props.value.hasPendingWithdrawal,
                     walletBalance: props.value.stats?.wallet_balance,
                     midtrans: props.value.midtrans,
+                    waConfirmationUrl: props.value.waConfirmationUrl ?? null,
+                    waGatewayHematMode: props.value.waGatewayHematMode ?? false,
                 }
             case 'bonus':
                 return {
@@ -412,7 +414,6 @@ export function useDashboardSections(props: ComputedRef<DashboardPageProps>, ini
 
             reloadDashboardSnapshot()
             reloadAddressSnapshot()
-            reloadFormAccountSnapshot()
             reloadPromoSnapshot()
             reloadZennerSnapshot()
             reloadMitraSnapshot()

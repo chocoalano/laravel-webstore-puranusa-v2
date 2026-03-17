@@ -6,6 +6,9 @@ const notes = defineModel<string>('notes', { required: true })
 defineProps<{
     loading: boolean
     syncing: boolean
+    isWaConfirmed?: boolean
+    waConfirmationUrl?: string | null
+    hematMode?: boolean
 }>()
 
 defineEmits<{
@@ -20,7 +23,28 @@ defineEmits<{
         description="Masukkan nominal topup, lalu lanjutkan pembayaran di popup Midtrans."
     >
         <template #body>
-            <div class="space-y-4">
+            <div v-if="!hematMode && !isWaConfirmed" class="space-y-4">
+                <UAlert
+                    color="warning"
+                    variant="soft"
+                    icon="i-lucide-message-circle-warning"
+                    title="Verifikasi WhatsApp Diperlukan"
+                    description="Nomor WhatsApp Anda belum terkonfirmasi. Konfirmasi terlebih dahulu untuk dapat menggunakan fitur Topup Wallet."
+                />
+                <div class="flex justify-center">
+                    <UButton
+                        v-if="waConfirmationUrl"
+                        color="success"
+                        icon="i-lucide-message-circle"
+                        :to="waConfirmationUrl"
+                        target="_blank"
+                    >
+                        Konfirmasi via WhatsApp
+                    </UButton>
+                </div>
+            </div>
+
+            <div v-else class="space-y-4">
                 <UFormField label="Nominal topup" required>
                     <UInput
                         v-model="amount"
@@ -49,6 +73,7 @@ defineEmits<{
                     Batal
                 </UButton>
                 <UButton
+                    v-if="hematMode || isWaConfirmed"
                     color="primary"
                     icon="i-lucide-credit-card"
                     :loading="loading || syncing"

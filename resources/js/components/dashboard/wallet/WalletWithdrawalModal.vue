@@ -12,10 +12,16 @@ const props = withDefaults(
         maxAmount: number
         maxAmountLabel?: string
         adminFee?: number
+        isWaConfirmed?: boolean
+        waConfirmationUrl?: string | null
+        hematMode?: boolean
     }>(),
     {
         maxAmountLabel: '',
         adminFee: 6500,
+        isWaConfirmed: false,
+        waConfirmationUrl: null,
+        hematMode: false,
     }
 )
 
@@ -183,9 +189,30 @@ defineEmits<{
 
 <template>
     <UModal v-model:open="isOpen" title="Ajukan Withdrawal Wallet"
-        description="Konfirmasi password akun untuk keamanan proses withdrawal.">
+        description="Konfirmasi password akun untuk keamanan proses withdrawal." scrollable>
         <template #body>
-            <div class="space-y-4">
+            <div v-if="!props.hematMode && !props.isWaConfirmed" class="space-y-4">
+                <UAlert
+                    color="warning"
+                    variant="soft"
+                    icon="i-lucide-message-circle-warning"
+                    title="Verifikasi WhatsApp Diperlukan"
+                    description="Nomor WhatsApp Anda belum terkonfirmasi. Konfirmasi terlebih dahulu untuk dapat menggunakan fitur Withdrawal Wallet."
+                />
+                <div class="flex justify-center">
+                    <UButton
+                        v-if="props.waConfirmationUrl"
+                        color="success"
+                        icon="i-lucide-message-circle"
+                        :to="props.waConfirmationUrl"
+                        target="_blank"
+                    >
+                        Konfirmasi via WhatsApp
+                    </UButton>
+                </div>
+            </div>
+
+            <div v-else class="space-y-4">
                 <UFormField label="Nominal withdrawal" required
                     :help="`Minimal ${formattedMinimumRequestAmount} • Maksimal ${formattedMaxAmount} • Kelipatan Rp 500`">
                     <UInput v-model="amount" type="number" :min="minimumRequestAmount" :max="maxAmountInputValue"
@@ -253,7 +280,7 @@ defineEmits<{
                 <UButton color="neutral" variant="outline" @click="isOpen = false">
                     Batal
                 </UButton>
-                <UButton color="primary" icon="i-lucide-arrow-up-right" :loading="loading"
+                <UButton v-if="props.hematMode || props.isWaConfirmed" color="primary" icon="i-lucide-arrow-up-right" :loading="loading"
                     :disabled="loading || hasInvalidSubmission" @click="$emit('submit')">
                     Kirim Withdrawal
                 </UButton>

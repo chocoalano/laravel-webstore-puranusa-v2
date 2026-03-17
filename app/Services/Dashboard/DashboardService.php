@@ -15,6 +15,7 @@ use App\Models\CustomerBonusReward;
 use App\Models\CustomerBonusSponsor;
 use App\Models\CustomerNpwp;
 use App\Models\CustomerWalletTransaction;
+use App\Models\CustomerWhatsAppConfirmation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductReview;
@@ -23,6 +24,7 @@ use App\Models\Reward;
 use App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface;
 use App\Repositories\Dashboard\Contracts\DashboardRepositoryInterface;
 use App\Services\Payment\MidtransService;
+use App\Services\QontactService;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
@@ -31,6 +33,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class DashboardService
@@ -149,6 +152,8 @@ class DashboardService
     ): array {
         return [
             'customer' => $this->formatCustomer($customer),
+            'waConfirmationUrl' => $this->buildWaConfirmationUrl($customer),
+            'waGatewayHematMode' => (bool) config('services.qontak.wa_gateway_hemat_mode', false),
             'currentCustomerId' => $customer->id,
             'defaultAddress' => $this->formatAddress($addressData['default_address']),
             'addresses' => $this->formatAddresses($addressData['addresses']),
@@ -1642,6 +1647,10 @@ class DashboardService
     {
         $customer->loadMissing('npwp');
 
+        $isHematMode = (bool) config('services.qontak.wa_gateway_hemat_mode', false);
+        $normalizedPhone = app(QontactService::class)->normalizePhoneNumber((string) ($customer->phone ?? ''));
+        $isWaConfirmed = $isHematMode || ($normalizedPhone !== '' && CustomerWhatsAppConfirmation::isConfirmed($normalizedPhone));
+
         return [
             'id' => $customer->id,
             'username' => $customer->username,
@@ -1660,7 +1669,39 @@ class DashboardService
             'wallet_balance' => (float) ($customer->ewallet_saldo ?? 0),
             'status' => (int) ($customer->status ?? 0),
             'has_placement' => filled($customer->position) || $customer->upline_id !== null,
+            'is_wa_confirmed' => $isWaConfirmed,
         ];
+    }
+
+    private function buildWaConfirmationUrl(Customer $customer): ?string
+    {
+        if (config('services.qontak.wa_gateway_hemat_mode', true)) {
+            return null;
+        }
+
+        $gatewayNumber = preg_replace('/[^0-9]/', '', (string) config('services.qontak.wa_gateway_number', ''));
+
+        if ($gatewayNumber === '') {
+            return null;
+        }
+
+        $normalizedPhone = app(QontactService::class)->normalizePhoneNumber((string) ($customer->phone ?? ''));
+
+        if ($normalizedPhone !== '' && CustomerWhatsAppConfirmation::isConfirmed($normalizedPhone)) {
+            return null;
+        }
+
+        $signedUrl = URL::signedRoute('wa.confirm', ['customer' => $customer->getKey()], now()->addHours(48));
+
+        $username = (string) ($customer->username ?? '');
+        $message = "Halo, saya *{$username}* ingin mengkonfirmasi nomor WhatsApp ini untuk mengaktifkan fitur topup dan penarikan saldo."
+            ."\n\nLangkah konfirmasi:"
+            ."\n1. Kirim pesan ini ke kami terlebih dahulu."
+            ."\n2. Setelah pesan terkirim, klik link berikut untuk menyelesaikan konfirmasi:"
+            ."\n{$signedUrl}"
+            ."\n\nLink berlaku 48 jam.";
+
+        return 'https://wa.me/'.$gatewayNumber.'?text='.rawurlencode($message);
     }
 
     /**

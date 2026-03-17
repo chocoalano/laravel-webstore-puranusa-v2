@@ -15,6 +15,7 @@ use App\Http\Controllers\Web\NewsletterSubscriptionController;
 use App\Http\Controllers\Web\OrderInvoiceDownloadController;
 use App\Http\Controllers\Web\PageController;
 use App\Http\Controllers\Web\PublicMediaController;
+use App\Http\Controllers\Web\QontakIncomingWebhookController;
 use App\Http\Controllers\Web\ShopController;
 use App\Http\Controllers\Web\WishlistController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -24,6 +25,9 @@ Route::get('/', [BerandaController::class, 'index'])->name('home');
 Route::post('/payments/midtrans/callback', MidtransWebhookController::class)
     ->withoutMiddleware([ValidateCsrfToken::class])
     ->name('payments.midtrans.callback');
+Route::post('/webhooks/qontak/incoming', QontakIncomingWebhookController::class)
+    ->withoutMiddleware([ValidateCsrfToken::class])
+    ->name('webhooks.qontak.incoming');
 Route::post('/newsletter/subscribe', NewsletterSubscriptionController::class)
     ->middleware('throttle:10,1')
     ->name('newsletter.subscribe');
@@ -46,6 +50,10 @@ Route::middleware('guest:customer')->group(function () {
     Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.store');
 });
+
+Route::get('/konfirmasi-wa/{customer}', [CustomerAuthController::class, 'confirmWhatsApp'])
+    ->whereNumber('customer')
+    ->name('wa.confirm');
 
 Route::middleware('auth:customer')->group(function () {
     Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');

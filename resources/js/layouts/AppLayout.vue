@@ -5,7 +5,8 @@ import Header from '@/components/layouts/Header.vue'
 import Topbar from '@/components/layouts/Topbar.vue'
 import BottomNavigation from '@/components/layouts/BottomNavigation.vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useToast } from '@nuxt/ui/runtime/composables/useToast.js'
 
 type ImpersonationPayload = {
     active?: boolean
@@ -14,7 +15,13 @@ type ImpersonationPayload = {
     stop_url?: string | null
 }
 
-const page = usePage<{ appName?: string; categories?: any[]; wishlistCount?: number; cartCount?: number; impersonation?: ImpersonationPayload }>()
+type FlashPayload = {
+    success?: string | null
+    error?: string | null
+}
+
+const toast = useToast()
+const page = usePage<{ appName?: string; categories?: any[]; wishlistCount?: number; cartCount?: number; impersonation?: ImpersonationPayload; flash?: FlashPayload }>()
 
 const appName = computed(() => page.props.appName ?? 'Store')
 const categories = computed(() => page.props.categories ?? [])
@@ -24,6 +31,20 @@ const impersonation = computed<ImpersonationPayload>(() => page.props.impersonat
 const isImpersonating = computed(() => !!impersonation.value.active)
 const impersonationStopUrl = computed(() => impersonation.value.stop_url ?? '/impersonation/stop')
 const isStoppingImpersonation = ref(false)
+
+watch(
+    () => page.props.flash,
+    (flash) => {
+        if (flash?.success) {
+            toast.add({ title: 'Berhasil', description: flash.success, color: 'success' })
+        }
+
+        if (flash?.error) {
+            toast.add({ title: 'Gagal', description: flash.error, color: 'error' })
+        }
+    },
+    { immediate: true, deep: true }
+)
 
 function stopImpersonation(): void {
     if (!isImpersonating.value || isStoppingImpersonation.value) {
@@ -43,6 +64,7 @@ function stopImpersonation(): void {
 
 <template>
     <UApp :locale="{ messages: { header: { title: 'Menu', description: 'Navigasi situs' } } }">
+        <UToaster />
         <div class="relative flex min-h-dvh flex-col">
             <AppBackground />
 

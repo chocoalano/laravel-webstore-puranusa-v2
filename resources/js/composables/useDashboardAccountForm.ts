@@ -165,7 +165,7 @@ export function useDashboardAccountForm(options: UseDashboardAccountFormOptions)
             form.npwp_kerja = normalizeNpwpFlag(customer?.npwp?.kerja)
             form.npwp_office = customer?.npwp?.office ?? ''
         },
-        { immediate: true }
+        { immediate: true, once: true }
     )
 
     function clearErrors(): void {
@@ -215,28 +215,13 @@ export function useDashboardAccountForm(options: UseDashboardAccountFormOptions)
         const npwpKerja = form.npwp_kerja.trim().toUpperCase()
         const npwpOffice = form.npwp_office.trim()
 
-        if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) {
-            validationErrors.username = 'Username 3-30 karakter dan hanya huruf/angka/underscore/titik.'
-        }
-
+        // username, nik, email, phone adalah readonly — validasi dilakukan sepenuhnya di backend
         if (name.length === 0) {
             validationErrors.name = 'Nama lengkap wajib diisi.'
         }
 
-        if (!/^\d{16}$/.test(nik)) {
-            validationErrors.nik = 'NIK harus 16 digit angka.'
-        }
-
         if (!['L', 'P'].includes(gender)) {
             validationErrors.gender = 'Jenis kelamin wajib dipilih.'
-        }
-
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            validationErrors.email = 'Format email tidak valid.'
-        }
-
-        if (!/^[0-9+]{8,20}$/.test(phone)) {
-            validationErrors.phone = 'Nomor telepon/WhatsApp harus 8-20 karakter (angka atau +).'
         }
 
         if (bankName.length === 0) {

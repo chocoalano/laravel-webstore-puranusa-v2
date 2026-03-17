@@ -79,11 +79,15 @@ const {
                 :description="`Nama pemilik rekening harus sesuai dengan nama terdaftar: ${customerName}. Ketidaksesuaian dapat menyebabkan pembatalan otomatis pada proses withdrawal.`"
                 :ui="{ title: 'font-bold' }" />
 
+            <UAlert color="info" variant="subtle" icon="i-lucide-lock" title="Kolom Terkunci"
+                description="Username, NIK, Email, dan No. Telepon tidak dapat diubah sendiri. Hubungi admin jika perlu perubahan data tersebut."
+                :ui="{ title: 'font-bold' }" />
+
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <UFormField label="Username" required :error="errors.username"
-                    help="Gunakan huruf kecil, angka, atau titik. Minimal 5 karakter.">
-                    <UInput v-model="form.username" placeholder="contoh: tumbur.siahaan" icon="i-lucide-at-sign"
-                        class="w-full" />
+                    help="Username tidak dapat diubah. Hubungi admin untuk perubahan.">
+                    <UInput v-model="form.username" readonly icon="i-lucide-lock"
+                        class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
                 <UFormField label="Nama Lengkap" required :error="errors.name"
@@ -93,8 +97,9 @@ const {
                 </UFormField>
 
                 <UFormField label="NIK" required :error="errors.nik"
-                    help="16 digit Nomor Induk Kependudukan sesuai KTP.">
-                    <UInput v-model="form.nik" placeholder="32xxxxxxxxxxxxxx" icon="i-lucide-id-card" class="w-full" />
+                    help="NIK tidak dapat diubah. Hubungi admin untuk perubahan.">
+                    <UInput v-model="form.nik" readonly icon="i-lucide-lock"
+                        class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
                 <UFormField label="Jenis Kelamin" required :error="errors.gender">
@@ -103,15 +108,15 @@ const {
                 </UFormField>
 
                 <UFormField label="Email" required :error="errors.email"
-                    help="Email aktif untuk notifikasi keamanan dan transaksi.">
-                    <UInput v-model="form.email" type="email" placeholder="nama@email.com" icon="i-lucide-mail"
-                        class="w-full" />
+                    help="Email tidak dapat diubah. Hubungi admin untuk perubahan.">
+                    <UInput v-model="form.email" type="email" readonly icon="i-lucide-lock"
+                        class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
                 <UFormField label="WhatsApp / No. Telepon" required :error="errors.phone"
-                    help="Gunakan format 08 (contoh: 08123456789).">
-                    <UInput v-model="form.phone" placeholder="08xxxxxxxxxx" inputmode="tel" icon="i-lucide-phone"
-                        class="w-full" />
+                    help="Nomor telepon tidak dapat diubah. Hubungi admin untuk perubahan.">
+                    <UInput v-model="form.phone" readonly icon="i-lucide-lock" inputmode="tel"
+                        class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
             </div>
 

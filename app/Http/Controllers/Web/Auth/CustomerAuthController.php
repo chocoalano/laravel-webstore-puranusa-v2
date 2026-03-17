@@ -6,14 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\Customer;
+use App\Models\CustomerWhatsAppConfirmation;
 use App\Services\Auth\CustomerAuthService;
 use App\Services\Auth\CustomerRegistrationService;
 use App\Services\Auth\ReferralContextService;
 use App\Services\Dashboard\DashboardService;
+use App\Services\QontactService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -26,6 +29,7 @@ class CustomerAuthController extends Controller
         private readonly CustomerRegistrationService $registrationService,
         private readonly ReferralContextService $referralContextService,
         private readonly DashboardService $dashboardService,
+        private readonly QontactService $qontactService,
     ) {}
 
     public function showLogin(): Response
@@ -72,7 +76,7 @@ class CustomerAuthController extends Controller
         ]);
     }
 
-    public function register(RegisterRequest $request): RedirectResponse
+    public function register(RegisterRequest $request): RedirectResponse|SymfonyResponse
     {
         try {
             $this->registrationService->register($request);
@@ -105,7 +109,119 @@ class CustomerAuthController extends Controller
                 );
         }
 
-        return redirect()->route('login')->with('status', 'Akun berhasil dibuat! Silakan masuk.');
+        $customer = Customer::query()
+            ->where('username', $request->string('username')->trim()->lower()->toString())
+            ->first();
+
+        $normalizedPhone = $this->qontactService->normalizePhoneNumber(
+            $request->string('telp')->toString()
+        );
+
+        if (config('services.qontak.wa_gateway_hemat_mode')) {
+            return redirect()->route('login')->with('status', 'Akun berhasil dibuat! Silakan masuk.');
+        }
+
+        if ($normalizedPhone !== '' && CustomerWhatsAppConfirmation::isConfirmed($normalizedPhone)) {
+            return redirect()->route('login')->with('status', 'Akun berhasil dibuat! Silakan masuk.');
+        }
+
+        $waUrl = $this->buildWhatsAppConfirmationUrl($customer, $normalizedPhone);
+
+        return Inertia::location($waUrl);
+    }
+
+    public function confirmWhatsApp(Request $request, Customer $customer): RedirectResponse|Response
+    {
+        $isLoggedIn = auth('customer')->check();
+
+        if (! $request->hasValidSignature()) {
+            $error = 'Link konfirmasi tidak valid atau sudah kedaluwarsa. Silakan ulangi proses konfirmasi WhatsApp.';
+
+            return $isLoggedIn
+                ? redirect()->route('dashboard')->withErrors(['error' => $error])
+                : redirect()->route('login')->withErrors(['error' => $error]);
+        }
+
+        $phone = $this->qontactService->normalizePhoneNumber((string) ($customer->phone ?? ''));
+
+        if ($phone === '') {
+            $error = 'Nomor WhatsApp tidak ditemukan pada akun ini. Hubungi admin untuk bantuan.';
+
+            return $isLoggedIn
+                ? redirect()->route('dashboard')->withErrors(['error' => $error])
+                : redirect()->route('login')->withErrors(['error' => $error]);
+        }
+
+        if (! CustomerWhatsAppConfirmation::isConfirmed($phone)) {
+            return Inertia::render('Auth/WaConfirmationPending', [
+                'username' => (string) ($customer->username ?? ''),
+                'maskedPhone' => $this->maskPhone($phone),
+                'waUrl' => $this->buildPendingWaUrl($customer, $request->fullUrl()),
+                'confirmUrl' => $request->fullUrl(),
+            ]);
+        }
+
+        CustomerWhatsAppConfirmation::linkCustomer($phone, (int) $customer->getKey());
+
+        $success = 'Nomor WhatsApp berhasil dikonfirmasi! Fitur topup dan penarikan saldo sudah dapat digunakan.';
+
+        return $isLoggedIn
+            ? redirect()->route('dashboard')->with('success', $success)
+            : redirect()->route('login')->with('status', 'Nomor WhatsApp berhasil dikonfirmasi! Akun Anda aktif. Silakan masuk.');
+    }
+
+    private function maskPhone(string $phone): string
+    {
+        $len = \strlen($phone);
+
+        if ($len <= 7) {
+            return str_repeat('*', $len);
+        }
+
+        return substr($phone, 0, 4).str_repeat('*', $len - 7).substr($phone, -3);
+    }
+
+    private function buildPendingWaUrl(Customer $customer, string $confirmUrl): ?string
+    {
+        $gatewayNumber = preg_replace('/[^0-9]/', '', (string) config('services.qontak.wa_gateway_number', ''));
+
+        if ($gatewayNumber === '') {
+            return null;
+        }
+
+        $username = (string) ($customer->username ?? '');
+        $message = "Halo, saya *{$username}* ingin mengkonfirmasi nomor WhatsApp ini."
+            ."\n\nLangkah konfirmasi:"
+            ."\n1. Kirim pesan ini ke kami terlebih dahulu."
+            ."\n2. Setelah pesan terkirim, klik link berikut untuk menyelesaikan konfirmasi:"
+            ."\n{$confirmUrl}"
+            ."\n\nLink berlaku 48 jam.";
+
+        return 'https://wa.me/'.$gatewayNumber.'?text='.rawurlencode($message);
+    }
+
+    private function buildWhatsAppConfirmationUrl(?Customer $customer, string $normalizedPhone): string
+    {
+        $gatewayNumber = preg_replace('/[^0-9]/', '', (string) config('services.qontak.wa_gateway_number', ''));
+
+        if ($gatewayNumber === '') {
+            return route('login', [], true).'?status='.rawurlencode('Akun berhasil dibuat! Silakan masuk.');
+        }
+
+        $confirmUrl = $customer
+            ? URL::signedRoute('wa.confirm', ['customer' => $customer->getKey()], now()->addHours(48))
+            : null;
+
+        $username = $customer?->username ?? '';
+
+        $message = "Halo, saya *{$username}* baru saja mendaftar sebagai member dan ingin mengkonfirmasi nomor WhatsApp ini."
+            ."\n\nLangkah konfirmasi:"
+            ."\n1. Kirim pesan ini ke kami terlebih dahulu."
+            ."\n2. Setelah pesan terkirim, klik link berikut untuk menyelesaikan konfirmasi:"
+            ."\n{$confirmUrl}"
+            ."\n\nLink berlaku 48 jam.";
+
+        return 'https://wa.me/'.$gatewayNumber.'?text='.rawurlencode($message);
     }
 
     public function logout(Request $request): RedirectResponse

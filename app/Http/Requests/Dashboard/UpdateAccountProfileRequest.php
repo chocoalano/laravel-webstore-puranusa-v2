@@ -61,33 +61,62 @@ class UpdateAccountProfileRequest extends FormRequest
         ];
 
         if ($enforceUnique) {
+            // Username tetap unique — satu username hanya boleh dimiliki satu akun
             $usernameRules[] = Rule::unique('customers', 'username')->ignore($customerId);
-            $nikRules[] = Rule::unique('customers', 'nik')->ignore($customerId);
-            $emailRules[] = Rule::unique('customers', 'email')->ignore($customerId);
 
+            // NIK tidak unique, tapi maksimal 7 akun boleh menggunakan NIK yang sama
+            $nikRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($customerId): void {
+                $nik = trim((string) $value);
+
+                if ($nik === '') {
+                    return;
+                }
+
+                $usageCount = Customer::query()
+                    ->where('nik', $nik)
+                    ->when($customerId !== null, fn ($query) => $query->where('id', '!=', $customerId))
+                    ->count();
+
+                if ($usageCount >= 7) {
+                    $fail('NIK ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
+                }
+            };
+
+            // Email tidak unique, tapi maksimal 7 akun boleh menggunakan email yang sama
+            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($customerId): void {
+                $email = trim((string) $value);
+
+                if ($email === '') {
+                    return;
+                }
+
+                $usageCount = Customer::query()
+                    ->where('email', $email)
+                    ->when($customerId !== null, fn ($query) => $query->where('id', '!=', $customerId))
+                    ->count();
+
+                if ($usageCount >= 7) {
+                    $fail('Email ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
+                }
+            };
+
+            // Telepon tidak unique, tapi maksimal 7 akun boleh menggunakan nomor yang sama
             $currentPhoneNormalized = trim((string) ($currentPhone ?? ''));
 
             $phoneRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($customerId, $currentPhoneNormalized): void {
                 $phone = trim((string) $value);
 
-                if ($phone === '') {
-                    return;
-                }
-
-                if ($currentPhoneNormalized === $phone) {
+                if ($phone === '' || $currentPhoneNormalized === $phone) {
                     return;
                 }
 
                 $usageCount = Customer::query()
                     ->where('phone', $phone)
-                    ->when(
-                        $customerId !== null,
-                        fn ($query) => $query->where('id', '!=', $customerId)
-                    )
+                    ->when($customerId !== null, fn ($query) => $query->where('id', '!=', $customerId))
                     ->count();
 
                 if ($usageCount >= 7) {
-                    $fail('Nomor telepon/WhatsApp ini sudah digunakan oleh 7 akun.');
+                    $fail('Nomor telepon ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
                 }
             };
         }
@@ -121,18 +150,16 @@ class UpdateAccountProfileRequest extends FormRequest
             'username.min' => 'Username minimal 3 karakter.',
             'username.max' => 'Username maksimal 30 karakter.',
             'username.regex' => 'Username hanya boleh berisi huruf, angka, underscore, dan titik.',
-            'username.unique' => 'Username sudah digunakan akun lain.',
+            'username.unique' => 'Username sudah digunakan oleh akun lain. Pilih username yang berbeda.',
             'name.required' => 'Nama lengkap wajib diisi.',
             'name.max' => 'Nama lengkap maksimal 255 karakter.',
             'nik.required' => 'NIK wajib diisi.',
-            'nik.digits' => 'NIK harus 16 digit angka.',
-            'nik.unique' => 'NIK sudah digunakan akun lain.',
+            'nik.digits' => 'NIK harus tepat 16 digit angka sesuai KTP.',
             'gender.required' => 'Jenis kelamin wajib dipilih.',
             'gender.in' => 'Jenis kelamin tidak valid.',
             'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Format email tidak valid.',
+            'email.email' => 'Format email tidak valid. Contoh: nama@email.com.',
             'email.max' => 'Email maksimal 255 karakter.',
-            'email.unique' => 'Email sudah digunakan akun lain.',
             'phone.required' => 'Nomor telepon/WhatsApp wajib diisi.',
             'phone.min' => 'Nomor telepon/WhatsApp minimal 8 karakter.',
             'phone.max' => 'Nomor telepon/WhatsApp maksimal 20 karakter.',

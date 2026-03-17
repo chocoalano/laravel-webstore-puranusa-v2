@@ -19,6 +19,8 @@ const props = withDefaults(
         hasPendingWithdrawal?: boolean
         walletBalance?: number
         midtrans?: DashboardMidtransConfig
+        waConfirmationUrl?: string | null
+        waGatewayHematMode?: boolean
     }>(),
     {
         customer: null,
@@ -41,10 +43,13 @@ const props = withDefaults(
             env: 'sandbox',
             client_key: '',
         }),
+        waConfirmationUrl: null,
+        waGatewayHematMode: false,
     }
 )
 
 const hasPendingWithdrawal = computed(() => Boolean(props.hasPendingWithdrawal))
+const isWaConfirmed = computed(() => props.customer?.is_wa_confirmed === true)
 
 const {
     balance,
@@ -120,6 +125,9 @@ const {
             v-model:notes="topupNotes"
             :loading="isSubmittingTopup"
             :syncing="syncingTopupId !== null"
+            :is-wa-confirmed="isWaConfirmed"
+            :wa-confirmation-url="props.waConfirmationUrl"
+            :hemat-mode="props.waGatewayHematMode"
             @submit="submitTopup"
         />
 
@@ -132,6 +140,9 @@ const {
             :max-amount-label="formattedBalance"
             :admin-fee="withdrawalAdminFee"
             :loading="isSubmittingWithdrawal"
+            :is-wa-confirmed="isWaConfirmed"
+            :wa-confirmation-url="props.waConfirmationUrl"
+            :hemat-mode="props.waGatewayHematMode"
             @submit="submitWithdrawal"
         />
     </div>
