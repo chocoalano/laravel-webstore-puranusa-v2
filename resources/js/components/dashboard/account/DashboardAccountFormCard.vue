@@ -97,8 +97,8 @@ const {
                 </UFormField>
 
                 <UFormField label="NIK" required :error="errors.nik"
-                    help="NIK tidak dapat diubah. Hubungi admin untuk perubahan.">
-                    <UInput v-model="form.nik" readonly icon="i-lucide-lock"
+                    help="NIK harus diisi.">
+                    <UInput v-model="form.nik" icon="i-lucide-lock"
                         class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
@@ -108,8 +108,8 @@ const {
                 </UFormField>
 
                 <UFormField label="Email" required :error="errors.email"
-                    help="Email tidak dapat diubah. Hubungi admin untuk perubahan.">
-                    <UInput v-model="form.email" type="email" readonly icon="i-lucide-lock"
+                    help="Email harus diisi.">
+                    <UInput v-model="form.email" type="email" icon="i-lucide-lock"
                         class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
