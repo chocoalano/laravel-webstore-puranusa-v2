@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Checkout\MidtransTokenRequest;
 use App\Http\Requests\Checkout\SaldoPayRequest;
+use App\Models\Customer;
 use App\Models\Payment;
 use App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface;
 use App\Services\Checkout\CheckoutService;
@@ -28,7 +29,7 @@ class CheckoutController extends Controller
      */
     public function index(): Response
     {
-        /** @var \App\Models\Customer $customer */
+        /** @var Customer $customer */
         $customer = auth('customer')->user();
 
         return inertia('Auth/Checkout/Index', $this->checkoutService->getPageData($customer));
@@ -62,10 +63,10 @@ class CheckoutController extends Controller
     {
         $request->validate([
             'province' => ['required', 'string', 'max:255'],
-            'city'     => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
         ]);
         $province = trim((string) $request->input('province'));
-        $city     = trim((string) $request->input('city'));
+        $city = trim((string) $request->input('city'));
 
         return response()->json(
             $this->shippingRepository->districtsByProvinceAndCity(
@@ -77,27 +78,25 @@ class CheckoutController extends Controller
 
     /**
      * Tarif ongkir Lion Parcel untuk tujuan yang dipilih.
+     * Parameter `district` adalah kode district_lion dari Lion Parcel.
      */
     public function shippingCost(Request $request): JsonResponse
     {
         $request->validate([
             'province' => ['required', 'string', 'max:255'],
-            'city'     => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
             'district' => ['nullable', 'string', 'max:255'],
         ]);
         $province = trim((string) $request->input('province'));
-        $city     = trim((string) $request->input('city'));
-        $district = trim((string) $request->input('district', ''));
-        $district = $district !== '' ? $district : null;
+        $city = trim((string) $request->input('city'));
+        $districtLion = trim((string) $request->input('district', ''));
+        $districtLion = $districtLion !== '' ? $districtLion : null;
 
-        /** @var \App\Models\Customer $customer */
+        /** @var Customer $customer */
         $customer = auth('customer')->user();
 
-        $destinationLion = $this->shippingRepository->findDistrictLion(
-            $province,
-            $city,
-            $district,
-        );
+        // Jika district_lion tidak diberikan, coba fallback lookup berdasarkan province + city
+        $destinationLion = $districtLion ?? $this->shippingRepository->findDistrictLion($province, $city);
 
         if (! $destinationLion) {
             return response()->json(['message' => 'Tujuan pengiriman tidak tersedia.'], 422);
@@ -113,7 +112,7 @@ class CheckoutController extends Controller
      */
     public function getMidtransToken(MidtransTokenRequest $request): JsonResponse|RedirectResponse
     {
-        /** @var \App\Models\Customer $customer */
+        /** @var Customer $customer */
         $customer = auth('customer')->user();
 
         try {
@@ -138,9 +137,9 @@ class CheckoutController extends Controller
             }
 
             $result = [
-                'snapToken'  => $snapToken,
-                'orderId'    => $order->id,
-                'orderNo'    => $order->order_no,
+                'snapToken' => $snapToken,
+                'orderId' => $order->id,
+                'orderNo' => $order->order_no,
                 'successUrl' => route('dashboard'),
             ];
 
@@ -172,16 +171,16 @@ class CheckoutController extends Controller
      */
     public function payWithSaldo(SaldoPayRequest $request): JsonResponse|RedirectResponse
     {
-        /** @var \App\Models\Customer $customer */
+        /** @var Customer $customer */
         $customer = auth('customer')->user();
 
         try {
             $order = $this->checkoutService->payWithSaldo($customer, $request->addressData());
 
             $result = [
-                'message'    => 'Pembayaran berhasil.',
-                'orderId'    => $order->id,
-                'orderNo'    => $order->order_no,
+                'message' => 'Pembayaran berhasil.',
+                'orderId' => $order->id,
+                'orderNo' => $order->order_no,
                 'redirectTo' => route('dashboard'),
             ];
 

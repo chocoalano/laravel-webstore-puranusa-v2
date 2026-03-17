@@ -25,7 +25,7 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[], pickupLoca
     // Cascading dropdowns
     const provinces = ref<string[]>([])
     const cities = ref<string[]>([])
-    const districts = ref<string[]>([])
+    const districts = ref<Array<{ label: string; value: string }>>([])
     const selectedProvince = ref('')
     const selectedCity = ref('')
     const selectedDistrict = ref('')
@@ -90,6 +90,8 @@ export function useCheckoutAddress(savedAddresses: CheckoutAddress[], pickupLoca
             const url = `/checkout/shipping/districts?province=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}`
             const res = await fetch(url)
             if (!res.ok) return
+            console.log(res.ok);
+
             districts.value = await res.json()
         } catch {
             // silently ignore

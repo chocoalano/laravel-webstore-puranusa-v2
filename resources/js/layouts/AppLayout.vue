@@ -63,7 +63,7 @@ function stopImpersonation(): void {
 </script>
 
 <template>
-    <UApp :locale="{ messages: { header: { title: 'Menu', description: 'Navigasi situs' } } }">
+    <UApp portal="#app" :locale="{ messages: { header: { title: 'Menu', description: 'Navigasi situs' } } }">
         <UToaster />
         <div class="relative flex min-h-dvh flex-col">
             <AppBackground />

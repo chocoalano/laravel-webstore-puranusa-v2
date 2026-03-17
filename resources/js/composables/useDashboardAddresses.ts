@@ -315,11 +315,13 @@ export function useDashboardAddresses(options: UseDashboardAddressesOptions) {
                     return null
                 }
 
+                const districtLionFromApi = toTrimmedString(record.district_lion)
+
                 return {
                     id,
                     city_id: cityIdFromApi,
                     label,
-                    district_lion: formatDistrictLion(label, form.city_label),
+                    district_lion: districtLionFromApi !== '' ? districtLionFromApi : formatDistrictLion(label, form.city_label),
                 } satisfies DashboardAddressDistrictOption
             })
             .filter((item): item is DashboardAddressDistrictOption => item !== null)

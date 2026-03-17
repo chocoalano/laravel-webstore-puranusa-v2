@@ -168,7 +168,7 @@ function formatIDR(n: number): string {
 
                 <UFormField label="Kecamatan" class="w-full">
                     <USelect v-model="selectedDistrict"
-                        :items="districts.map(d => ({ label: d, value: d }))"
+                        :items="districts"
                         placeholder="Pilih kecamatan"
                         :loading="isLoadingDistricts"
                         :disabled="!selectedCity"

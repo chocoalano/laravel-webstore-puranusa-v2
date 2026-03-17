@@ -113,7 +113,7 @@ class EloquentShippingTargetRepository implements ShippingTargetRepositoryInterf
         $this->ensureRegionIds();
 
         return ShippingTarget::query()
-            ->selectRaw('MIN(province_id) as province_id, MIN(city_id) as city_id, district as label, MIN(district_lion) as district_lion')
+            ->selectRaw('MIN(id) as id, MIN(province_id) as province_id, MIN(city_id) as city_id, district as label, MIN(district_lion) as district_lion')
             ->whereNotNull('province_id')
             ->whereNotNull('city_id')
             ->whereNotNull('district')
@@ -124,7 +124,32 @@ class EloquentShippingTargetRepository implements ShippingTargetRepositoryInterf
             ->orderBy('label')
             ->get()
             ->map(fn (ShippingTarget $district): array => [
+                'id' => (int) $district->id,
                 'province_id' => (int) $district->province_id,
+                'city_id' => (int) $district->city_id,
+                'label' => (string) $district->label,
+                'district_lion' => (string) $district->district_lion,
+            ])
+            ->toArray();
+    }
+
+    /** @return list<array{id:int,city_id:int,label:string,district_lion:string}> */
+    public function districtOptionsByCityId(int $cityId): array
+    {
+        $this->ensureRegionIds();
+
+        return ShippingTarget::query()
+            ->selectRaw('MIN(id) as id, MIN(city_id) as city_id, district as label, MIN(district_lion) as district_lion')
+            ->where('city_id', $cityId)
+            ->whereNotNull('district')
+            ->where('district', '!=', '')
+            ->whereNotNull('district_lion')
+            ->where('district_lion', '!=', '')
+            ->groupBy('district')
+            ->orderBy('label')
+            ->get()
+            ->map(fn (ShippingTarget $district): array => [
+                'id' => (int) $district->id,
                 'city_id' => (int) $district->city_id,
                 'label' => (string) $district->label,
                 'district_lion' => (string) $district->district_lion,
@@ -154,11 +179,18 @@ class EloquentShippingTargetRepository implements ShippingTargetRepositoryInterf
     public function districtsByProvinceAndCity(string $province, string $city): array
     {
         return ShippingTarget::query()
+            ->select('district', 'district_lion')
             ->where('province', $province)
             ->where('city', $city)
+            ->whereNotNull('district_lion')
+            ->where('district_lion', '!=', '')
             ->distinct()
             ->orderBy('district')
-            ->pluck('district')
+            ->get()
+            ->map(fn (ShippingTarget $row): array => [
+                'label' => (string) $row->district_lion,
+                'value' => (string) $row->district_lion,
+            ])
             ->toArray();
     }
 

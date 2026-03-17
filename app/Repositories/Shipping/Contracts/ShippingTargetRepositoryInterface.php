@@ -15,7 +15,7 @@ interface ShippingTargetRepositoryInterface
     public function cityOptions(): array;
 
     /**
-     * @return list<array{province_id:int,city_id:int,label:string,district_lion:string}>
+     * @return list<array{id:int,province_id:int,city_id:int,label:string,district_lion:string}>
      */
     public function districtOptions(): array;
 
@@ -25,7 +25,7 @@ interface ShippingTargetRepositoryInterface
     /** @return list<string> */
     public function citiesByProvince(string $province): array;
 
-    /** @return list<string> */
+    /** @return list<array{label:string,value:string}> */
     public function districtsByProvinceAndCity(string $province, string $city): array;
 
     /**
@@ -43,4 +43,7 @@ interface ShippingTargetRepositoryInterface
      * @return array{district:string,district_lion:string}|null
      */
     public function findDistrictByRegionIds(int $provinceId, int $cityId, ?string $district = null): ?array;
+
+    /** @return list<array{id:int,city_id:int,label:string,district_lion:string}> */
+    public function districtOptionsByCityId(int $cityId): array;
 }

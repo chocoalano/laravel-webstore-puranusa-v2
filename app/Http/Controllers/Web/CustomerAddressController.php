@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerAddress\SaveCustomerAddressRequest;
 use App\Models\Customer;
+use App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface;
 use App\Services\CustomerAddress\CustomerAddressService;
 use App\Services\RajaOngkirService;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class CustomerAddressController extends Controller
     public function __construct(
         private readonly CustomerAddressService $customerAddressService,
         private readonly RajaOngkirService $rajaOngkirService,
+        private readonly ShippingTargetRepositoryInterface $shippingRepository,
     ) {}
 
     public function index(): RedirectResponse
@@ -129,32 +131,7 @@ class CustomerAddressController extends Controller
             return response()->json([]);
         }
 
-        $items = collect($this->rajaOngkirService->getDistricts($cityId))
-            ->map(function (mixed $district) use ($cityId): ?array {
-                $id = $this->extractRegionValue($district, ['id', 'district_id', 'subdistrict_id']);
-                $label = $this->extractRegionValue($district, ['district_name', 'subdistrict_name', 'district', 'name']);
-                $districtLion = $this->extractRegionValue($district, ['district_lion']);
-
-                if (! is_numeric($id) || ! is_string($label) || trim($label) === '') {
-                    return null;
-                }
-
-                $normalizedLabel = trim($label);
-
-                return [
-                    'id' => (int) $id,
-                    'city_id' => $cityId,
-                    'label' => $normalizedLabel,
-                    'district_lion' => is_string($districtLion) && trim($districtLion) !== ''
-                        ? trim($districtLion)
-                        : $normalizedLabel,
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
-
-        return response()->json($items);
+        return response()->json($this->shippingRepository->districtOptionsByCityId($cityId));
     }
 
     private function extractRegionValue(mixed $row, array $keys): mixed
