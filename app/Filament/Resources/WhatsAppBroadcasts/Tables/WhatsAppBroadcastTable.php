@@ -4,6 +4,7 @@ namespace App\Filament\Resources\WhatsAppBroadcasts\Tables;
 
 use App\Jobs\ProcessWhatsAppBroadcastJob;
 use App\Models\WhatsAppBroadcast;
+use App\Services\QontactService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -29,7 +30,16 @@ class WhatsAppBroadcastTable
                     ->searchable()
                     ->sortable()
                     ->wrap()
-                    ->description(fn (WhatsAppBroadcast $record) => $record->template_id ? "Template: {$record->template_id}" : null),
+                    ->description(function (WhatsAppBroadcast $record): ?string {
+                        if (! $record->template_id) {
+                            return null;
+                        }
+
+                        $templates = app(QontactService::class)->getWhatsAppTemplates();
+                        $name = $templates[$record->template_id] ?? $record->template_id;
+
+                        return "Template: {$name}";
+                    }),
 
                 TextColumn::make('status')
                     ->label('Status')

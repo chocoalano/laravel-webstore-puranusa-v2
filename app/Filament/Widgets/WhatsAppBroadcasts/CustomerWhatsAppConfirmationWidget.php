@@ -17,6 +17,8 @@ class CustomerWhatsAppConfirmationWidget extends TableWidget
 
     protected static ?string $heading = 'Nomor WA Terkonfirmasi';
 
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $description = 'Customer yang sudah mengirim pesan WA ke sistem dan dapat menerima notifikasi.';
 
     public function table(Table $table): Table

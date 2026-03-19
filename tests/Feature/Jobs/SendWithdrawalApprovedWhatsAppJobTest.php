@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SendWithdrawalApprovedWhatsAppJob;
+use App\Models\CustomerWalletTransaction;
 use App\Services\QontactService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +36,13 @@ beforeEach(function (): void {
 it('sends whatsapp notification for completed withdrawal', function (): void {
     seedCompletedWithdrawalTransaction(9101, 8101, 10000, '081234567890');
 
-    $qontact = \Mockery::mock(QontactService::class);
-    $qontact->shouldReceive('sendWithdrawalApproved')
+    $qontact = Mockery::mock(QontactService::class);
+    $qontact->shouldReceive('sendWithdrawalApprovedNotification')
         ->once()
-        ->with('Customer 8101', '081234567890', 'Rp 10.000')
+        ->with(Mockery::on(function ($transaction): bool {
+            return $transaction instanceof CustomerWalletTransaction
+                && (int) $transaction->id === 9101;
+        }))
         ->andReturnTrue();
 
     $job = new SendWithdrawalApprovedWhatsAppJob(9101);
@@ -50,27 +54,27 @@ it('sends whatsapp notification for completed withdrawal', function (): void {
 it('throws when whatsapp provider returns false', function (): void {
     seedCompletedWithdrawalTransaction(9102, 8102, 10000, '081234567890');
 
-    $qontact = \Mockery::mock(QontactService::class);
-    $qontact->shouldReceive('sendWithdrawalApproved')
+    $qontact = Mockery::mock(QontactService::class);
+    $qontact->shouldReceive('sendWithdrawalApprovedNotification')
         ->once()
         ->andReturnFalse();
 
     $job = new SendWithdrawalApprovedWhatsAppJob(9102);
 
     expect(fn (): mixed => $job->handle($qontact))
-        ->toThrow(\RuntimeException::class, 'Pengiriman notifikasi WhatsApp gagal.');
+        ->toThrow(RuntimeException::class, 'Pengiriman notifikasi WhatsApp gagal.');
 });
 
 it('throws when customer contact is incomplete', function (): void {
     seedCompletedWithdrawalTransaction(9103, 8103, 10000, null);
 
-    $qontact = \Mockery::mock(QontactService::class);
-    $qontact->shouldNotReceive('sendWithdrawalApproved');
+    $qontact = Mockery::mock(QontactService::class);
+    $qontact->shouldNotReceive('sendWithdrawalApprovedNotification');
 
     $job = new SendWithdrawalApprovedWhatsAppJob(9103);
 
     expect(fn (): mixed => $job->handle($qontact))
-        ->toThrow(\RuntimeException::class, 'Data kontak customer tidak lengkap untuk kirim notifikasi WhatsApp.');
+        ->toThrow(RuntimeException::class, 'Data kontak customer tidak lengkap untuk kirim notifikasi WhatsApp.');
 });
 
 it('throws when transaction status is not completed', function (): void {
@@ -92,13 +96,13 @@ it('throws when transaction status is not completed', function (): void {
         'updated_at' => now(),
     ]);
 
-    $qontact = \Mockery::mock(QontactService::class);
-    $qontact->shouldNotReceive('sendWithdrawalApproved');
+    $qontact = Mockery::mock(QontactService::class);
+    $qontact->shouldNotReceive('sendWithdrawalApprovedNotification');
 
     $job = new SendWithdrawalApprovedWhatsAppJob(9104);
 
     expect(fn (): mixed => $job->handle($qontact))
-        ->toThrow(\RuntimeException::class, 'Status transaksi tidak valid untuk kirim notifikasi WhatsApp.');
+        ->toThrow(RuntimeException::class, 'Status transaksi tidak valid untuk kirim notifikasi WhatsApp.');
 });
 
 function seedCompletedWithdrawalTransaction(int $transactionId, int $customerId, float $amount, ?string $phone): void

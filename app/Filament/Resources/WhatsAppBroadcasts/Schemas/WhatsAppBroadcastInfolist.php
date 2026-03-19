@@ -30,7 +30,11 @@ class WhatsAppBroadcastInfolist
                             default => 'gray',
                         }),
 
-                    TextEntry::make('template_id')->label('Template ID')->placeholder('-'),
+                    TextEntry::make('template_id')
+                        ->label('Template ID Qontak')
+                        ->placeholder('-')
+                        ->copyable()
+                        ->fontFamily('mono'),
                     TextEntry::make('creator.name')->label('Dibuat Oleh')->placeholder('-'),
                     TextEntry::make('sent_at')->label('Waktu Kirim')->dateTime()->placeholder('-'),
                     TextEntry::make('created_at')->label('Dibuat')->dateTime()->placeholder('-'),
@@ -39,7 +43,11 @@ class WhatsAppBroadcastInfolist
 
             Section::make('Pesan')
                 ->schema([
-                    TextEntry::make('message')->label('Isi Pesan')->columnSpanFull(),
+                    TextEntry::make('message')
+                        ->label('Nilai Variabel ke-2 ({{2}})')
+                        ->helperText('Nilai ini dikirim sebagai parameter kedua pada template. Variabel pertama ({{1}}) diisi otomatis dari nama customer.')
+                        ->placeholder('-')
+                        ->columnSpanFull(),
                 ]),
 
             Section::make('Statistik Penerima')

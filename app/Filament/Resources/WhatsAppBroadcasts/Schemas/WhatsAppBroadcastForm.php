@@ -2,82 +2,114 @@
 
 namespace App\Filament\Resources\WhatsAppBroadcasts\Schemas;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
+use App\Services\QontactService;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
-use Illuminate\Support\Str;
+use Filament\Schemas\Components\Utilities\Set;
 
 class WhatsAppBroadcastForm
 {
-    public static function configure($schema)
+    public static function configure($schema): mixed
     {
         return $schema->components([
-            // Seksi Utama: Pengaturan API Qontak
-            Section::make('Konfigurasi API Qontak')
-                ->description('Hubungkan pesan dengan Template ID yang terdaftar di Dashboard Qontak.')
+            Section::make('Template Pesan')
+                ->description('Pilih template WhatsApp yang sudah disetujui (Approved) di Qontak.')
+                ->icon('heroicon-o-chat-bubble-bottom-center-text')
                 ->schema([
-                    TextInput::make('template_id')
-                        ->label('Template ID Qontak')
-                        ->helperText('Masukkan UUID template yang didapat dari Qontak (Contoh: 52cfcf36-cd75-...)')
-                        ->placeholder('Isi ID template untuk pesan resmi (HSM)')
-                        ->maxLength(100)
-                        ->live() // Update otomatis ke display bawah
-                        ->columnSpanFull()
-                        // Memberikan aksi tombol di dalam field
-                        ->suffixAction(
-                            Action::make('open_qontak')
-                                ->label('Buka Qontak')
-                                ->icon('heroicon-m-arrow-top-right-on-square')
-                                ->url('https://dashboard.qontak.com/')
-                                ->openUrlInNewTab()
-                        ),
-                ])
-                ->icon('heroicon-o-key')
-                ->collapsible(),
-            Section::make('Informasi Teknis Broadcast')
-                ->description('Detail teknis yang akan dikirimkan ke server gateway.')
-                ->schema([
-                    TextInput::make('display_template_id')
-                        ->label('ID Terdeteksi')
-                        ->default('52cfcf36-cd75-44a3-8708-2eafe53e6f14')
-                        // Mengambil nilai dari input template_id di atas secara real-time
-                        ->formatStateUsing(fn ($get, $state) => $get('template_id') ?: $state)
-                        ->disabled()
-                        ->dehydrated()
-                        ->columnSpanFull()
-                        ->extraInputAttributes(['class' => 'bg-gray-50 font-mono text-xs']),
+                    Select::make('channel_integration_id')
+                        ->label('Channel Integration')
+                        ->required()
+                        ->searchable()
+                        ->options(fn (): array => app(QontactService::class)->getWhatsAppIntegrations())
+                        ->placeholder('Pilih channel integration...')
+                        ->helperText('Channel WhatsApp Business yang akan digunakan untuk mengirim broadcast ini.')
+                        ->columnSpanFull(),
 
-                    Hidden::make('created_by')
-                        ->default(fn () => auth()->id())
-                        ->dehydrated(),
-                ])
-                ->icon('heroicon-o-information-circle')
-                ->columns(2)
-                ->compact(),
+                    Select::make('template_id')
+                        ->label('Template WhatsApp Qontak')
+                        ->required()
+                        ->searchable()
+                        ->live()
+                        ->options(fn (): array => app(QontactService::class)->getWhatsAppTemplates())
+                        ->placeholder('Pilih template...')
+                        ->helperText('Template yang tampil sudah difilter dari Qontak. [N var] menunjukkan jumlah variabel.')
+                        ->columnSpanFull()
+                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                            if (! $state) {
+                                $set('_template_hint', null);
+                                $set('body_params', []);
 
-            Section::make('Konten Pesan')
-                ->description('Susun pesan yang akan dikirimkan ke pelanggan.')
+                                return;
+                            }
+
+                            $qontactService = app(QontactService::class);
+                            $params = $qontactService->getWhatsAppTemplateParams($state);
+
+                            $set('_template_hint', $params !== [] ? $qontactService->buildParamHintHtml($params) : null);
+
+                            $columnMap = $qontactService->getCustomerColumnMap();
+                            $set('body_params', array_map(
+                                fn (array $param): array => [
+                                    'value' => $param['value'],
+                                    'value_text' => $columnMap[$param['value']]['column'] ?? '',
+                                ],
+                                $params,
+                            ));
+                        }),
+
+                    TextEntry::make('_template_hint_view')
+                        ->label('Pemetaan Variabel Template')
+                        ->html()
+                        ->state(fn (callable $get): string => $get('_template_hint') ?: 'Pilih template untuk melihat pemetaan variabel.')
+                        ->hidden(fn (callable $get): bool => blank($get('template_id')))
+                        ->columnSpanFull(),
+                ]),
+
+            Section::make('Konten Broadcast')
+                ->description('Informasi kampanye dan pemetaan variabel template ke kolom data customer.')
+                ->icon('heroicon-o-megaphone')
                 ->schema([
                     TextInput::make('title')
-                        ->label('Nama Kampanye / Judul')
-                        ->placeholder('Misal: Promo Ramadhan 2024')
-                        ->helperText('Hanya untuk keperluan arsip internal.')
+                        ->label('Nama Kampanye')
+                        ->placeholder('Misal: Promo Ramadhan 2026')
+                        ->helperText('Hanya untuk keperluan arsip internal, tidak dikirim ke penerima.')
                         ->required()
                         ->columnSpanFull()
                         ->live(debounce: 300)
                         ->afterStateUpdated(fn ($state, $set) => $set('title', trim((string) $state))),
 
-                    Textarea::make('message')
-                        ->label('Isi Pesan WhatsApp')
-                        ->helperText('Pastikan variabel (seperti {{1}}) sesuai dengan yang didaftarkan di Qontak.')
-                        ->required()
-                        ->rows(6)
-                        ->columnSpanFull()
-                        ->live(debounce: 300),
-                ])->columnSpanFull(),
+                    Repeater::make('body_params')
+                        ->label('Pemetaan Variabel Template')
+                        ->helperText('Setiap variabel template dipetakan ke kolom data customer. Pilih template di atas untuk mengisi otomatis.')
+                        ->schema([
+                            TextInput::make('value')
+                                ->label('Parameter')
+                                ->placeholder('Contoh: full_name')
+                                ->required(),
+                            Select::make('value_text')
+                                ->label('Kolom Customer')
+                                ->options(fn (): array => collect(app(QontactService::class)->getCustomerColumnMap())
+                                    ->mapWithKeys(fn (array $info): array => [
+                                        $info['column'] => "{$info['column']} — {$info['label']}",
+                                    ])
+                                    ->all())
+                                ->searchable()
+                                ->required(),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(0)
+                        ->addActionLabel('Tambah Parameter')
+                        ->reorderable(false)
+                        ->columnSpanFull(),
+
+                    Hidden::make('created_by')
+                        ->default(fn () => auth()->id())
+                        ->dehydrated(),
+                ]),
         ]);
     }
 }

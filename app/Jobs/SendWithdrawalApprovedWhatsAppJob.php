@@ -26,7 +26,7 @@ class SendWithdrawalApprovedWhatsAppJob implements ShouldQueue
     public function handle(QontactService $qontactService): void
     {
         $transaction = CustomerWalletTransaction::query()
-            ->with('customer:id,name,phone')
+            ->with('customer')
             ->whereKey($this->transactionId)
             ->first();
 
@@ -60,35 +60,15 @@ class SendWithdrawalApprovedWhatsAppJob implements ShouldQueue
             throw new RuntimeException('Data kontak customer tidak lengkap untuk kirim notifikasi WhatsApp.');
         }
 
-        $rawAmount = (float) ($transaction->amount ?? 0);
-        $rawAdminFee = self::extractAdminFeeFromNotes((string) ($transaction->notes ?? ''));
-        $rawNetAmount = max(0.0, $rawAmount - $rawAdminFee);
-
-        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
-        $formattedAmount = self::formatNumber($rawAmount);
-        $formattedAdminFee = $rawAdminFee > 0 ? self::formatNumber($rawAdminFee) : '';
-        $formattedNetAmount = $rawAdminFee > 0 ? self::formatNumber($rawNetAmount) : '';
-
         Log::info('Withdrawal approved WhatsApp job started.', [
             'transaction_id' => $transaction->id,
             'customer_id' => $transaction->customer_id,
             'customer_name' => $customerName,
             'customer_phone' => $customerPhone,
-            'amount' => $rawAmount,
-            'admin_fee' => $rawAdminFee,
-            'net_amount' => $rawNetAmount,
-            'nominal_text' => $rawAdminFee > 0
-                ? "{$formattedAmount} - {$formattedAdminFee} = {$formattedNetAmount}"
-                : $formattedAmount,
+            'amount' => $transaction->amount,
         ]);
 
-        $sent = $qontactService->sendWithdrawalApproved(
-            $customerName,
-            $customerPhone,
-            $formattedAmount,
-            $formattedAdminFee,
-            $formattedNetAmount,
-        );
+        $sent = $qontactService->sendWithdrawalApprovedNotification($transaction);
 
         if (! $sent) {
             Log::error('Withdrawal approved WhatsApp failed: provider send returned false.', [
@@ -111,21 +91,5 @@ class SendWithdrawalApprovedWhatsAppJob implements ShouldQueue
             'transaction_id' => $this->transactionId,
             'error' => $exception?->getMessage(),
         ]);
-    }
-
-    private static function extractAdminFeeFromNotes(string $notes): float
-    {
-        if ($notes === '' || ! preg_match('/Biaya admin:\s*Rp\s*([0-9\.\,]+)/i', $notes, $matches)) {
-            return 0.0;
-        }
-
-        $raw = str_replace(['.', ','], ['', '.'], trim((string) ($matches[1] ?? '0')));
-
-        return max(0.0, (float) $raw);
-    }
-
-    private static function formatNumber(float $amount): string
-    {
-        return number_format((int) round($amount), 0, ',', '.');
     }
 }

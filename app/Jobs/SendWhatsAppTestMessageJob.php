@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\QontactService;
+use App\Support\QontakWhatsAppSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -40,11 +41,17 @@ class SendWhatsAppTestMessageJob implements ShouldQueue
             throw new RuntimeException('Template ID Qontak wajib diisi untuk test message.');
         }
 
+        $bodyParams = [$recipientName];
+
+        if ($message !== '') {
+            $bodyParams[] = $message;
+        }
+
         $result = $qontactService->sendWhatsAppWithResultFromParams(
             $recipientName,
             $phoneNumber,
             $templateId,
-            [$recipientName, $message],
+            $bodyParams,
             'id',
             $this->resolveHeaderImageUrl(),
         );
@@ -67,13 +74,19 @@ class SendWhatsAppTestMessageJob implements ShouldQueue
 
     private function resolveHeaderImageUrl(): ?string
     {
-        $configuredBroadcastHeader = trim((string) config('services.qontak.broadcast_header_image_url', ''));
+        $configuredBroadcastHeader = trim((string) QontakWhatsAppSettings::get(
+            'broadcast.header_image_url',
+            config('services.qontak.broadcast_header_image_url', '')
+        ));
 
         if (($configuredBroadcastHeader !== '') && $this->isSupportedHeaderImageUrl($configuredBroadcastHeader)) {
             return $configuredBroadcastHeader;
         }
 
-        $configuredWithdrawalHeader = trim((string) config('services.qontak.wd_approved_header_image_url', ''));
+        $configuredWithdrawalHeader = trim((string) QontakWhatsAppSettings::get(
+            'notifications.withdrawal_approved.header_image_url',
+            config('services.qontak.wd_approved_header_image_url', '')
+        ));
 
         if (($configuredWithdrawalHeader !== '') && $this->isSupportedHeaderImageUrl($configuredWithdrawalHeader)) {
             return $configuredWithdrawalHeader;
@@ -87,6 +100,6 @@ class SendWhatsAppTestMessageJob implements ShouldQueue
         $path = (string) parse_url($url, PHP_URL_PATH);
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        return in_array($extension, ['jpg', 'jpeg', 'png'], true);
+        return \in_array($extension, ['jpg', 'jpeg', 'png'], true);
     }
 }

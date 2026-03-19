@@ -26,7 +26,7 @@ class SendWithdrawalRejectedWhatsAppJob implements ShouldQueue
     public function handle(QontactService $qontactService): void
     {
         $transaction = CustomerWalletTransaction::query()
-            ->with('customer:id,name,phone')
+            ->with('customer')
             ->whereKey($this->transactionId)
             ->first();
 
@@ -60,23 +60,15 @@ class SendWithdrawalRejectedWhatsAppJob implements ShouldQueue
             throw new RuntimeException('Data kontak customer tidak lengkap untuk kirim notifikasi WhatsApp.');
         }
 
-        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
-        $formattedAmount = number_format((int) round((float) ($transaction->amount ?? 0)), 0, ',', '.');
-
         Log::info('Withdrawal rejected WhatsApp job started.', [
             'transaction_id' => $transaction->id,
             'customer_id' => $transaction->customer_id,
             'customer_name' => $customerName,
             'customer_phone' => $customerPhone,
             'amount' => $transaction->amount,
-            'formatted_amount' => $formattedAmount,
         ]);
 
-        $sent = $qontactService->sendWithdrawalRejected(
-            $customerName,
-            $customerPhone,
-            $formattedAmount,
-        );
+        $sent = $qontactService->sendWithdrawalRejectedNotification($transaction);
 
         if (! $sent) {
             Log::error('Withdrawal rejected WhatsApp failed: provider send returned false.', [

@@ -16,7 +16,9 @@ class WhatsAppBroadcast extends Model
     protected $fillable = [
         'title',
         'message',
+        'body_params',
         'template_id',
+        'channel_integration_id',
         'status',
         'total_recipients',
         'success_recipients',
@@ -29,6 +31,7 @@ class WhatsAppBroadcast extends Model
     protected function casts(): array
     {
         return [
+            'body_params' => 'array',
             'sent_at' => 'datetime',
             'total_recipients' => 'integer',
             'success_recipients' => 'integer',

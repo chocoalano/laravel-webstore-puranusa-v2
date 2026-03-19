@@ -58,16 +58,32 @@ return [
         'commodity' => env('LION_PARCEL_COMMODITY', 'ABR036'),
     ],
 
+    // 'qontak' => [
+    //     'api_token' => env('QONTAK_API_TOKEN'),
+    //     'channel_integration_id' => env('QONTAK_CHANNEL_INTEGRATION_ID'),
+    //     'wd_approved_template_id' => env('QONTAK_WD_APPROVED_TEMPLATE_ID'),
+    //     'wd_approved_header_image_url' => env('QONTAK_WD_APPROVED_HEADER_IMAGE_URL'),
+    //     'wd_rejected_template_id' => env('QONTAK_WD_REJECTED_TEMPLATE_ID'),
+    //     'broadcast_template_id' => env('QONTAK_BROADCAST_TEMPLATE_ID'),
+    //     'broadcast_header_image_url' => env('QONTAK_BROADCAST_HEADER_IMAGE_URL'),
+    //     'wa_gateway_number' => env('QONTAK_WA_GATEWAY_NUMBER'),
+    //     'wa_gateway_hemat_mode' => env('QONTAK_WA_GATEWAY_HEMAT_MODE', false),
+    // ],
     'qontak' => [
+        'base_url' => env('QONTAK_BASE_URL') ?: 'https://service-chat.qontak.com/api/open/v1',
         'api_token' => env('QONTAK_API_TOKEN'),
         'channel_integration_id' => env('QONTAK_CHANNEL_INTEGRATION_ID'),
+        'timeout' => env('QONTAK_TIMEOUT', 30),
+        'bulk_retry_attempts' => env('QONTAK_BULK_RETRY_ATTEMPTS', 2),
+        'bulk_retry_buffer_seconds' => env('QONTAK_BULK_RETRY_BUFFER_SECONDS', 2),
+
+        'wd_approved_enabled' => env('QONTAK_WD_APPROVED_ENABLED', true),
         'wd_approved_template_id' => env('QONTAK_WD_APPROVED_TEMPLATE_ID'),
         'wd_approved_header_image_url' => env('QONTAK_WD_APPROVED_HEADER_IMAGE_URL'),
+        'wd_rejected_enabled' => env('QONTAK_WD_REJECTED_ENABLED', true),
         'wd_rejected_template_id' => env('QONTAK_WD_REJECTED_TEMPLATE_ID'),
         'broadcast_template_id' => env('QONTAK_BROADCAST_TEMPLATE_ID'),
         'broadcast_header_image_url' => env('QONTAK_BROADCAST_HEADER_IMAGE_URL'),
-        'wa_gateway_number' => env('QONTAK_WA_GATEWAY_NUMBER'),
-        'wa_gateway_hemat_mode' => env('QONTAK_WA_GATEWAY_HEMAT_MODE', false),
     ],
 
     'rajaongkir' => [

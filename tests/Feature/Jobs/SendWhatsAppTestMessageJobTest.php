@@ -2,9 +2,14 @@
 
 use App\Jobs\SendWhatsAppTestMessageJob;
 use App\Services\QontactService;
+use App\Support\QontakWhatsAppSettings;
+
+beforeEach(function (): void {
+    QontakWhatsAppSettings::forgetCache();
+});
 
 it('sends test whatsapp message through qontact service', function (): void {
-    $qontact = \Mockery::mock(QontactService::class);
+    $qontact = Mockery::mock(QontactService::class);
     $qontact->shouldReceive('sendWhatsAppWithResultFromParams')
         ->once()
         ->with(
@@ -35,7 +40,7 @@ it('sends test whatsapp message through qontact service', function (): void {
 });
 
 it('throws runtime exception when qontact send returns failed result', function (): void {
-    $qontact = \Mockery::mock(QontactService::class);
+    $qontact = Mockery::mock(QontactService::class);
     $qontact->shouldReceive('sendWhatsAppWithResultFromParams')
         ->once()
         ->andReturn([
@@ -57,7 +62,7 @@ it('throws runtime exception when qontact send returns failed result', function 
 });
 
 it('throws runtime exception when template id is empty', function (): void {
-    $qontact = \Mockery::mock(QontactService::class);
+    $qontact = Mockery::mock(QontactService::class);
     $qontact->shouldNotReceive('sendWhatsAppWithResultFromParams');
 
     $job = new SendWhatsAppTestMessageJob(
@@ -75,7 +80,7 @@ it('falls back to png header when configured header uses unsupported extension',
     config()->set('services.qontak.broadcast_header_image_url', '');
     config()->set('services.qontak.wd_approved_header_image_url', 'https://puranusa.id/assets/logo-puranusa.webp');
 
-    $qontact = \Mockery::mock(QontactService::class);
+    $qontact = Mockery::mock(QontactService::class);
     $qontact->shouldReceive('sendWhatsAppWithResultFromParams')
         ->once()
         ->with(

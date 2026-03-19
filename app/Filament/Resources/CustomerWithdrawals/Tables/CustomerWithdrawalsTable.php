@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CustomerWithdrawals\Tables;
 use App\Models\Customer;
 use App\Models\CustomerWalletTransaction;
 use App\Services\QontactService;
+use App\Support\QontakWhatsAppSettings;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
@@ -214,12 +215,15 @@ class CustomerWithdrawalsTable
                         }
 
                         try {
+                            $notificationEnabled = QontakWhatsAppSettings::notificationEnabled('withdrawal_approved');
                             self::sendApprovedWhatsApp($approvedTransactionId);
 
                             Notification::make()
                                 ->success()
                                 ->title('Withdrawal Disetujui')
-                                ->body('Withdrawal berhasil disetujui dan notifikasi WhatsApp berhasil dikirim.')
+                                ->body($notificationEnabled
+                                    ? 'Withdrawal berhasil disetujui dan notifikasi WhatsApp berhasil dikirim.'
+                                    : 'Withdrawal berhasil disetujui. Notifikasi WhatsApp approval sedang dinonaktifkan pada pengaturan.')
                                 ->send();
                         } catch (\Throwable $exception) {
                             Notification::make()
@@ -253,12 +257,15 @@ class CustomerWithdrawalsTable
                         }
 
                         try {
+                            $notificationEnabled = QontakWhatsAppSettings::notificationEnabled('withdrawal_rejected');
                             self::sendRejectedWhatsApp($rejectedTransactionId);
 
                             Notification::make()
                                 ->warning()
                                 ->title('Withdrawal Ditolak')
-                                ->body('Permintaan withdrawal ditolak, saldo dikembalikan, dan notifikasi WhatsApp berhasil dikirim.')
+                                ->body($notificationEnabled
+                                    ? 'Permintaan withdrawal ditolak, saldo dikembalikan, dan notifikasi WhatsApp berhasil dikirim.'
+                                    : 'Permintaan withdrawal ditolak dan saldo dikembalikan. Notifikasi WhatsApp penolakan sedang dinonaktifkan pada pengaturan.')
                                 ->send();
                         } catch (\Throwable $exception) {
                             Notification::make()
@@ -471,7 +478,7 @@ class CustomerWithdrawalsTable
     private static function sendApprovedWhatsApp(int $transactionId): void
     {
         $transaction = CustomerWalletTransaction::query()
-            ->with('customer:id,name,phone')
+            ->with('customer')
             ->whereKey($transactionId)
             ->first();
 
@@ -486,31 +493,14 @@ class CustomerWithdrawalsTable
             return;
         }
 
-        $rawAmount = (float) ($transaction->amount ?? 0);
-        $rawAdminFee = self::extractSubmissionAdminFee($transaction->notes);
-        $rawNetAmount = max(0.0, $rawAmount - $rawAdminFee);
-
-        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
-        $formattedAmount = number_format((int) round($rawAmount), 0, ',', '.');
-        $formattedAdminFee = $rawAdminFee > 0 ? number_format((int) round($rawAdminFee), 0, ',', '.') : '';
-        $formattedNetAmount = $rawAdminFee > 0 ? number_format((int) round($rawNetAmount), 0, ',', '.') : '';
-
         Log::info('Withdrawal approved WhatsApp sending.', [
             'transaction_id' => $transactionId,
             'customer_name' => $customerName,
             'customer_phone' => $customerPhone,
-            'amount' => $rawAmount,
-            'admin_fee' => $rawAdminFee,
-            'net_amount' => $rawNetAmount,
+            'amount' => $transaction->amount,
         ]);
 
-        $sent = app(QontactService::class)->sendWithdrawalApproved(
-            $customerName,
-            $customerPhone,
-            $formattedAmount,
-            $formattedAdminFee,
-            $formattedNetAmount,
-        );
+        $sent = app(QontactService::class)->sendWithdrawalApprovedNotification($transaction);
 
         if (! $sent) {
             throw new \RuntimeException('Pengiriman notifikasi WhatsApp approval gagal.');
@@ -520,7 +510,7 @@ class CustomerWithdrawalsTable
     private static function sendRejectedWhatsApp(int $transactionId): void
     {
         $transaction = CustomerWalletTransaction::query()
-            ->with('customer:id,name,phone')
+            ->with('customer')
             ->whereKey($transactionId)
             ->first();
 
@@ -535,23 +525,14 @@ class CustomerWithdrawalsTable
             return;
         }
 
-        $rawAmount = (float) ($transaction->amount ?? 0);
-
-        // Format tanpa prefix "Rp" karena template body sudah mengandung "Rp {{2}}"
-        $formattedAmount = number_format((int) round($rawAmount), 0, ',', '.');
-
         Log::info('Withdrawal rejected WhatsApp sending.', [
             'transaction_id' => $transactionId,
             'customer_name' => $customerName,
             'customer_phone' => $customerPhone,
-            'amount' => $rawAmount,
+            'amount' => $transaction->amount,
         ]);
 
-        $sent = app(QontactService::class)->sendWithdrawalRejected(
-            $customerName,
-            $customerPhone,
-            $formattedAmount,
-        );
+        $sent = app(QontactService::class)->sendWithdrawalRejectedNotification($transaction);
 
         if (! $sent) {
             throw new \RuntimeException('Pengiriman notifikasi WhatsApp penolakan gagal.');

@@ -5,9 +5,10 @@ namespace App\Filament\Resources\WhatsAppBroadcasts\Pages;
 use App\Filament\Resources\WhatsAppBroadcasts\WhatsAppBroadcastResource;
 use App\Filament\Widgets\WhatsAppBroadcasts\CustomerWhatsAppConfirmationWidget;
 use App\Filament\Widgets\WhatsAppBroadcasts\WhatsAppOutboundLogWidget;
-use App\Jobs\ProcessWhatsAppBroadcastJob;
 use App\Models\WhatsAppBroadcast;
 use App\Services\QontactService;
+use App\Services\WhatsApp\WhatsAppBroadcastService;
+use App\Support\QontakWhatsAppSettings;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Repeater;
@@ -38,20 +39,17 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                 ->color('gray')
                 ->modalHeading('Test Pengiriman WhatsApp')
                 ->modalDescription('Gunakan untuk menguji koneksi gateway Qontak dan validasi template sebelum broadcast massal.')
-                ->modalSubmitActionLabel('Kirim Test')
+                ->modalSubmitActionLabel('Kirim ke Semua Nomor')
                 ->schema([
-                    TextInput::make('to_name')
-                        ->label('Nama Penerima')
+                    Select::make('channel_integration_id')
+                        ->label('Channel Integration')
                         ->required()
-                        ->maxLength(120)
-                        ->default('Tester Admin'),
-
-                    TextInput::make('phone')
-                        ->label('Nomor WhatsApp')
-                        ->required()
-                        ->tel()
-                        ->placeholder('081234567890')
-                        ->helperText('Bisa format 08xxx atau 62xxx.'),
+                        ->searchable()
+                        ->options(fn (): array => app(QontactService::class)->getWhatsAppIntegrations())
+                        ->placeholder('Pilih channel integration...')
+                        ->default((string) QontakWhatsAppSettings::get('connection.channel_integration_id', ''))
+                        ->helperText('Channel WhatsApp Business yang akan digunakan untuk mengirim pesan test ini.')
+                        ->columnSpanFull(),
 
                     Select::make('template_id')
                         ->label('Template WhatsApp Qontak')
@@ -60,8 +58,9 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                         ->live()
                         ->options(fn (): array => app(QontactService::class)->getWhatsAppTemplates())
                         ->placeholder('Pilih template...')
-                        ->default((string) config('services.qontak.broadcast_template_id', ''))
+                        ->default((string) QontakWhatsAppSettings::get('broadcast.default_template_id', config('services.qontak.broadcast_template_id', '')))
                         ->helperText('Pilih template yang sudah disetujui (Approved) di Qontak. [N var] menunjukkan jumlah variabel.')
+                        ->columnSpanFull()
                         ->afterStateUpdated(function (?string $state, Set $set): void {
                             if (! $state) {
                                 $set('body_params', []);
@@ -98,28 +97,105 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                         ->columns(2)
                         ->defaultItems(0)
                         ->addActionLabel('Tambah Variabel')
-                        ->reorderable(false),
+                        ->reorderable(false)
+                        ->columnSpanFull(),
 
+                    Repeater::make('recipients')
+                        ->label('Daftar Penerima')
+                        ->helperText('Tambahkan satu atau lebih nomor tujuan. Nomor duplikat akan dilewati otomatis.')
+                        ->schema([
+                            TextInput::make('name')
+                                ->label('Nama')
+                                ->placeholder('Tester Admin')
+                                ->maxLength(120),
+                            TextInput::make('phone')
+                                ->label('Nomor WhatsApp')
+                                ->required()
+                                ->tel()
+                                ->placeholder('081234567890')
+                                ->helperText('Format 08xxx atau 62xxx'),
+                        ])
+                        ->columns(2)
+                        ->defaultItems(1)
+                        ->minItems(1)
+                        ->addActionLabel('Tambah Nomor')
+                        ->reorderable(false)
+                        ->columnSpanFull(),
                 ])
                 ->action(function (array $data): void {
-                    try {
-                        $normalizedPhone = self::sendTestWhatsAppMessageNow($data);
+                    $qontactService = app(QontactService::class);
+                    $templateId = trim((string) ($data['template_id'] ?? ''));
+                    $channelIntegrationId = trim((string) ($data['channel_integration_id'] ?? '')) ?: null;
+                    $rawBodyParams = self::buildRawBodyParams($data['body_params'] ?? []);
 
+                    $seenPhones = [];
+                    $successList = [];
+                    $failedList = [];
+
+                    foreach (array_values((array) ($data['recipients'] ?? [])) as $recipient) {
+                        $rawPhone = trim((string) ($recipient['phone'] ?? ''));
+                        $name = trim((string) ($recipient['name'] ?? '')) ?: 'Tester Admin';
+
+                        if ($rawPhone === '') {
+                            continue;
+                        }
+
+                        $normalizedPhone = $qontactService->normalizePhoneNumber($rawPhone);
+
+                        if ($normalizedPhone === '' || isset($seenPhones[$normalizedPhone])) {
+                            continue;
+                        }
+
+                        $seenPhones[$normalizedPhone] = true;
+
+                        try {
+                            $result = $qontactService->sendWhatsAppWithFormattedParams(
+                                $name,
+                                $normalizedPhone,
+                                $templateId,
+                                $rawBodyParams,
+                                'id',
+                                [],
+                                [],
+                                null,
+                                $channelIntegrationId,
+                            );
+
+                            if ((bool) ($result['success'] ?? false)) {
+                                $successList[] = $normalizedPhone;
+                            } else {
+                                $error = trim((string) ($result['error'] ?? 'Gagal mengirim.'));
+                                $failedList[] = "{$normalizedPhone}: {$error}";
+                            }
+                        } catch (\Throwable $exception) {
+                            $failedList[] = "{$normalizedPhone}: {$exception->getMessage()}";
+                        }
+                    }
+
+                    $total = \count($successList) + \count($failedList);
+
+                    if ($total === 0) {
                         Notification::make()
-                            ->title('Pesan test berhasil terkirim')
-                            ->body("Pesan test WhatsApp berhasil dikirim ke nomor {$normalizedPhone}.")
+                            ->title('Tidak ada nomor valid')
+                            ->body('Tidak ada nomor penerima yang dapat diproses.')
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    if ($successList !== []) {
+                        Notification::make()
+                            ->title(\count($successList).' pesan test berhasil terkirim')
+                            ->body(implode(', ', $successList))
                             ->success()
                             ->send();
-                    } catch (\InvalidArgumentException $exception) {
+                    }
+
+                    if ($failedList !== []) {
                         Notification::make()
-                            ->title('Nomor WhatsApp tidak valid')
-                            ->body($exception->getMessage())
-                            ->danger()
-                            ->send();
-                    } catch (\Throwable $exception) {
-                        Notification::make()
-                            ->title('Pengiriman test gagal')
-                            ->body($exception->getMessage())
+                            ->title(\count($failedList).' nomor gagal dikirim')
+                            ->body(implode("\n", $failedList))
                             ->danger()
                             ->send();
                     }
@@ -136,11 +212,37 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                             'sent_at' => null,
                         ]);
 
-                        ProcessWhatsAppBroadcastJob::dispatch((int) $record->id);
+                        set_time_limit(0);
+                        ignore_user_abort(true);
 
-                        Notification::make()
-                            ->title('Broadcast dijadwalkan')
-                            ->body('Proses pengiriman WhatsApp sedang dijalankan melalui queue.')
+                        app(WhatsAppBroadcastService::class)->process((int) $record->id);
+
+                        $record->refresh();
+
+                        $notification = Notification::make()
+                            ->body("Terkirim: {$record->success_recipients}, Gagal: {$record->failed_recipients} dari {$record->total_recipients} penerima.");
+
+                        if ($record->status === 'failed') {
+                            $notification
+                                ->title('Broadcast bulk gagal dibuat')
+                                ->body((string) ($record->last_error ?: 'Qontak menolak proses bulk broadcast.'))
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        if ($record->status === 'partial') {
+                            $notification
+                                ->title('Broadcast bulk diproses sebagian')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $notification
+                            ->title('Broadcast bulk berhasil dibuat di Qontak')
                             ->success()
                             ->send();
                     } catch (\Throwable $exception) {
@@ -150,7 +252,7 @@ class ManageWhatsAppBroadcasts extends ManageRecords
                         ]);
 
                         Notification::make()
-                            ->title('Gagal menjadwalkan broadcast')
+                            ->title('Broadcast gagal diproses')
                             ->body($exception->getMessage())
                             ->danger()
                             ->send();
@@ -203,25 +305,14 @@ class ManageWhatsAppBroadcasts extends ManageRecords
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param  array<int, array<string, mixed>>  $bodyParamsInput
+     * @return list<array{key: string, value: string, value_text: string}>
      */
-    private static function sendTestWhatsAppMessageNow(array $data): string
+    private static function buildRawBodyParams(array $bodyParamsInput): array
     {
-        $qontactService = app(QontactService::class);
-
-        $recipientName = trim((string) ($data['to_name'] ?? ''));
-        $rawPhone = trim((string) ($data['phone'] ?? ''));
-        $templateId = trim((string) ($data['template_id'] ?? ''));
-        $normalizedPhone = $qontactService->normalizePhoneNumber($rawPhone);
-
-        if ($normalizedPhone === '') {
-            throw new \InvalidArgumentException('Gunakan format nomor Indonesia yang valid, contoh 0812xxxx atau 62812xxxx.');
-        }
-
-        $resolvedName = $recipientName !== '' ? $recipientName : 'Tester Admin';
-
         $rawBodyParams = [];
-        foreach (array_values((array) ($data['body_params'] ?? [])) as $index => $item) {
+
+        foreach (array_values($bodyParamsInput) as $index => $item) {
             $varName = trim((string) ($item['value'] ?? ''));
             $varText = trim((string) ($item['value_text'] ?? ''));
 
@@ -236,19 +327,6 @@ class ManageWhatsAppBroadcasts extends ManageRecords
             ];
         }
 
-        $result = $qontactService->sendWhatsAppWithFormattedParams(
-            $resolvedName,
-            $normalizedPhone,
-            $templateId,
-            $rawBodyParams,
-            'id',
-        );
-
-        if (! (bool) ($result['success'] ?? false)) {
-            $error = trim((string) ($result['error'] ?? ''));
-            throw new \RuntimeException($error !== '' ? $error : 'Pengiriman pesan test WhatsApp gagal.');
-        }
-
-        return $normalizedPhone;
+        return $rawBodyParams;
     }
 }

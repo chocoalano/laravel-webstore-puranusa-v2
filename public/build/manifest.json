@@ -456,7 +456,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-Bg8u2NK9.css",
+    "file": "assets/app-VhfiX18O.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -465,7 +465,7 @@
     ]
   },
   "resources/css/filament/control-panel/theme.css": {
-    "file": "assets/theme-Cc4FezXm.css",
+    "file": "assets/theme-DoAoa3S3.css",
     "src": "resources/css/filament/control-panel/theme.css",
     "isEntry": true,
     "name": "theme",
