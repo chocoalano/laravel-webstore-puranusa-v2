@@ -80,7 +80,7 @@ const {
                 :ui="{ title: 'font-bold' }" />
 
             <UAlert color="info" variant="subtle" icon="i-lucide-lock" title="Kolom Terkunci"
-                description="Username, NIK, Email, dan No. Telepon tidak dapat diubah sendiri. Hubungi admin jika perlu perubahan data tersebut."
+                description="Username, NIK, Email, dan No. Telepon tidak dapat diubah sendiri. Selain itu, NIK, Email, dan No. Telepon hanya boleh dipakai maksimal 7 akun. Hubungi admin jika perlu perubahan atau jika data Anda dipakai terlalu banyak akun."
                 :ui="{ title: 'font-bold' }" />
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -97,7 +97,7 @@ const {
                 </UFormField>
 
                 <UFormField label="NIK" required :error="errors.nik"
-                    help="NIK harus diisi.">
+                    help="NIK tidak dapat diubah dari sini. Satu NIK hanya bisa dipakai maksimal 7 akun.">
                     <UInput v-model="form.nik" icon="i-lucide-lock"
                         class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
@@ -108,13 +108,13 @@ const {
                 </UFormField>
 
                 <UFormField label="Email" required :error="errors.email"
-                    help="Email harus diisi.">
+                    help="Email tidak dapat diubah dari sini. Satu email hanya bisa dipakai maksimal 7 akun.">
                     <UInput v-model="form.email" type="email" icon="i-lucide-lock"
                         class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>
 
                 <UFormField label="WhatsApp / No. Telepon" required :error="errors.phone"
-                    help="Nomor telepon tidak dapat diubah. Hubungi admin untuk perubahan.">
+                    help="Nomor telepon tidak dapat diubah dari sini. Satu nomor HP/WhatsApp hanya bisa dipakai maksimal 7 akun.">
                     <UInput v-model="form.phone" readonly icon="i-lucide-lock" inputmode="tel"
                         class="w-full opacity-70 cursor-not-allowed" />
                 </UFormField>

@@ -115,7 +115,13 @@ class CheckoutService
             ]);
         }
 
-        $order = DB::transaction(function () use ($customer, $cart, $addressData, $total, $shippingAmount, $orderType): Order {
+        $isFirstPurchase = (int) ($customer->status ?? 1) === 1
+            && ! Order::query()
+                ->where('customer_id', $customer->id)
+                ->whereIn('status', ['processing', 'completed'])
+                ->exists();
+
+        $order = DB::transaction(function () use ($customer, $cart, $addressData, $total, $shippingAmount, $orderType, $isFirstPurchase): Order {
             $shippingAddressId = $this->resolveShippingAddressId($customer, $addressData);
             $order = $this->buildOrder($customer, $cart, $shippingAddressId, 'processing', $shippingAmount, $orderType);
 
@@ -130,6 +136,11 @@ class CheckoutService
             ]);
 
             $customer->decrement('ewallet_saldo', $total);
+
+            if ($isFirstPurchase) {
+                $customer->update(['status' => 2]);
+            }
+
             $this->checkoutRepository->clearCart($cart);
 
             return $order;

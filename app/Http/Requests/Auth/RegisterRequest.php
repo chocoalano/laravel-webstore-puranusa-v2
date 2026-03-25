@@ -30,7 +30,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[a-zA-Z0-9_.]+$/', 'unique:customers,username'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:customers,email'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'telp' => ['required', 'string', 'min:8', 'max:16'],
             'nik' => ['nullable', 'string', 'digits:16'],
             'gender' => ['required', 'string', 'in:L,P'],
@@ -47,6 +47,30 @@ class RegisterRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                if (
+                    $this->filled('email')
+                    && ! $validator->errors()->has('email')
+                    && Customer::query()->where('email', $this->input('email'))->count() >= 7
+                ) {
+                    $validator->errors()->add('email', 'Email ini sudah digunakan oleh maksimal 7 akun. Gunakan email lain.');
+                }
+
+                if (
+                    $this->filled('telp')
+                    && ! $validator->errors()->has('telp')
+                    && Customer::query()->where('phone', $this->input('telp'))->count() >= 7
+                ) {
+                    $validator->errors()->add('telp', 'Nomor WhatsApp ini sudah digunakan oleh maksimal 7 akun. Gunakan nomor lain.');
+                }
+
+                if (
+                    $this->filled('nik')
+                    && ! $validator->errors()->has('nik')
+                    && Customer::query()->where('nik', $this->input('nik'))->count() >= 7
+                ) {
+                    $validator->errors()->add('nik', 'NIK ini sudah digunakan oleh maksimal 7 akun.');
+                }
+
                 if (
                     $this->filled('referral_username')
                     && ! $validator->errors()->has('referral_username')
@@ -101,10 +125,11 @@ class RegisterRequest extends FormRequest
             'username.unique' => 'Username sudah digunakan, pilih yang lain.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email sudah terdaftar.',
+            'email.max' => 'Email terlalu panjang, maksimal 255 karakter.',
             'telp.required' => 'Nomor WhatsApp wajib diisi.',
             'telp.min' => 'Nomor WhatsApp minimal 8 digit.',
-            'nik.digits' => 'NIK harus 16 digit.',
+            'telp.max' => 'Nomor WhatsApp maksimal 16 digit.',
+            'nik.digits' => 'NIK harus tepat 16 digit angka.',
             'gender.required' => 'Jenis kelamin wajib dipilih.',
             'gender.in' => 'Jenis kelamin tidak valid.',
             'referral_username.min' => 'Username referral minimal 3 karakter.',

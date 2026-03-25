@@ -78,7 +78,7 @@ class UpdateAccountProfileRequest extends FormRequest
                     ->count();
 
                 if ($usageCount >= 7) {
-                    $fail('NIK ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
+                    $fail(self::sharedIdentityLimitMessage('NIK'));
                 }
             };
 
@@ -96,7 +96,7 @@ class UpdateAccountProfileRequest extends FormRequest
                     ->count();
 
                 if ($usageCount >= 7) {
-                    $fail('Email ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
+                    $fail(self::sharedIdentityLimitMessage('Email'));
                 }
             };
 
@@ -116,7 +116,7 @@ class UpdateAccountProfileRequest extends FormRequest
                     ->count();
 
                 if ($usageCount >= 7) {
-                    $fail('Nomor telepon ini sudah terdaftar pada 7 akun (batas maksimum). Hubungi admin jika ini adalah kesalahan.');
+                    $fail(self::sharedIdentityLimitMessage('Nomor HP/WhatsApp'));
                 }
             };
         }
@@ -182,6 +182,11 @@ class UpdateAccountProfileRequest extends FormRequest
             'npwp_kerja.in' => 'Status kerja NPWP tidak valid.',
             'npwp_office.max' => 'Nama kantor NPWP maksimal 255 karakter.',
         ];
+    }
+
+    public static function sharedIdentityLimitMessage(string $fieldLabel): string
+    {
+        return "{$fieldLabel} ini sudah dipakai oleh 7 akun. Setiap {$fieldLabel} hanya bisa digunakan maksimal 7 akun. Jika data ini memang milik Anda, silakan hubungi admin.";
     }
 
     /**

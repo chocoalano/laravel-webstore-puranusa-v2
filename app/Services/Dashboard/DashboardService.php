@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Http\Requests\Dashboard\UpdateAccountProfileRequest;
 use App\Models\Content;
 use App\Models\ContentCategory;
 use App\Models\Customer;
@@ -605,7 +606,7 @@ class DashboardService
 
                 if ($phoneUsageCount >= 7) {
                     throw ValidationException::withMessages([
-                        'phone' => 'Nomor telepon/WhatsApp ini sudah digunakan oleh 7 akun.',
+                        'phone' => UpdateAccountProfileRequest::sharedIdentityLimitMessage('Nomor HP/WhatsApp'),
                     ]);
                 }
             }

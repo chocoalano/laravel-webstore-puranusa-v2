@@ -15,11 +15,13 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -93,6 +95,7 @@ class CustomerForm
                     ->label('Nomor NIK')
                     ->required()
                     ->length(16)
+                    ->rule(self::maxUsageRule('nik'))
                     ->helperText('16 digit Nomor Induk Kependudukan sesuai KTP.'),
 
                 TextInput::make('email')
@@ -115,7 +118,7 @@ class CustomerForm
                     ->label('Password Akun')
                     ->password()
                     ->revealable()
-                    ->required(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
+                    ->required(fn ($livewire) => $livewire instanceof CreateRecord)
                     ->dehydrated(fn ($state) => filled($state))
                     ->helperText('Minimal 8 karakter. Kosongkan jika tidak ingin mengubah password saat ini.'),
 
@@ -428,7 +431,7 @@ class CustomerForm
     }
 
     /**
-     * @return array<int, string|\Illuminate\Contracts\Validation\ValidationRule>
+     * @return array<int, string|ValidationRule>
      */
     private static function statusFieldRules(): array
     {
@@ -566,7 +569,11 @@ class CustomerForm
                     ->count();
 
                 if ($usageCount >= self::MAX_CONTACT_USAGE) {
-                    $label = $column === 'email' ? 'Email' : 'Nomor telepon/WhatsApp';
+                    $label = match ($column) {
+                        'email' => 'Email',
+                        'nik' => 'NIK',
+                        default => 'Nomor telepon/WhatsApp',
+                    };
                     $fail("{$label} ini sudah digunakan oleh ".self::MAX_CONTACT_USAGE.' akun.');
                 }
             };
@@ -583,6 +590,10 @@ class CustomerForm
 
         if ($column === 'email') {
             return Str::lower($normalized);
+        }
+
+        if ($column === 'nik') {
+            return preg_replace('/\D+/', '', $normalized) ?: null;
         }
 
         return preg_replace('/\s+/', '', $normalized) ?: null;

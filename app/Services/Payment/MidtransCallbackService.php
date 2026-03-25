@@ -2,7 +2,9 @@
 
 namespace App\Services\Payment;
 
+use App\Models\Order;
 use App\Repositories\Payments\Contracts\MidtransCallbackRepositoryInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -178,6 +180,20 @@ class MidtransCallbackService
                         (int) $order->customer_id,
                         (float) ($order->grand_total ?? 0)
                     );
+
+                    $customer = $order->customer;
+                    $isFirstPurchase = $customer
+                        && (int) ($customer->status ?? 0) === 1
+                        && ! Order::query()
+                            ->where('customer_id', $customer->id)
+                            ->where('id', '!=', $order->id)
+                            ->whereIn('status', ['processing', 'completed'])
+                            ->exists();
+
+                    if ($isFirstPurchase) {
+                        $customer->update(['status' => 2]);
+                    }
+
                     $runSideEffects = true;
                 }
             } elseif ($resolvedPaymentStatus === 'refunded') {
@@ -309,7 +325,7 @@ class MidtransCallbackService
         if ($customerStatus === 3 && $paymentStatus === 'PAID') {
             try {
                 $this->callbackRepository->callBonusEngine((int) $result['order_id']);
-            } catch (\Illuminate\Database\QueryException $exception) {
+            } catch (QueryException $exception) {
                 // SQLSTATE 45000 = SP SIGNAL: order already processed (idempotency guard).
                 // Log sebagai warning karena ini kondisi yang expected pada duplicate webhook.
                 if ($exception->getCode() === '45000') {

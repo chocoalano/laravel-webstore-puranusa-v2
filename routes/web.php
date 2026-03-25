@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\ArticleController;
 use App\Http\Controllers\Web\Auth\CustomerAuthController;
+use App\Http\Controllers\Web\Auth\CustomerPasswordResetController;
 use App\Http\Controllers\Web\BerandaController;
 use App\Http\Controllers\Web\CartController;
 use App\Http\Controllers\Web\CheckoutController;
@@ -49,7 +50,16 @@ Route::middleware('guest:customer')->group(function () {
     Route::post('/login', [CustomerAuthController::class, 'login'])->name('login.store');
     Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.store');
+    Route::get('/forgot-password', [CustomerPasswordResetController::class, 'showForgotPassword'])->name('password.forgot');
+    Route::post('/forgot-password', [CustomerPasswordResetController::class, 'sendResetLink'])->name('password.forgot.send');
 });
+
+Route::get('/reset-password/{customer}', [CustomerPasswordResetController::class, 'showResetPassword'])
+    ->whereNumber('customer')
+    ->name('password.reset');
+Route::post('/reset-password/{customer}', [CustomerPasswordResetController::class, 'resetPassword'])
+    ->whereNumber('customer')
+    ->name('password.reset.update');
 
 Route::get('/konfirmasi-wa/{customer}', [CustomerAuthController::class, 'confirmWhatsApp'])
     ->whereNumber('customer')

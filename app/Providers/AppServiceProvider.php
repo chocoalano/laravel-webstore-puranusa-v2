@@ -13,12 +13,22 @@ use App\Repositories\Auth\CustomerProfileRepository;
 use App\Repositories\Auth\CustomerRegistrationRepository;
 use App\Repositories\Cart\Contracts\CartRepositoryInterface;
 use App\Repositories\Cart\EloquentCartRepository;
+use App\Repositories\Checkout\Contracts\CheckoutRepositoryInterface;
+use App\Repositories\Checkout\EloquentCheckoutRepository;
+use App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface;
+use App\Repositories\CustomerAddress\EloquentCustomerAddressRepository;
+use App\Repositories\Dashboard\Contracts\DashboardRepositoryInterface;
+use App\Repositories\Dashboard\EloquentDashboardRepository;
 use App\Repositories\Home\Contracts\HomeRepositoryInterface;
 use App\Repositories\Home\EloquentHomeRepository;
 use App\Repositories\Pages\Contracts\PageRepositoryInterface;
 use App\Repositories\Pages\EloquentPageRepository;
 use App\Repositories\Payments\Contracts\MidtransCallbackRepositoryInterface;
 use App\Repositories\Payments\EloquentMidtransCallbackRepository;
+use App\Repositories\Products\Contracts\ProductRepositoryInterface;
+use App\Repositories\Products\EloquentProductRepository;
+use App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface;
+use App\Repositories\Shipping\EloquentShippingTargetRepository;
 use App\Repositories\WhatsApp\Contracts\WhatsAppBroadcastRepositoryInterface;
 use App\Repositories\WhatsApp\EloquentWhatsAppBroadcastRepository;
 use App\Repositories\Wishlist\Contracts\WishlistRepositoryInterface;
@@ -45,27 +55,27 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CustomerProfileRepositoryInterface::class, CustomerProfileRepository::class);
         $this->app->bind(CustomerRegistrationRepositoryInterface::class, CustomerRegistrationRepository::class);
         $this->app->bind(
-            \App\Repositories\Products\Contracts\ProductRepositoryInterface::class,
-            \App\Repositories\Products\EloquentProductRepository::class
+            ProductRepositoryInterface::class,
+            EloquentProductRepository::class
         );
         $this->app->bind(CartRepositoryInterface::class, EloquentCartRepository::class);
         $this->app->bind(WishlistRepositoryInterface::class, EloquentWishlistRepository::class);
         $this->app->bind(
-            \App\Repositories\Checkout\Contracts\CheckoutRepositoryInterface::class,
-            \App\Repositories\Checkout\EloquentCheckoutRepository::class
+            CheckoutRepositoryInterface::class,
+            EloquentCheckoutRepository::class
         );
         $this->app->bind(
-            \App\Repositories\Shipping\Contracts\ShippingTargetRepositoryInterface::class,
-            \App\Repositories\Shipping\EloquentShippingTargetRepository::class
+            ShippingTargetRepositoryInterface::class,
+            EloquentShippingTargetRepository::class
         );
         $this->app->bind(
-            \App\Repositories\Dashboard\Contracts\DashboardRepositoryInterface::class,
-            \App\Repositories\Dashboard\EloquentDashboardRepository::class
+            DashboardRepositoryInterface::class,
+            EloquentDashboardRepository::class
         );
         $this->app->bind(HomeRepositoryInterface::class, EloquentHomeRepository::class);
         $this->app->bind(
-            \App\Repositories\CustomerAddress\Contracts\CustomerAddressRepositoryInterface::class,
-            \App\Repositories\CustomerAddress\EloquentCustomerAddressRepository::class
+            CustomerAddressRepositoryInterface::class,
+            EloquentCustomerAddressRepository::class
         );
         $this->app->bind(MidtransCallbackRepositoryInterface::class, EloquentMidtransCallbackRepository::class);
         $this->app->bind(ArticleRepositoryInterface::class, EloquentArticleRepository::class);
@@ -86,11 +96,25 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::before(function ($user, string $ability) {
-            if (! is_object($user) || ! method_exists($user, 'hasRole')) {
+            if (! is_object($user)) {
                 return null;
             }
 
-            return $user->hasRole(['super_admin', 'developer']) ? true : null;
+            $roleColumn = strtolower(trim((string) data_get($user, 'role', '')));
+
+            if (in_array($roleColumn, ['developer', 'super_admin', 'superadmin'], true)) {
+                return true;
+            }
+
+            if (method_exists($user, 'hasRole')) {
+                try {
+                    return $user->hasRole(['super_admin', 'developer']) ? true : null;
+                } catch (\Throwable) {
+                    return null;
+                }
+            }
+
+            return null;
         });
 
         FilamentIcon::register([

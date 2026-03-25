@@ -84,7 +84,7 @@
     "/build/assets/Page-ws952gfV.js"
   ],
   "node_modules/@nuxt/ui/dist/runtime/components/PageAside.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "node_modules/@nuxt/ui/dist/runtime/components/PageBody.vue": [
     "/build/assets/Page-ws952gfV.js"
@@ -256,10 +256,10 @@
     "/build/assets/Index-DcI46pN2.js"
   ],
   "resources/js/Pages/Auth/Dashboard/Index.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/Pages/Auth/Dashboard/Index.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Addresses.vue": [
     "/build/assets/Addresses-BkuYO7cN.js"
@@ -286,10 +286,10 @@
     "/build/assets/DeleteAccount-bU1gLfP_.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/FormAccount.vue": [
-    "/build/assets/FormAccount-BjfX2t74.js"
+    "/build/assets/FormAccount-D_TUmRka.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/FormAccount.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/FormAccount-BjfX2t74.js"
+    "/build/assets/FormAccount-D_TUmRka.js"
   ],
   "resources/js/Pages/Auth/Dashboard/partials/Lifetime.vue": [
     "/build/assets/Lifetime-7CB4Aneo.js"
@@ -333,6 +333,12 @@
   "resources/js/Pages/Auth/Dashboard/partials/Zenner.vue?vue&type=script&setup=true&lang.ts": [
     "/build/assets/Zenner-DKRV35DM.js"
   ],
+  "resources/js/Pages/Auth/ForgotPassword.vue": [
+    "/build/assets/ForgotPassword-Bj0CV0gr.js"
+  ],
+  "resources/js/Pages/Auth/ForgotPassword.vue?vue&type=script&setup=true&lang.ts": [
+    "/build/assets/ForgotPassword-Bj0CV0gr.js"
+  ],
   "resources/js/Pages/Auth/Login.vue": [
     "/build/assets/Login-a453wN3R.js"
   ],
@@ -344,6 +350,12 @@
   ],
   "resources/js/Pages/Auth/Register.vue?vue&type=script&setup=true&lang.ts": [
     "/build/assets/Register-Bx9STKKm.js"
+  ],
+  "resources/js/Pages/Auth/ResetPassword.vue": [
+    "/build/assets/ResetPassword-rg5RP5p4.js"
+  ],
+  "resources/js/Pages/Auth/ResetPassword.vue?vue&type=script&setup=true&lang.ts": [
+    "/build/assets/ResetPassword-rg5RP5p4.js"
   ],
   "resources/js/Pages/Auth/WaConfirmationPending.vue": [
     "/build/assets/WaConfirmationPending-dYuJYtED.js"
@@ -532,10 +544,10 @@
     "/build/assets/DashboardHome-KQ4t98Wt.js"
   ],
   "resources/js/components/dashboard/account/DashboardAccountFormCard.vue": [
-    "/build/assets/FormAccount-BjfX2t74.js"
+    "/build/assets/FormAccount-D_TUmRka.js"
   ],
   "resources/js/components/dashboard/account/DashboardAccountFormCard.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/FormAccount-BjfX2t74.js"
+    "/build/assets/FormAccount-D_TUmRka.js"
   ],
   "resources/js/components/dashboard/addresses/AddressDefaultSwitchModal.vue": [
     "/build/assets/Addresses-BkuYO7cN.js"
@@ -574,31 +586,31 @@
     "/build/assets/Bonus-zyHhdHD_.js"
   ],
   "resources/js/components/dashboard/index/DashboardAsideMenu.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/DashboardAsideMenu.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/DashboardPageHeader.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/DashboardPageHeader.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuNav.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuNav.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuTrigger.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideMenuTrigger.vue?vue&type=script&setup=true&lang.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/index/aside/DashboardAsideTipsCard.vue": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/components/dashboard/lifetime/LifetimeClaimedTableCard.vue": [
     "/build/assets/Lifetime-7CB4Aneo.js"
@@ -1079,16 +1091,16 @@
     "/build/assets/useDashboard-h8EoanAr.js"
   ],
   "resources/js/composables/useDashboardAccountForm.ts": [
-    "/build/assets/FormAccount-BjfX2t74.js"
+    "/build/assets/FormAccount-D_TUmRka.js"
   ],
   "resources/js/composables/useDashboardAddresses.ts": [
     "/build/assets/Addresses-BkuYO7cN.js"
   ],
   "resources/js/composables/useDashboardAsideLinks.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/composables/useDashboardAsideMenuState.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/composables/useDashboardBonus.ts": [
     "/build/assets/Bonus-zyHhdHD_.js"
@@ -1106,7 +1118,7 @@
     "/build/assets/Promo-C4wHRI-n.js"
   ],
   "resources/js/composables/useDashboardSections.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "resources/js/composables/useDashboardWallet.ts": [
     "/build/assets/Wallet-BFl3Uy4K.js"
@@ -1240,7 +1252,7 @@
     "/build/assets/AppLayout-BtCPfvQi.css"
   ],
   "virtual:nuxt-ui-templates/ui/page-aside.ts": [
-    "/build/assets/Index-Deue07SW.js"
+    "/build/assets/Index-DIpOK_B1.js"
   ],
   "virtual:nuxt-ui-templates/ui/page-body.ts": [
     "/build/assets/Page-ws952gfV.js"
